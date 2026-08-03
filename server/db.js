@@ -37,6 +37,14 @@ CREATE TABLE IF NOT EXISTS free_grants (
   PRIMARY KEY (user_id, product_id)
 );
 
+CREATE TABLE IF NOT EXISTS checkins (
+  id         TEXT PRIMARY KEY,
+  user_id    TEXT NOT NULL,
+  reward     BIGINT NOT NULL,
+  streak     INTEGER NOT NULL DEFAULT 1,
+  created_at BIGINT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS sessions (
   token      TEXT PRIMARY KEY,
   user_id    TEXT NOT NULL,

@@ -124,6 +124,58 @@ router.post('/buy', requireAuth, async (req, res, next) => {
   }
 });
 
+// 签到
+router.post('/checkin', requireAuth, async (req, res) => {
+  try {
+    const uid = req.user.id;
+    const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+    const todayMs = todayStart.getTime();
+
+    const { rows: already } = await pool.query(
+      `SELECT id FROM checkins WHERE user_id=$1 AND created_at>=$2`, [uid, todayMs]);
+    if (already.length > 0) return res.json({ ok: false, msg: '今天已签到' });
+
+    const yesterdayMs = todayMs - 86400000;
+    const { rows: yest } = await pool.query(
+      `SELECT streak FROM checkins WHERE user_id=$1 AND created_at>=$2 AND created_at<$3 ORDER BY created_at DESC LIMIT 1`,
+      [uid, yesterdayMs, todayMs]);
+    const streak = (yest.length > 0 ? yest[0].streak : 0) + 1;
+
+    const reward = Math.min(streak, 7) * 100;
+
+    await pool.query(
+      `INSERT INTO checkins (id, user_id, reward, streak, created_at) VALUES ($1,$2,$3,$4,$5)`,
+      [genId('ck_'), uid, reward, streak, Date.now()]);
+    await pool.query(
+      `UPDATE users SET free_balance=free_balance+$1 WHERE id=$2`, [reward, uid]);
+
+    res.json({ ok: true, msg: `签到成功！连续${streak}天，获得${reward}免费金币`, streak, reward });
+  } catch (e) {
+    res.status(500).json({ ok: false, msg: '签到失败' });
+  }
+});
+
+// 签到状态
+router.get('/checkin-status', requireAuth, async (req, res) => {
+  try {
+    const uid = req.user.id;
+    const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+    const todayMs = todayStart.getTime();
+
+    const { rows: today } = await pool.query(
+      `SELECT id FROM checkins WHERE user_id=$1 AND created_at>=$2`, [uid, todayMs]);
+    const checkedIn = today.length > 0;
+
+    const { rows: last } = await pool.query(
+      `SELECT streak, reward FROM checkins WHERE user_id=$1 ORDER BY created_at DESC LIMIT 1`, [uid]);
+    const streak = last.length > 0 ? last[0].streak : 0;
+
+    res.json({ ok: true, checkedIn, streak });
+  } catch (e) {
+    res.status(500).json({ ok: false, msg: '获取签到状态失败' });
+  }
+});
+
 // 充值套餐
 router.get('/packages', async (req, res, next) => {
   try {
