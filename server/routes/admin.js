@@ -173,6 +173,33 @@ router.delete('/categories/:key', requireAdmin, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// ---- 重置所有购买数据 ----
+router.post('/reset-orders', requireAdmin, async (req, res, next) => {
+  try {
+    await withTransaction(async (client) => {
+      // 把用户花掉的免费金币加回去
+      await client.query(
+        `UPDATE users SET free_balance = free_balance + COALESCE((
+          SELECT SUM(free_coins) FROM orders WHERE orders.user_id = users.id
+        ), 0)`);
+      // 把用户花掉的充值金币加回去
+      await client.query(
+        `UPDATE users SET paid_balance = paid_balance + COALESCE((
+          SELECT SUM(paid_coins) FROM orders WHERE orders.user_id = users.id
+        ), 0)`);
+      // 清订单
+      await client.query(`DELETE FROM orders`);
+      // 清开奖记录
+      await client.query(`DELETE FROM draws`);
+      // 重置商品状态
+      await client.query(`UPDATE products SET free_used=0, status='active'`);
+      // 清除消费类的钱包流水
+      await client.query(`DELETE FROM wallet_tx WHERE type='spend'`);
+    });
+    res.json({ ok: true, msg: '已重置所有购买数据，金币已退回' });
+  } catch (e) { next(e); }
+});
+
 // ---- 用户管理 ----
 router.get('/users', requireAdmin, async (req, res, next) => {
   try {
