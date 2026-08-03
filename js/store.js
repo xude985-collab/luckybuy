@@ -243,7 +243,11 @@ const Store = (() => {
       if (/余额不足/.test(r.msg || '')) r.needRecharge = true;
       return r;
     }
-    await Promise.all([refreshProducts(), refreshOrders(), refreshWallet()]);
+    await Promise.all([
+      refreshProducts().catch(() => {}),
+      refreshOrders().catch(() => {}),
+      refreshWallet().catch(() => {}),
+    ]);
     const order = cache.orders.find(o => o.id === r.orderId) || null;
     return {
       ok: true,
