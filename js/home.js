@@ -9,7 +9,7 @@ function renderLiveFeed() {
     el.innerHTML = '<div style="padding:16px;color:#888;font-size:13px">暂无抢购记录</div>';
     return;
   }
-  const items = buys.concat(buys).map(b => {
+  const items = buys.slice(0, 10).concat(buys.slice(0, 10)).map(b => {
     const ago = timeAgo(b.time);
     return `<div class="live-feed-item">
       <span class="buyer">${b.buyerName}</span> 抢购了
