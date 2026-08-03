@@ -1,0 +1,21 @@
+{
+  "name": "luckybuy-server",
+  "version": "1.0.0",
+  "description": "Lucky Buy 一元夺宝后端",
+  "type": "module",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "node --watch app.js",
+    "init-db": "node db.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.6",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0"
+  },
+  "optionalDependencies": {
+    "nodemailer": "^6.9.15"
+  }
+}

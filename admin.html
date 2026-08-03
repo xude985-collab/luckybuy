@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>后台管理 · Lucky Buy</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header id="topbar" class="topbar"></header>
+  <main class="container">
+    <div class="page-title">后台管理 · 商品设置</div>
+    <div class="admin-layout">
+      <div class="admin-form">
+        <h3 id="form-title">上架新商品</h3>
+        <label>商品名称</label>
+        <input id="f-name" placeholder="如 iPhone 16 Pro">
+        <label>商品类别</label>
+        <select id="f-category"></select>
+        <div id="sku-readonly" style="display:none;margin:4px 0 8px;font-size:13px;color:var(--muted)">
+          商品编号：<b id="sku-value" style="color:var(--brand)"></b>（系统生成，不可修改）
+        </div>
+        <div class="two-col">
+          <div>
+            <label>每份金额（$ 美元）</label>
+            <input id="f-price" type="number" min="0.01" step="0.01" placeholder="1">
+          </div>
+          <div>
+            <label>总份数</label>
+            <input id="f-total" type="number" min="1" step="1" placeholder="999">
+          </div>
+        </div>
+        <div class="two-col">
+          <div>
+            <label>免费金币额度（每人上限）</label>
+            <input id="f-free" type="number" min="0" step="1" placeholder="0" value="0">
+          </div>
+          <div>
+            <label>期号</label>
+            <input id="f-period" placeholder="第 001 期">
+          </div>
+        </div>
+        <label>图标（emoji）</label>
+        <input id="f-img" placeholder="📱">
+        <label>商品描述</label>
+        <textarea id="f-desc" rows="3" placeholder="商品说明、开奖规则等"></textarea>
+
+        <div class="amz-import">
+          <label>亚马逊来源链接（选填 / 留档）</label>
+          <div class="amz-row">
+            <input id="f-source" placeholder="https://www.amazon.com/dp/XXXXXXXXXX">
+            <button type="button" class="btn ghost" id="amz-btn" onclick="importFromAmazon()">自动导入</button>
+          </div>
+          <div class="amz-hint">粘贴商品链接后点“自动导入”，抓取标题/图片/规格自动填入下方。需后端服务开启后可用；未开启时请手动填写。</div>
+        </div>
+
+        <label>详情图片 / 视频（每行一个 URL，第 1 张为主图，图片可放多张做长详情）</label>
+        <textarea id="f-gallery" rows="4" placeholder="https://.../main.jpg&#10;https://.../detail1.jpg&#10;https://.../demo.mp4"></textarea>
+        <label>规格参数（每行一条，格式 键=值）</label>
+        <textarea id="f-specs" rows="4" placeholder="品牌=Anker&#10;颜色=黑色&#10;重量=350g"></textarea>
+
+        <button class="btn block" onclick="save()">保存</button>
+        <button class="btn ghost block" id="cancel-edit" style="margin-top:8px;display:none" onclick="cancelEdit()">取消编辑</button>
+      </div>
+      <div class="admin-list-wrap">
+        <h3>已上架商品</h3>
+        <div id="admin-list"></div>
+        <h3 style="margin-top:24px">商品类别管理</h3>
+        <div class="admin-form" style="padding:16px">
+          <div id="cat-list" class="cat-list"></div>
+          <div class="cat-add">
+            <input id="c-name" placeholder="类别名称，如 运动户外">
+            <input id="c-prefix" placeholder="前缀 2~4位" maxlength="4" style="text-transform:uppercase">
+            <input id="c-icon" placeholder="图标 🏕️" maxlength="4">
+            <button class="btn" onclick="addCat()">新增类别</button>
+          </div>
+          <p style="font-size:12px;color:var(--muted);margin-top:8px">
+            前缀用于生成商品编号（如 <b>3C-00001</b>），一经使用不可更改；已有商品的类别不能删除。
+          </p>
+        </div>
+
+        <h3 style="margin-top:24px">送金币规则</h3>
+        <div class="admin-form" style="padding:16px">
+          <div class="two-col">
+            <div>
+              <label>注册赠送</label>
+              <input id="r-register" type="number" min="0" step="1">
+            </div>
+            <div>
+              <label>每日签到</label>
+              <input id="r-checkin" type="number" min="0" step="1">
+            </div>
+          </div>
+          <label>晒单奖励（发中奖图/视频）</label>
+          <input id="r-showcase" type="number" min="0" step="1">
+          <button class="btn block" style="margin-top:12px" onclick="saveRules()">保存规则</button>
+        </div>
+
+        <h3 style="margin-top:24px">充值套餐</h3>
+        <div class="admin-form" style="padding:16px">
+          <p style="font-size:12px;color:var(--muted);margin-bottom:10px">设置充值金额和对应赠送金币。用户选择套餐充值时，到账 = 金额 + 赠送。</p>
+          <div id="pkg-list"></div>
+          <div class="cat-add" style="margin-top:10px">
+            <input id="pkg-amount" type="number" min="1" placeholder="金额 $">
+            <input id="pkg-bonus" type="number" min="0" placeholder="赠送 $">
+            <button class="btn" onclick="addPkg()">添加</button>
+          </div>
+          <button class="btn block" style="margin-top:12px" onclick="savePkgs()">保存套餐</button>
+        </div>
+      </div>
+    </div>
+  </main>
+  <script src="js/seed.js"></script>
+  <script src="js/rng.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>
