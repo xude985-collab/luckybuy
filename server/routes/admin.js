@@ -194,7 +194,7 @@ router.post('/reset-orders', requireAdmin, async (req, res, next) => {
       // 重置商品状态
       await client.query(`UPDATE products SET free_used=0, status='active'`);
       // 清除消费类的钱包流水
-      await client.query(`DELETE FROM wallet_tx WHERE type='spend'`);
+      await client.query(`DELETE FROM wallet_tx WHERE kind='spend'`);
     });
     res.json({ ok: true, msg: '已重置所有购买数据，金币已退回' });
   } catch (e) { next(e); }
