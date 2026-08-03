@@ -237,8 +237,10 @@ const Store = (() => {
   function myOrders() { return cache.orders; }
 
   // ---- 购买 ----
-  async function buyShares(id, count) {
-    const r = await post('/wallet/buy', { productId: id, shares: count });
+  async function buyShares(id, count, useFree) {
+    const body = { productId: id, shares: count };
+    if (useFree === false) body.useFree = false;
+    const r = await post('/wallet/buy', body);
     if (!r.ok) {
       if (/余额不足/.test(r.msg || '')) r.needRecharge = true;
       return r;

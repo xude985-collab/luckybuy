@@ -17,9 +17,9 @@ function renderTopbar(active) {
   const u = Store.currentUser();
 
   const right = u ? `
-    <div class="wallet" title="免费金币 ${u.freeCoins||0} + 充值金币 ${u.paidCoins||0}">
-      🪙 <b>${Store.totalCoins(u)}</b>
-      <span class="coin-split">(免费 ${u.freeCoins||0})</span>
+    <div class="wallet">
+      🪙 <b>${u.paidCoins||0}</b>
+      &nbsp;·&nbsp; 🎁 <b>${u.freeCoins||0}</b>
       &nbsp;·&nbsp; <a href="#" id="recharge">充值</a>
       ${Store.canCheckin() ? '&nbsp;·&nbsp; <a href="#" id="checkin">签到领币</a>' : ''}
     </div>

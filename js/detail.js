@@ -168,10 +168,23 @@ async function buy() {
   if (!requireLogin()) return;
   const count = parseInt(document.getElementById('qty').value, 10) || 0;
   if (count < 1) { toast('请选择至少 1 份'); return; }
+
+  const p = Store.getProduct(id);
+  const u = Store.currentUser();
+  const poolLeft = Math.max(0, (p.freeQuota || 0) - (p.freeUsed || 0));
+  const myUsedFree = Store.myOrders().filter(o => o.productId === id).reduce((s, o) => s + (o.freeUsed || 0), 0) > 0;
+  const canUseFree = u.freeCoins > 0 && poolLeft > 0 && !myUsedFree;
+
+  let useFree = false;
+  if (canUseFree) {
+    useFree = await showCoinChoice(u, p);
+    if (useFree === null) return;
+  }
+
   const btn = document.querySelector('.btn.block');
   if (btn) { btn.disabled = true; btn.textContent = '处理中…'; }
   try {
-    const r = await Store.buyShares(id, count);
+    const r = await Store.buyShares(id, count, useFree);
     if (r.needRecharge) { toast(r.msg); setTimeout(() => openRecharge('home'), 700); render(); return; }
     if (r.ok) {
       const o = r.order;
@@ -185,6 +198,28 @@ async function buy() {
     toast('网络异常，请重试');
     render();
   }
+}
+
+function showCoinChoice(u, p) {
+  return new Promise((resolve) => {
+    const mask = document.createElement('div');
+    mask.className = 'coin-choice-mask';
+    mask.innerHTML = `
+      <div class="coin-choice-modal">
+        <div class="coin-choice-title">选择支付方式</div>
+        <div class="coin-choice-info">充值金币：<b>${u.paidCoins||0}</b> · 免费金币：<b>${u.freeCoins||0}</b></div>
+        <div class="coin-choice-tip">每人每商品限用 1 次免费金币</div>
+        <div class="coin-choice-btns">
+          <button class="btn coin-choice-free">使用免费金币</button>
+          <button class="btn ghost coin-choice-paid">使用充值金币</button>
+        </div>
+        <a href="#" class="coin-choice-cancel">取消</a>
+      </div>`;
+    document.body.appendChild(mask);
+    mask.querySelector('.coin-choice-free').onclick = () => { mask.remove(); resolve(true); };
+    mask.querySelector('.coin-choice-paid').onclick = () => { mask.remove(); resolve(false); };
+    mask.querySelector('.coin-choice-cancel').onclick = (e) => { e.preventDefault(); mask.remove(); resolve(null); };
+  });
 }
 
 async function fillAddress(orderId) {

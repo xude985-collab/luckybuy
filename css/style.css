@@ -486,3 +486,21 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
 .recharge-result .result-icon { font-size: 56px; margin-bottom: 16px; }
 .recharge-result h2 { margin-bottom: 8px; }
 .recharge-result p { color: var(--muted); margin-bottom: 24px; }
+
+/* 金币选择弹窗 */
+.coin-choice-mask {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center;
+}
+.coin-choice-modal {
+  background: #fff; border-radius: 12px; padding: 28px 24px; width: 320px;
+  text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,.2);
+}
+.coin-choice-title { font-size: 18px; font-weight: 700; margin-bottom: 12px; }
+.coin-choice-info { font-size: 14px; color: var(--muted); margin-bottom: 6px; }
+.coin-choice-tip { font-size: 12px; color: var(--gold); margin-bottom: 20px; }
+.coin-choice-btns { display: flex; gap: 12px; justify-content: center; margin-bottom: 14px; }
+.coin-choice-btns .btn { flex: 1; padding: 10px 0; font-size: 14px; }
+.coin-choice-free { background: var(--gold); color: #fff; border: none; border-radius: 6px; cursor: pointer; }
+.coin-choice-free:hover { opacity: .9; }
+.coin-choice-cancel { font-size: 13px; color: var(--muted); }
