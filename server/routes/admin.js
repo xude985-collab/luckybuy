@@ -200,6 +200,23 @@ router.post('/reset-orders', requireAdmin, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// 手动修正用户余额
+router.post('/fix-balance', requireAdmin, async (req, res, next) => {
+  try {
+    const { userId, paidBalance, freeBalance } = req.body || {};
+    if (!userId) return res.status(400).json({ ok: false, msg: '缺少 userId' });
+    const sets = [];
+    const vals = [];
+    let i = 1;
+    if (paidBalance !== undefined) { sets.push(`paid_balance=$${i++}`); vals.push(Number(paidBalance)); }
+    if (freeBalance !== undefined) { sets.push(`free_balance=$${i++}`); vals.push(Number(freeBalance)); }
+    if (!sets.length) return res.status(400).json({ ok: false, msg: '需指定 paidBalance 或 freeBalance' });
+    vals.push(userId);
+    await pool.query(`UPDATE users SET ${sets.join(',')} WHERE id=$${i}`, vals);
+    res.json({ ok: true, msg: '余额已修正' });
+  } catch (e) { next(e); }
+});
+
 // ---- 用户管理 ----
 router.get('/users', requireAdmin, async (req, res, next) => {
   try {
