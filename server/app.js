@@ -15,6 +15,7 @@ import authRoutes from './routes/auth.js';
 import shopRoutes from './routes/shop.js';
 import walletRoutes from './routes/wallet.js';
 import adminRoutes from './routes/admin.js';
+import showcaseRoutes from './routes/showcase.js';
 import stripeWebhook from './routes/stripe-webhook.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -36,6 +37,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/shop', shopRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/showcase', showcaseRoutes);
 
 app.get('/api/health', (req, res) => res.json({ ok: true, time: Date.now() }));
 

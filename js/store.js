@@ -318,6 +318,26 @@ const Store = (() => {
     return r; // { ok, draft:{name,desc,price,images,videos,specs} }
   }
 
+  // ---- 晒单 ----
+  async function getApprovedShowcases() {
+    const r = await get('/showcase/approved');
+    return r.ok ? r.showcases : [];
+  }
+  async function submitShowcase({ productId, mediaType, mediaUrl, caption }) {
+    return await post('/showcase/submit', { productId, mediaType, mediaUrl, caption });
+  }
+  async function getMyShowcases() {
+    const r = await get('/showcase/mine');
+    return r.ok ? r.showcases : [];
+  }
+  async function getPendingShowcases() {
+    const r = await get('/showcase/pending');
+    return r.ok ? r.showcases : [];
+  }
+  async function reviewShowcase(id, action) {
+    return await post('/showcase/review/' + id, { action });
+  }
+
   // ---- 开奖验证 / 续开 ----
   async function verifyProof(pid) {
     const p = getProduct(pid);
@@ -390,6 +410,9 @@ const Store = (() => {
     // 后台
     upsertProduct, removeProduct, saveConfig,
     addCategory, removeCategory, importAmazon,
+    // 晒单
+    getApprovedShowcases, submitShowcase, getMyShowcases,
+    getPendingShowcases, reviewShowcase,
     // 开奖
     verifyProof, resumeDraws,
     // 内部（调试用）

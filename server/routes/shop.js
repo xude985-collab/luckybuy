@@ -114,4 +114,18 @@ router.get('/winners', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// 当前用户的中奖记录
+router.get('/my-wins', async (req, res, next) => {
+  try {
+    if (!req.user) return res.status(401).json({ ok: false, msg: '请先登录' });
+    const { rows } = await pool.query(`
+      SELECT d.product_id, d.win_number, d.drawn_at, p.name AS product_name, p.emoji
+      FROM draws d
+      JOIN products p ON p.id = d.product_id
+      WHERE d.winner_user_id = $1
+      ORDER BY d.drawn_at DESC`, [req.user.id]);
+    res.json({ ok: true, wins: rows });
+  } catch (e) { next(e); }
+});
+
 export default router;

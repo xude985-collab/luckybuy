@@ -5,115 +5,137 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>后台管理 · Lucky Buy</title>
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/admin.css">
 </head>
 <body>
   <header id="topbar" class="topbar"></header>
   <main class="container">
-    <div class="page-title">后台管理 · 商品设置</div>
-    <div class="admin-layout">
-      <div class="admin-form">
-        <h3 id="form-title">上架新商品</h3>
-        <label>商品名称</label>
-        <input id="f-name" placeholder="如 iPhone 16 Pro">
-        <label>商品类别</label>
-        <select id="f-category"></select>
-        <div id="sku-readonly" style="display:none;margin:4px 0 8px;font-size:13px;color:var(--muted)">
-          商品编号：<b id="sku-value" style="color:var(--brand)"></b>（系统生成，不可修改）
-        </div>
-        <div class="two-col">
-          <div>
-            <label>每份金额（$ 美元）</label>
-            <input id="f-price" type="number" min="0.01" step="0.01" placeholder="1">
-          </div>
-          <div>
-            <label>总份数</label>
-            <input id="f-total" type="number" min="1" step="1" placeholder="999">
-          </div>
-        </div>
-        <div class="two-col">
-          <div>
-            <label>免费金币额度（每人上限）</label>
-            <input id="f-free" type="number" min="0" step="1" placeholder="0" value="0">
-          </div>
-          <div>
-            <label>期号</label>
-            <input id="f-period" placeholder="第 001 期">
-          </div>
-        </div>
-        <label>图标（emoji）</label>
-        <input id="f-img" placeholder="📱">
-        <label>商品描述</label>
-        <textarea id="f-desc" rows="3" placeholder="商品说明、开奖规则等"></textarea>
+    <div class="page-title">后台管理</div>
+    <nav class="admin-tabs">
+      <button class="tab active" data-tab="dashboard">数据概览</button>
+      <button class="tab" data-tab="products">商品管理</button>
+      <button class="tab" data-tab="users">用户管理</button>
+      <button class="tab" data-tab="showcase">晒单审核</button>
+      <button class="tab" data-tab="settings">系统设置</button>
+    </nav>
 
-        <div class="amz-import">
-          <label>亚马逊来源链接（选填 / 留档）</label>
-          <div class="amz-row">
-            <input id="f-source" placeholder="https://www.amazon.com/dp/XXXXXXXXXX">
-            <button type="button" class="btn ghost" id="amz-btn" onclick="importFromAmazon()">自动导入</button>
-          </div>
-          <div class="amz-hint">粘贴商品链接后点“自动导入”，抓取标题/图片/规格自动填入下方。需后端服务开启后可用；未开启时请手动填写。</div>
-        </div>
-
-        <label>详情图片 / 视频（每行一个 URL，第 1 张为主图，图片可放多张做长详情）</label>
-        <textarea id="f-gallery" rows="4" placeholder="https://.../main.jpg&#10;https://.../detail1.jpg&#10;https://.../demo.mp4"></textarea>
-        <label>规格参数（每行一条，格式 键=值）</label>
-        <textarea id="f-specs" rows="4" placeholder="品牌=Anker&#10;颜色=黑色&#10;重量=350g"></textarea>
-
-        <button class="btn block" onclick="save()">保存</button>
-        <button class="btn ghost block" id="cancel-edit" style="margin-top:8px;display:none" onclick="cancelEdit()">取消编辑</button>
+    <!-- Tab: 数据概览 -->
+    <section id="tab-dashboard" class="tab-panel active">
+      <div class="stats-grid">
+        <div class="stat-card"><span id="stat-users">0</span><label>注册用户</label></div>
+        <div class="stat-card"><span id="stat-products">0</span><label>商品数</label></div>
+        <div class="stat-card"><span id="stat-orders">0</span><label>总订单</label></div>
+        <div class="stat-card"><span id="stat-revenue">$0</span><label>总收入(金币)</label></div>
       </div>
-      <div class="admin-list-wrap">
-        <h3>已上架商品</h3>
-        <div id="admin-list"></div>
-        <h3 style="margin-top:24px">商品类别管理</h3>
-        <div class="admin-form" style="padding:16px">
-          <div id="cat-list" class="cat-list"></div>
-          <div class="cat-add">
-            <input id="c-name" placeholder="类别名称，如 运动户外">
-            <input id="c-prefix" placeholder="前缀 2~4位" maxlength="4" style="text-transform:uppercase">
-            <input id="c-icon" placeholder="图标 🏕️" maxlength="4">
-            <button class="btn" onclick="addCat()">新增类别</button>
-          </div>
-          <p style="font-size:12px;color:var(--muted);margin-top:8px">
-            前缀用于生成商品编号（如 <b>3C-00001</b>），一经使用不可更改；已有商品的类别不能删除。
-          </p>
-        </div>
+      <h3 style="margin-top:24px">最近订单</h3>
+      <div id="recent-orders"><div class="empty">加载中...</div></div>
+    </section>
 
-        <h3 style="margin-top:24px">送金币规则</h3>
-        <div class="admin-form" style="padding:16px">
+    <!-- Tab: 商品管理 -->
+    <section id="tab-products" class="tab-panel">
+      <div class="admin-layout">
+        <div class="admin-form">
+          <h3 id="form-title">上架新商品</h3>
+          <label>商品名称</label>
+          <input id="f-name" placeholder="如 iPhone 16 Pro">
+          <label>商品类别</label>
+          <select id="f-category"></select>
+          <div id="sku-readonly" style="display:none;margin:4px 0 8px;font-size:13px;color:var(--muted)">
+            商品编号：<b id="sku-value" style="color:var(--brand)"></b>（系统生成，不可修改）
+          </div>
           <div class="two-col">
-            <div>
-              <label>注册赠送</label>
-              <input id="r-register" type="number" min="0" step="1">
-            </div>
-            <div>
-              <label>每日签到</label>
-              <input id="r-checkin" type="number" min="0" step="1">
+            <div><label>每份金额（$ 美元）</label><input id="f-price" type="number" min="0.01" step="0.01" placeholder="1"></div>
+            <div><label>总份数</label><input id="f-total" type="number" min="1" step="1" placeholder="999"></div>
+          </div>
+          <div id="multiplier-row" style="display:none;margin:8px 0;padding:10px;background:#fff7f2;border-radius:8px;font-size:13px">
+            <span>商品原价 <b id="base-price">0</b> 美元 = 基础份数 <b id="base-shares">0</b></span>
+            <div style="margin-top:6px;display:flex;gap:8px;align-items:center">
+              <label style="margin:0">倍数</label>
+              <input id="f-multiplier" type="number" min="1" max="5" step="0.1" value="1.5" style="width:70px;padding:4px 6px;border:1px solid #ddd;border-radius:4px">
+              <button type="button" class="btn sm ghost" onclick="applyMultiplier()">应用</button>
+              <span id="multi-result" style="color:var(--brand);font-weight:600"></span>
             </div>
           </div>
-          <label>晒单奖励（发中奖图/视频）</label>
-          <input id="r-showcase" type="number" min="0" step="1">
-          <button class="btn block" style="margin-top:12px" onclick="saveRules()">保存规则</button>
+          <div class="two-col">
+            <div><label>免费金币额度（每人上限）</label><input id="f-free" type="number" min="0" step="1" placeholder="0" value="0"></div>
+            <div><label>期号</label><input id="f-period" placeholder="第 001 期"></div>
+          </div>
+          <label>图标（emoji）</label>
+          <input id="f-img" placeholder="📱">
+          <label>商品描述</label>
+          <textarea id="f-desc" rows="3" placeholder="商品说明、开奖规则等"></textarea>
+          <div class="amz-import">
+            <label>亚马逊来源链接（选填）</label>
+            <div class="amz-row">
+              <input id="f-source" placeholder="https://www.amazon.com/dp/XXXXXXXXXX">
+              <button type="button" class="btn ghost" id="amz-btn" onclick="importFromAmazon()">自动导入</button>
+            </div>
+          </div>
+          <label>详情图片 / 视频（每行一个 URL）</label>
+          <textarea id="f-gallery" rows="4" placeholder="https://.../main.jpg&#10;https://.../detail1.jpg"></textarea>
+          <label>规格参数（每行 键=值）</label>
+          <textarea id="f-specs" rows="3" placeholder="品牌=Anker&#10;颜色=黑色"></textarea>
+          <button class="btn block" onclick="save()">保存</button>
+          <button class="btn ghost block" id="cancel-edit" style="margin-top:8px;display:none" onclick="cancelEdit()">取消编辑</button>
         </div>
-
-        <h3 style="margin-top:24px">充值套餐</h3>
-        <div class="admin-form" style="padding:16px">
-          <p style="font-size:12px;color:var(--muted);margin-bottom:10px">设置充值金额和对应赠送金币。用户选择套餐充值时，到账 = 金额 + 赠送。</p>
-          <div id="pkg-list"></div>
-          <div class="cat-add" style="margin-top:10px">
-            <input id="pkg-amount" type="number" min="1" placeholder="金额 $">
-            <input id="pkg-bonus" type="number" min="0" placeholder="赠送 $">
-            <button class="btn" onclick="addPkg()">添加</button>
-          </div>
-          <button class="btn block" style="margin-top:12px" onclick="savePkgs()">保存套餐</button>
+        <div class="admin-list-wrap">
+          <h3>已上架商品</h3>
+          <div id="admin-list"></div>
         </div>
       </div>
-    </div>
+    </section>
+
+    <!-- Tab: 用户管理 -->
+    <section id="tab-users" class="tab-panel">
+      <div class="user-toolbar">
+        <input id="user-search" placeholder="搜索账号 / 名称" oninput="searchUsers()">
+        <span id="user-count" class="muted"></span>
+      </div>
+      <div id="user-list"><div class="empty">加载中...</div></div>
+    </section>
+
+    <!-- Tab: 晒单审核 -->
+    <section id="tab-showcase" class="tab-panel">
+      <div id="showcase-pending"><div class="empty">加载中...</div></div>
+    </section>
+
+    <!-- Tab: 系统设置 -->
+    <section id="tab-settings" class="tab-panel">
+      <div class="settings-section">
+        <h3>商品类别</h3>
+        <div id="cat-list" class="cat-list"></div>
+        <div class="cat-add">
+          <input id="cat-name" placeholder="类别名称">
+          <input id="cat-prefix" placeholder="前缀(如 PH)" maxlength="4" style="width:80px">
+          <input id="cat-icon" placeholder="图标" style="width:60px" value="🏷️">
+          <button class="btn sm" onclick="addCat()">添加</button>
+        </div>
+      </div>
+      <div class="settings-section">
+        <h3>免费金币规则</h3>
+        <div class="rules-grid">
+          <label>注册奖励</label><input id="r-register" type="number" min="0">
+          <label>每日签到</label><input id="r-checkin" type="number" min="0">
+          <label>晒单奖励</label><input id="r-showcase" type="number" min="0">
+          <label>邀请新用户（被邀请人）</label><input id="r-invitee" type="number" min="0">
+          <label>邀请新用户（邀请人）</label><input id="r-inviter" type="number" min="0">
+        </div>
+        <button class="btn" style="margin-top:12px" onclick="saveRules()">保存规则</button>
+      </div>
+      <div class="settings-section">
+        <h3>充值套餐</h3>
+        <div id="pkg-list"></div>
+        <div class="pkg-add">
+          <input id="pkg-pay" type="number" placeholder="付款金额($)" min="1" step="1">
+          <input id="pkg-coins" type="number" placeholder="到账金币" min="1" step="1">
+          <button class="btn sm" onclick="addPkg()">添加</button>
+        </div>
+        <button class="btn ghost" style="margin-top:8px" onclick="savePkgs()">保存套餐</button>
+      </div>
+    </section>
   </main>
-  <script src="js/seed.js"></script>
-  <script src="js/rng.js"></script>
-  <script src="js/store.js"></script>
   <script src="js/common.js"></script>
+  <script src="js/store.js"></script>
   <script src="js/admin.js"></script>
 </body>
 </html>

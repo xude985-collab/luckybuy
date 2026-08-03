@@ -1,32 +1,78 @@
-/* 后台管理：上架 / 编辑 / 下架商品 —— 仅管理员可见，后端同样校验 is_admin */
+/* js/admin.js — tabbed admin panel */
 let editingId = null;
+let allUsers = [];
+let pkgList = [];
 
-function renderList() {
-  const box = document.getElementById('admin-list');
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function v(id) { return document.getElementById(id).value.trim(); }
+
+// ========== Tab switching ==========
+function initTabs() {
+  document.querySelectorAll('.admin-tabs .tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.admin-tabs .tab').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+}
+
+// ========== Dashboard ==========
+async function loadDashboard() {
+  try {
+    const r = await fetch('/api/admin/overview');
+    const d = await r.json();
+    if (!d.ok) return;
+    document.getElementById('stat-users').textContent = d.stats.users;
+    document.getElementById('stat-products').textContent = d.stats.products;
+    document.getElementById('stat-orders').textContent = d.stats.orders;
+    document.getElementById('stat-revenue').textContent = d.stats.revenue;
+    loadRecentOrders();
+  } catch (e) { console.error(e); }
+}
+
+async function loadRecentOrders() {
+  try {
+    const r = await fetch('/api/admin/recent-orders');
+    const d = await r.json();
+    const el = document.getElementById('recent-orders');
+    if (!d.ok || !d.orders || !d.orders.length) { el.innerHTML = '<div class="empty">暂无订单</div>'; return; }
+    let html = '<table class="orders-table"><tr><th>用户</th><th>商品</th><th>份数</th><th>金币</th><th>时间</th></tr>';
+    d.orders.forEach(o => {
+      const t = new Date(Number(o.created_at)).toLocaleString('zh-CN');
+      html += `<tr><td>${esc(o.account||'')}</td><td>${esc(o.product_name||'')}</td><td>${o.shares}</td><td>${o.paid_coins}</td><td>${t}</td></tr>`;
+    });
+    el.innerHTML = html + '</table>';
+  } catch (e) {
+    document.getElementById('recent-orders').innerHTML = '<div class="empty">加载失败</div>';
+  }
+}
+
+// ========== Products ==========
+async function loadProducts() {
   const list = Store.listProducts();
-  if (!list.length) { box.innerHTML = '<div class="empty">还没有商品，先在右侧添加。</div>'; return; }
-  const rows = list.map(p => {
-    const done = p.status === 'revealed';
-    const drawing = p.status === 'drawing';
-    const state = done ? '已开奖 (号 ' + p.winNumber + ')' : drawing ? '开奖中' : '进行中';
-    const cat = Store.categoryOf(p.category);
-    return `<tr>
-      <td><code class="sku">${p.sku || '—'}</code></td>
-      <td>${p.img} ${p.name}</td>
-      <td>${cat.name}</td>
-      <td>$${p.price}</td>
-      <td>${p.soldShares}/${p.totalShares}</td>
-      <td>🪙 ${Store.productFreeUsed(p.id)}/${p.freeQuota || 0}</td>
+  renderProductList(list);
+}
+
+function renderProductList(list) {
+  const el = document.getElementById('admin-list');
+  if (!list.length) { el.innerHTML = '<div class="empty">暂无商品，请在左侧添加</div>'; return; }
+  let html = '<table class="orders-table"><tr><th>SKU</th><th>商品</th><th>单价</th><th>进度</th><th>状态</th><th>操作</th></tr>';
+  list.forEach(p => {
+    const sold = p.soldShares || 0;
+    const pct = p.totalShares ? Math.round(sold / p.totalShares * 100) : 0;
+    const state = p.status === 'revealed' ? '已开奖' : p.status === 'drawing' ? '开奖中' : '进行中';
+    html += `<tr>
+      <td>${esc(p.sku||'—')}</td>
+      <td>${p.img||''} ${esc(p.name)}</td>
+      <td>$${p.price}×${p.totalShares}</td>
+      <td>${sold}/${p.totalShares} (${pct}%)</td>
       <td>${state}</td>
-      <td>
-        <button class="btn ghost" style="padding:4px 10px;font-size:12px" onclick="editProd('${p.id}')">编辑</button>
-        <button class="btn ghost" style="padding:4px 10px;font-size:12px" onclick="delProd('${p.id}')">下架</button>
-      </td>
+      <td><a href="#" onclick="editProd('${p.id}');return false">编辑</a> · <a href="#" onclick="delProd('${p.id}');return false" style="color:#c00">删除</a></td>
     </tr>`;
-  }).join('');
-  box.innerHTML = `<table>
-    <thead><tr><th>编号</th><th>商品</th><th>类别</th><th>单价</th><th>进度</th><th>免费额度</th><th>状态</th><th>操作</th></tr></thead>
-    <tbody>${rows}</tbody></table>`;
+  });
+  el.innerHTML = html + '</table>';
 }
 
 function fillCategoryOptions() {
@@ -40,7 +86,6 @@ function fieldsFrom(p) {
   const sel = document.getElementById('f-category');
   const skuBox = document.getElementById('sku-readonly');
   if (p) {
-    // 编辑：类别与编号不可改，下拉锁定并展示已生成编号
     sel.value = p.category || 'other';
     sel.disabled = true;
     document.getElementById('sku-value').textContent = p.sku || '—';
@@ -57,10 +102,8 @@ function fieldsFrom(p) {
   document.getElementById('f-period').value = p ? p.period : '第 001 期';
   document.getElementById('f-desc').value = p ? (p.desc || '') : '';
   document.getElementById('f-source').value = p ? (p.sourceUrl || '') : '';
-  document.getElementById('f-gallery').value =
-    p && p.gallery ? p.gallery.map(m => m.url).join('\n') : '';
-  document.getElementById('f-specs').value =
-    p && p.specs ? p.specs.map(r => `${r.k}=${r.v}`).join('\n') : '';
+  document.getElementById('f-gallery').value = p && p.gallery ? p.gallery.map(m => typeof m === 'string' ? m : m.url).join('\n') : '';
+  document.getElementById('f-specs').value = p && p.specs ? p.specs.map(r => `${r.k}=${r.v}`).join('\n') : '';
   document.getElementById('form-title').textContent = p ? '编辑商品' : '上架新商品';
   document.getElementById('cancel-edit').style.display = p ? 'inline-block' : 'none';
 }
@@ -68,136 +111,171 @@ function fieldsFrom(p) {
 function editProd(id) {
   editingId = id;
   fieldsFrom(Store.getProduct(id));
+  document.querySelector('[data-tab="products"]').click();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
-function cancelEdit() { editingId = null; fieldsFrom(null); }
+function cancelEdit() {
+  editingId = null;
+  fieldsFrom(null);
+  document.getElementById('multiplier-row').style.display = 'none';
+}
 
 async function delProd(id) {
   if (!confirm('确定下架该商品？已产生的订单不受影响。')) return;
   const r = await Store.removeProduct(id);
   toast((r && r.msg) || '已下架');
   if (editingId === id) cancelEdit();
-  renderList();
+  loadProducts();
 }
 
 async function save() {
   const input = {
     id: editingId,
-    category: document.getElementById('f-category').value,
-    name: document.getElementById('f-name').value,
-    price: document.getElementById('f-price').value,
-    totalShares: document.getElementById('f-total').value,
-    freeQuota: document.getElementById('f-free').value,
-    img: document.getElementById('f-img').value.trim(),
-    period: document.getElementById('f-period').value.trim(),
-    desc: document.getElementById('f-desc').value.trim(),
-    sourceUrl: document.getElementById('f-source').value.trim(),
-    gallery: parseLines(document.getElementById('f-gallery').value),
-    specs: parseSpecLines(document.getElementById('f-specs').value),
+    category: v('f-category'),
+    name: v('f-name'),
+    price: v('f-price'),
+    totalShares: v('f-total'),
+    freeQuota: v('f-free'),
+    img: v('f-img'),
+    period: v('f-period'),
+    desc: v('f-desc'),
+    sourceUrl: v('f-source'),
+    gallery: v('f-gallery').split('\n').map(s => s.trim()).filter(Boolean),
+    specs: v('f-specs').split('\n').map(line => {
+      const i = line.indexOf('=');
+      if (i < 0) return null;
+      return { k: line.slice(0, i).trim(), v: line.slice(i + 1).trim() };
+    }).filter(Boolean),
   };
+  if (!input.name) { toast('请填写商品名称'); return; }
   const r = await Store.upsertProduct(input);
   toast(r.msg);
-  if (r.ok) { editingId = null; fieldsFrom(null); renderList(); }
+  if (r.ok) { cancelEdit(); loadProducts(); loadDashboard(); }
 }
 
-// 文本框每行一个 URL → gallery 数组
-function parseLines(text) {
-  return (text || '').split('\n').map(s => s.trim()).filter(Boolean);
-}
-// 文本框每行 键=值 → specs 数组
-function parseSpecLines(text) {
-  return (text || '').split('\n').map(line => {
-    const i = line.indexOf('=');
-    if (i < 0) return null;
-    return { k: line.slice(0, i).trim(), v: line.slice(i + 1).trim() };
-  }).filter(r => r && (r.k || r.v));
-}
-
-// 从亚马逊链接自动导入（需后端服务；未开启时提示手动填写）
 async function importFromAmazon() {
-  const url = document.getElementById('f-source').value.trim();
+  const url = v('f-source');
   if (!url) { toast('请先粘贴亚马逊商品链接'); return; }
   const btn = document.getElementById('amz-btn');
   btn.disabled = true; btn.textContent = '导入中…';
   try {
     const resp = await Store.importAmazon(url);
     if (!resp || !resp.ok) throw new Error((resp && resp.msg) || '导入失败');
-    const d = resp.draft; // 后端返回 {ok, draft:{name,desc,gallery:[{type,url}],bullets,refPrice,...}}
+    const d = resp.draft;
     if (d.name) document.getElementById('f-name').value = d.name;
-    // 描述优先用 bullets,fallback desc
     const descText = Array.isArray(d.bullets) && d.bullets.length
-      ? d.bullets.map((b,i)=>`${i+1}. ${b}`).join('\n')
-      : (d.desc || '');
+      ? d.bullets.map((b, i) => `${i+1}. ${b}`).join('\n') : (d.desc || '');
     if (descText) document.getElementById('f-desc').value = descText;
-    if (d.refPrice && d.refPrice > 0) document.getElementById('f-price').value = d.refPrice;
-    // gallery 是 [{type,url}],取 url
-    const urls = Array.isArray(d.gallery) ? d.gallery.map(g=>g.url).filter(Boolean) : [];
+    if (d.refPrice && d.refPrice > 0) {
+      document.getElementById('f-price').value = 1;
+      const baseShares = Math.round(d.refPrice);
+      document.getElementById('f-total').value = Math.round(baseShares * 1.5);
+      // 显示倍数调节器
+      document.getElementById('base-price').textContent = d.refPrice;
+      document.getElementById('base-shares').textContent = baseShares;
+      document.getElementById('multiplier-row').style.display = 'block';
+      document.getElementById('f-multiplier').value = '1.5';
+      document.getElementById('multi-result').textContent = `= ${Math.round(baseShares * 1.5)} 份`;
+    }
+    const urls = Array.isArray(d.gallery) ? d.gallery.map(g => g.url).filter(Boolean) : [];
     if (urls.length) document.getElementById('f-gallery').value = urls.join('\n');
     if (Array.isArray(d.specs) && d.specs.length)
       document.getElementById('f-specs').value = d.specs.map(r => `${r.k}=${r.v}`).join('\n');
-    // sourceUrl 自动填回原链接
     document.getElementById('f-source').value = d.sourceUrl || url;
-    toast('✓ 已导入，请选择分类、价格后保存');
-  } catch (e) {
-    toast('自动导入需后端服务，暂未开启，请手动填写');
-  } finally {
-    btn.disabled = false; btn.textContent = '自动导入';
-  }
+    toast('已导入，请检查后保存');
+  } catch (e) { toast(e.message || '导入失败'); }
+  finally { btn.disabled = false; btn.textContent = '自动导入'; }
 }
 
+function applyMultiplier() {
+  const base = parseInt(document.getElementById('base-shares').textContent) || 0;
+  const mult = parseFloat(document.getElementById('f-multiplier').value) || 1;
+  const result = Math.round(base * mult);
+  document.getElementById('f-total').value = result;
+  document.getElementById('multi-result').textContent = `= ${result} 份`;
+}
+
+// ========== Users ==========
+async function loadUsers() {
+  try {
+    const r = await fetch('/api/admin/users');
+    const d = await r.json();
+    if (d.ok) { allUsers = d.users; renderUsers(allUsers); }
+  } catch (e) { console.error(e); }
+}
+
+function searchUsers() {
+  const q = v('user-search').toLowerCase();
+  const filtered = q ? allUsers.filter(u => (u.account||'').toLowerCase().includes(q) || (u.name||'').toLowerCase().includes(q)) : allUsers;
+  renderUsers(filtered);
+}
+
+function renderUsers(users) {
+  document.getElementById('user-count').textContent = `共 ${users.length} 人`;
+  const el = document.getElementById('user-list');
+  if (!users.length) { el.innerHTML = '<div class="empty">无匹配用户</div>'; return; }
+  let html = '<table class="user-table"><tr><th>账号</th><th>昵称</th><th>角色</th><th>余额(金币)</th><th>注册时间</th></tr>';
+  users.forEach(u => {
+    const t = new Date(Number(u.created_at)).toLocaleDateString('zh-CN');
+    const role = u.role === 'admin' ? '<span class="role-admin">管理员</span>' : '用户';
+    html += `<tr><td>${esc(u.account)}</td><td>${esc(u.name||'—')}</td><td>${role}</td><td>${u.paid_balance||0}</td><td>${t}</td></tr>`;
+  });
+  el.innerHTML = html + '</table>';
+}
+
+// ========== Settings: Rules ==========
 function loadRules() {
   const c = Store.getConfig();
-  document.getElementById('r-register').value = c.grantRegister;
-  document.getElementById('r-checkin').value = c.grantCheckin;
-  document.getElementById('r-showcase').value = c.grantShowcase;
+  document.getElementById('r-register').value = c.grantRegister || 0;
+  document.getElementById('r-checkin').value = c.grantCheckin || 0;
+  document.getElementById('r-showcase').value = c.grantShowcase || 0;
+  document.getElementById('r-invitee').value = c.grantInvitee || 0;
+  document.getElementById('r-inviter').value = c.grantInviter || 0;
 }
+
 async function saveRules() {
   await Store.saveConfig({
-    grantRegister: Math.max(0, parseInt(document.getElementById('r-register').value, 10) || 0),
-    grantCheckin: Math.max(0, parseInt(document.getElementById('r-checkin').value, 10) || 0),
-    grantShowcase: Math.max(0, parseInt(document.getElementById('r-showcase').value, 10) || 0),
+    grantRegister: Math.max(0, parseInt(v('r-register')) || 0),
+    grantCheckin: Math.max(0, parseInt(v('r-checkin')) || 0),
+    grantShowcase: Math.max(0, parseInt(v('r-showcase')) || 0),
+    grantInvitee: Math.max(0, parseInt(v('r-invitee')) || 0),
+    grantInviter: Math.max(0, parseInt(v('r-inviter')) || 0),
   });
   toast('规则已保存');
 }
 
-/* ---- 类别管理 ---- */
+// ========== Settings: Categories ==========
 function renderCats() {
   const box = document.getElementById('cat-list');
   const cats = Store.listCategories();
-  const counts = {};
-  Store.listProducts().forEach(p => { const k = p.category || 'other'; counts[k] = (counts[k] || 0) + 1; });
   box.innerHTML = cats.map(c => {
-    const n = counts[c.key] || 0;
-    const lock = n > 0;
-    return `<div class="cat-chip">
-      <span>${c.icon} ${c.name} <em>${c.prefix}</em>${n ? ` · ${n}件` : ''}</span>
-      <button title="${lock ? '有商品占用，不能删除' : '删除'}" ${lock ? 'disabled' : ''}
-        onclick="delCat('${c.key}')">✕</button>
-    </div>`;
+    return `<div class="cat-item"><span>${c.icon} ${c.name} <small style="color:#888">${c.prefix}</small></span><span class="del" onclick="delCat('${c.key}')">删除</span></div>`;
   }).join('');
 }
+
 async function addCat() {
-  const r = await Store.addCategory({
-    name: document.getElementById('c-name').value,
-    prefix: document.getElementById('c-prefix').value,
-    icon: document.getElementById('c-icon').value,
-  });
-  toast(r.msg);
+  const name = v('cat-name');
+  const prefix = v('cat-prefix');
+  const icon = v('cat-icon') || '🏷️';
+  if (!name || !prefix) { toast('请填写名称和前缀'); return; }
+  const r = await Store.addCategory({ name, prefix, icon });
+  toast(r.msg || (r.ok ? '已添加' : '添加失败'));
   if (r.ok) {
-    ['c-name', 'c-prefix', 'c-icon'].forEach(id => document.getElementById(id).value = '');
-    renderCats();
-    fillCategoryOptions();
+    document.getElementById('cat-name').value = '';
+    document.getElementById('cat-prefix').value = '';
+    document.getElementById('cat-icon').value = '🏷️';
+    renderCats(); fillCategoryOptions();
   }
 }
+
 async function delCat(key) {
+  if (!confirm('确定删除该类别？')) return;
   const r = await Store.removeCategory(key);
   toast(r.msg);
   if (r.ok) { renderCats(); fillCategoryOptions(); }
 }
 
-/* ---- 充值套餐管理 ---- */
-let pkgList = [];
-
+// ========== Settings: Recharge Packages ==========
 async function loadPkgs() {
   pkgList = await Store.getPackages();
   renderPkgs();
@@ -205,38 +283,66 @@ async function loadPkgs() {
 
 function renderPkgs() {
   const box = document.getElementById('pkg-list');
-  if (!pkgList.length) { box.innerHTML = '<div style="color:var(--muted);font-size:13px">暂无套餐</div>'; return; }
-  box.innerHTML = pkgList.map((p, i) => `
-    <div class="cat-chip">
-      <span>$${p.amount}${p.bonus > 0 ? ` <em>送${p.bonus}</em>` : ''}</span>
-      <button onclick="removePkg(${i})">✕</button>
-    </div>`).join('');
+  if (!pkgList.length) { box.innerHTML = '<div class="empty">暂无套餐</div>'; return; }
+  box.innerHTML = pkgList.map((p, i) => `<div class="pkg-item"><span>$${p.amount} → ${p.amount + (p.bonus||0)} 金币${p.bonus ? ' (送'+p.bonus+')' : ''}</span><span class="del" onclick="removePkg(${i})">删除</span></div>`).join('');
 }
 
 function addPkg() {
-  const amount = parseInt(document.getElementById('pkg-amount').value) || 0;
-  const bonus = parseInt(document.getElementById('pkg-bonus').value) || 0;
-  if (amount < 1) { toast('请填写有效金额'); return; }
-  if (pkgList.some(p => p.amount === amount)) { toast('该金额已存在'); return; }
-  pkgList.push({ amount, bonus });
+  const pay = parseInt(v('pkg-pay')) || 0;
+  const coins = parseInt(v('pkg-coins')) || 0;
+  if (pay < 1 || coins < 1) { toast('请填写有效的付款金额和到账金币'); return; }
+  if (pkgList.some(p => p.amount === pay)) { toast('该金额已存在'); return; }
+  const bonus = coins > pay ? coins - pay : 0;
+  pkgList.push({ amount: pay, bonus });
   pkgList.sort((a, b) => a.amount - b.amount);
-  document.getElementById('pkg-amount').value = '';
-  document.getElementById('pkg-bonus').value = '';
+  document.getElementById('pkg-pay').value = '';
+  document.getElementById('pkg-coins').value = '';
   renderPkgs();
 }
 
-function removePkg(i) {
-  pkgList.splice(i, 1);
-  renderPkgs();
-}
+function removePkg(i) { pkgList.splice(i, 1); renderPkgs(); }
 
 async function savePkgs() {
-  const r = await Store.saveConfig({ recharge_packages: pkgList });
-  toast(r.msg || '套餐已保存');
+  await Store.saveConfig({ recharge_packages: pkgList });
+  toast('套餐已保存');
 }
 
+// ========== Showcase Review ==========
+async function loadShowcases() {
+  const el = document.getElementById('showcase-pending');
+  try {
+    const list = await Store.getPendingShowcases();
+    if (!list.length) { el.innerHTML = '<div class="empty">暂无待审核晒单</div>'; return; }
+    el.innerHTML = list.map(s => {
+      const media = s.media_type === 'video'
+        ? `<video src="${s.media_url}" style="max-width:200px;max-height:150px;border-radius:8px" controls></video>`
+        : `<img src="${s.media_url}" style="max-width:200px;max-height:150px;border-radius:8px;object-fit:cover">`;
+      const t = new Date(Number(s.created_at)).toLocaleString('zh-CN');
+      return `<div style="display:flex;gap:16px;align-items:center;padding:16px;background:#f8f9fa;border-radius:12px;margin-bottom:12px">
+        ${media}
+        <div style="flex:1">
+          <div style="font-weight:600">${s.emoji||'🎁'} ${esc(s.product_name||'')}</div>
+          <div style="font-size:13px;color:#888;margin-top:4px">用户: ${esc(s.account||'')} (${esc(s.user_name||'')})</div>
+          <div style="font-size:13px;color:#888">${esc(s.caption||'')}</div>
+          <div style="font-size:12px;color:#aaa;margin-top:4px">${t}</div>
+        </div>
+        <div style="display:flex;gap:8px;flex:none">
+          <button class="btn sm" onclick="reviewSC('${s.id}','approve')">通过</button>
+          <button class="btn ghost sm" onclick="reviewSC('${s.id}','reject')" style="color:#c00;border-color:#c00">拒绝</button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (e) { el.innerHTML = '<div class="empty">加载失败</div>'; }
+}
+
+async function reviewSC(id, action) {
+  const r = await Store.reviewShowcase(id, action);
+  toast(r.msg || (r.ok ? '操作成功' : '操作失败'));
+  if (r.ok) loadShowcases();
+}
+
+// ========== Init ==========
 onReady(() => {
-  // 权限守卫：非管理员不得进入后台
   const u = Store.currentUser();
   if (!u || !u.isAdmin) {
     document.body.innerHTML =
@@ -247,10 +353,21 @@ onReady(() => {
     return;
   }
   renderTopbar('admin');
+  initTabs();
+  // Dashboard
+  loadDashboard();
+  // Products
   fillCategoryOptions();
   fieldsFrom(null);
-  renderList();
+  loadProducts();
+  // Users
+  loadUsers();
+  // Showcase
+  loadShowcases();
+  // Settings
   loadRules();
   renderCats();
   loadPkgs();
 });
+
+

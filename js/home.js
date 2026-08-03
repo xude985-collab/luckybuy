@@ -96,29 +96,30 @@ function renderGrid() {
 }
 
 /* ---- 晒单展示区 ---- */
-function renderShowcase() {
+async function renderShowcase() {
   const wrap = document.getElementById('showcase');
-  const items = Store.winnersFeed().filter(w => w.showcase);
+  const items = await Store.getApprovedShowcases();
   if (!items.length) {
     wrap.innerHTML = `
       <div class="page-title">🎬 幸运晒单</div>
       <div class="empty">开奖后，幸运儿的收货照片和视频会展示在这里。</div>`;
     return;
   }
-  const cards = items.map(w => {
-    const s = w.showcase;
-    const media = s.type === 'video'
-      ? `<video class="media" src="${s.media}" controls muted></video>`
-      : s.type === 'img'
-        ? `<div class="media"><img src="${s.media}" alt="" style="height:100%;object-fit:cover"></div>`
-        : `<div class="media">${s.media || '📸'}</div>`; // emoji 占位
+  const cards = items.map(s => {
+    const media = s.media_type === 'video'
+      ? `<video class="media" src="${s.media_url}" controls muted></video>`
+      : `<div class="media"><img src="${s.media_url}" alt="" style="width:100%;height:100%;object-fit:cover"></div>`;
     return `<div class="showcase-item">${media}
-      <div class="cap">${s.caption || w.productName}</div></div>`;
+      <div class="cap">${esc(s.caption || s.product_name || '')}</div>
+      <div class="meta">${s.emoji||'🎁'} ${esc(s.product_name||'')} · ${esc(s.user_name||'幸运用户')}</div>
+    </div>`;
   }).join('');
   wrap.innerHTML = `
     <div class="page-title">🎬 幸运晒单</div>
     <div class="showcase-grid">${cards}</div>`;
 }
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 onReady(() => {
   renderTopbar('home');

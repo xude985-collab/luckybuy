@@ -26,12 +26,14 @@ function renderTopbar(active) {
       &nbsp;·&nbsp; <a href="#" id="logout">退出</a></div>`
     : `<a href="login.html" class="wallet">登录 / 注册</a>`;
 
+  const isAdmin = u && u.isAdmin;
   el.innerHTML = `
     <div class="logo">Lucky&nbsp;Buy <small>幸运购</small></div>
     <nav>
       <a href="index.html" class="${active === 'home' ? 'active' : ''}">全部商品</a>
       <a href="orders.html" class="${active === 'orders' ? 'active' : ''}">我的记录</a>
-      <a href="admin.html" class="${active === 'admin' ? 'active' : ''}">后台</a>
+      ${u ? `<a href="profile.html" class="${active === 'profile' ? 'active' : ''}">个人中心</a>` : ''}
+      ${isAdmin ? `<a href="admin.html" class="${active === 'admin' ? 'active' : ''}">后台</a>` : ''}
     </nav>
     <div class="spacer"></div>
     ${right}`;
