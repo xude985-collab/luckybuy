@@ -186,7 +186,7 @@ const Store = (() => {
   // ---- 会话/用户 ----
   function currentUser() { return cache.user; }
   function isLoggedIn() { return !!cache.user; }
-  function totalCoins(u) { u = u || cache.user; return u ? (u.paidCoins || 0) : 0; }
+  function totalCoins(u) { u = u || cache.user; return u ? (u.paidCoins || 0) + (u.freeCoins || 0) : 0; }
   function canCheckin() { return false; } // 签到未接后端，暂关闭
 
   async function sendCode(account) {

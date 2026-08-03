@@ -2,10 +2,11 @@
 // 数据层改为异步（后端 API）。页面首屏渲染须等 Store.ready。
 // 用法：onReady(() => { renderTopbar(...); ...首屏渲染... })
 function onReady(cb) {
-  Store.ready.then(() => {
-    // 续开：把上次卡在“待开奖”的商品继续用 drand 开出
-    if (Store.resumeDraws) Store.resumeDraws().then(() => { try { cb(); } catch (e) { console.error(e); } });
-    else cb();
+  Store.ready.then(async () => {
+    try {
+      if (Store.resumeDraws) await Store.resumeDraws().catch(() => {});
+    } catch (_) {}
+    try { cb(); } catch (e) { console.error(e); }
   }).catch(e => { console.error(e); toast('加载失败，请刷新重试'); });
 }
 

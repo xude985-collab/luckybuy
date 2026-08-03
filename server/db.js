@@ -171,8 +171,10 @@ export async function initDB() {
   try {
     await client.query(SCHEMA);
 
-    // add free_balance column if missing (for existing databases)
+    // add missing columns for existing databases
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS free_balance BIGINT NOT NULL DEFAULT 0`).catch(() => {});
+    await client.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS free_used INTEGER NOT NULL DEFAULT 0`).catch(() => {});
+    await client.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS free_quota INTEGER NOT NULL DEFAULT 0`).catch(() => {});
 
     // seed categories
     for (let i = 0; i < DEFAULT_CATEGORIES.length; i++) {
