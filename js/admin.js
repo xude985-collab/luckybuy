@@ -168,14 +168,13 @@ async function importFromAmazon() {
     if (descText) document.getElementById('f-desc').value = descText;
     if (d.refPrice && d.refPrice > 0) {
       document.getElementById('f-price').value = 1;
-      const baseShares = Math.round(d.refPrice);
-      document.getElementById('f-total').value = Math.round(baseShares * 1.5);
-      // 显示倍数调节器
       document.getElementById('base-price').textContent = d.refPrice;
-      document.getElementById('base-shares').textContent = baseShares;
       document.getElementById('multiplier-row').style.display = 'block';
       document.getElementById('f-multiplier').value = '1.5';
-      document.getElementById('multi-result').textContent = `= ${Math.round(baseShares * 1.5)} 份`;
+      document.getElementById('f-per-share').value = '1';
+      const result = Math.round(d.refPrice * 1.5 / 1);
+      document.getElementById('f-total').value = result;
+      document.getElementById('multi-result').textContent = `= ${result} 份`;
     }
     const urls = Array.isArray(d.gallery) ? d.gallery.map(g => g.url).filter(Boolean) : [];
     if (urls.length) document.getElementById('f-gallery').value = urls.join('\n');
@@ -188,10 +187,12 @@ async function importFromAmazon() {
 }
 
 function applyMultiplier() {
-  const base = parseInt(document.getElementById('base-shares').textContent) || 0;
+  const price = parseFloat(document.getElementById('base-price').textContent) || 0;
   const mult = parseFloat(document.getElementById('f-multiplier').value) || 1;
-  const result = Math.round(base * mult);
+  const perShare = parseFloat(document.getElementById('f-per-share').value) || 1;
+  const result = Math.round(price * mult / perShare);
   document.getElementById('f-total').value = result;
+  document.getElementById('f-price').value = perShare;
   document.getElementById('multi-result').textContent = `= ${result} 份`;
 }
 

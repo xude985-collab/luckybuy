@@ -48,11 +48,14 @@
             <div><label>总份数</label><input id="f-total" type="number" min="1" step="1" placeholder="999"></div>
           </div>
           <div id="multiplier-row" style="display:none;margin:8px 0;padding:10px;background:#fff7f2;border-radius:8px;font-size:13px">
-            <span>商品原价 <b id="base-price">0</b> 美元 = 基础份数 <b id="base-shares">0</b></span>
-            <div style="margin-top:6px;display:flex;gap:8px;align-items:center">
+            <span>商品原价 <b id="base-price">0</b> 美元</span>
+            <div style="margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <label style="margin:0">倍数</label>
-              <input id="f-multiplier" type="number" min="1" max="5" step="0.1" value="1.5" style="width:70px;padding:4px 6px;border:1px solid #ddd;border-radius:4px">
-              <button type="button" class="btn sm ghost" onclick="applyMultiplier()">应用</button>
+              <input id="f-multiplier" type="number" min="0.1" max="10" step="0.1" value="1.5" style="width:70px;padding:4px 6px;border:1px solid #ddd;border-radius:4px">
+              <label style="margin:0">÷ 每份</label>
+              <input id="f-per-share" type="number" min="0.1" step="0.1" value="1" style="width:70px;padding:4px 6px;border:1px solid #ddd;border-radius:4px">
+              <label style="margin:0">美元</label>
+              <button type="button" class="btn sm ghost" onclick="applyMultiplier()">计算</button>
               <span id="multi-result" style="color:var(--brand);font-weight:600"></span>
             </div>
           </div>
