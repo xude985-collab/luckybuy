@@ -10,7 +10,7 @@ import { fileURLToPath } from 'url';
 import path from 'path';
 import 'dotenv/config';
 
-import './db.js'; // 触发建表
+import { initDB } from './db.js';
 import authRoutes from './routes/auth.js';
 import shopRoutes from './routes/shop.js';
 import walletRoutes from './routes/wallet.js';
@@ -20,6 +20,9 @@ import stripeWebhook from './routes/stripe-webhook.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SITE_DIR = path.join(__dirname, '..'); // 前端根目录
 const PORT = process.env.PORT || 3000;
+
+// 初始化数据库（建表 + 播种）
+await initDB();
 
 const app = express();
 // Stripe webhook 需原始 body 验签，必须在 express.json 之前

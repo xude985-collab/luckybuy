@@ -2,11 +2,11 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import db from '../db.js';
+import pool from '../db.js';
 import { sendCode as deliverCode } from '../lib/mailer.js';
 import {
   now, genId, genInvite, createSession, attachUser, requireAuth,
-  walletTx, grantFree, getConfig, tx,
+  walletTx, grantFree, getConfig, withTransaction,
 } from '../lib/helpers.js';
 
 const router = express.Router();
@@ -27,45 +27,40 @@ router.post('/send-code', async (req, res, next) => {
     const type = accountType(account);
     if (!type) return res.json({ ok: false, msg: '请输入正确的邮箱或手机号' });
 
-    // 60 秒频控
-    const prev = db.prepare(`SELECT sent_at FROM email_codes WHERE account=?`).get(account);
-    if (prev && now() - prev.sent_at < 60000) {
+    const { rows: prev } = await pool.query(`SELECT sent_at FROM email_codes WHERE account=$1`, [account]);
+    if (prev[0] && now() - Number(prev[0].sent_at) < 60000) {
       return res.json({ ok: false, msg: '发送太频繁，请稍后再试' });
     }
     const code = String(crypto.randomInt(100000, 1000000));
-    db.prepare(`INSERT INTO email_codes (account,code,expires_at,sent_at)
-      VALUES (?,?,?,?)
-      ON CONFLICT(account) DO UPDATE SET code=excluded.code,
-        expires_at=excluded.expires_at, sent_at=excluded.sent_at`)
-      .run(account, code, now() + 10 * 60 * 1000, now());
+    await pool.query(
+      `INSERT INTO email_codes (account,code,expires_at,sent_at) VALUES ($1,$2,$3,$4)
+       ON CONFLICT(account) DO UPDATE SET code=EXCLUDED.code, expires_at=EXCLUDED.expires_at, sent_at=EXCLUDED.sent_at`,
+      [account, code, now() + 10 * 60 * 1000, now()]);
 
     const r = await deliverCode(account, type, code);
 
-    // 发送失败时清掉冷却时间，让用户可以立即重试（避免"点一下没反应，再点说频繁"）
     if (!r.delivered) {
-      db.prepare(`UPDATE email_codes SET sent_at=0 WHERE account=?`).run(account);
+      await pool.query(`UPDATE email_codes SET sent_at=0 WHERE account=$1`, [account]);
     }
 
     res.json({
-      ok: true,
-      type,
-      delivered: r.delivered,
-      // 未真实投递时把验证码回给前端，方便开发自测；配好 SMTP 后 delivered=true 不再回传
+      ok: true, type, delivered: r.delivered,
       devCode: r.delivered ? undefined : code,
       msg: r.delivered ? '验证码已发送' : '验证码已生成（开发模式，见页面/日志）',
     });
   } catch (e) { next(e); }
 });
 
-function verifyCode(account, code) {
-  const row = db.prepare(`SELECT * FROM email_codes WHERE account=?`).get(account);
+async function verifyCode(account, code) {
+  const { rows } = await pool.query(`SELECT * FROM email_codes WHERE account=$1`, [account]);
+  const row = rows[0];
   if (!row) return false;
-  if (row.expires_at < now()) return false;
+  if (Number(row.expires_at) < now()) return false;
   return row.code === String(code);
 }
 
 // 注册
-router.post('/register', (req, res, next) => {
+router.post('/register', async (req, res, next) => {
   try {
     const account = String(req.body.account || '').trim().toLowerCase();
     const password = String(req.body.password || '');
@@ -76,78 +71,76 @@ router.post('/register', (req, res, next) => {
     const type = accountType(account);
     if (!type) return res.json({ ok: false, msg: '请输入正确的邮箱或手机号' });
     if (password.length < 4) return res.json({ ok: false, msg: '密码至少 4 位' });
-    if (!verifyCode(account, code)) return res.json({ ok: false, msg: '验证码错误或已过期' });
+    if (!(await verifyCode(account, code))) return res.json({ ok: false, msg: '验证码错误或已过期' });
 
-    const dup = db.prepare(`SELECT id FROM users WHERE account=?`).get(account);
-    if (dup) return res.json({ ok: false, msg: '该账号已注册，请直接登录' });
+    const { rows: dup } = await pool.query(`SELECT id FROM users WHERE account=$1`, [account]);
+    if (dup.length) return res.json({ ok: false, msg: '该账号已注册，请直接登录' });
 
-    // 邀请人
     let invitedBy = null;
     if (invite) {
-      const inviter = db.prepare(`SELECT id FROM users WHERE invite_code=?`).get(invite);
-      if (inviter) invitedBy = inviter.id;
+      const { rows: inv } = await pool.query(`SELECT id FROM users WHERE invite_code=$1`, [invite]);
+      if (inv.length) invitedBy = inv[0].id;
     }
 
-    const cfg = getConfig();
+    const cfg = await getConfig();
     const id = genId('u_');
     let myInvite;
     do { myInvite = genInvite(); }
-    while (db.prepare(`SELECT 1 FROM users WHERE invite_code=?`).get(myInvite));
+    while ((await pool.query(`SELECT 1 FROM users WHERE invite_code=$1`, [myInvite])).rows.length);
 
-    tx(() => {
-      db.prepare(`INSERT INTO users
-        (id,account,account_type,name,pass_hash,role,invite_code,invited_by,paid_balance,created_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?)`).run(
-        id, account, type, name || account.split('@')[0],
-        bcrypt.hashSync(password, 10), 'user', myInvite, invitedBy, 0, now());
+    await withTransaction(async (client) => {
+      await client.query(
+        `INSERT INTO users (id,account,account_type,name,pass_hash,role,invite_code,invited_by,paid_balance,created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+        [id, account, type, name || account.split('@')[0],
+         bcrypt.hashSync(password, 10), 'user', myInvite, invitedBy, 0, now()]);
 
-      // 注册赠币入充值余额（通用可用，非商品限定）
-      if (cfg.grantRegister > 0) walletTx(id, 'grant', cfg.grantRegister, '注册赠送');
-      // 邀请奖励
+      if (cfg.grantRegister > 0) await walletTx(id, 'grant', cfg.grantRegister, '注册赠送', client);
       if (invitedBy) {
-        if (cfg.grantInvitee > 0) walletTx(id, 'grant', cfg.grantInvitee, '受邀奖励');
-        if (cfg.grantInviter > 0) walletTx(invitedBy, 'grant', cfg.grantInviter, '邀请好友奖励');
+        if (cfg.grantInvitee > 0) await walletTx(id, 'grant', cfg.grantInvitee, '受邀奖励', client);
+        if (cfg.grantInviter > 0) await walletTx(invitedBy, 'grant', cfg.grantInviter, '邀请好友奖励', client);
       }
-      db.prepare(`DELETE FROM email_codes WHERE account=?`).run(account);
+      await client.query(`DELETE FROM email_codes WHERE account=$1`, [account]);
     });
 
-    const token = createSession(id);
+    const token = await createSession(id);
     res.cookie('lb_token', token, { httpOnly: true, sameSite: 'lax', maxAge: 30 * 864e5 });
-    res.json({ ok: true, msg: '注册成功', user: publicUser(id) });
+    res.json({ ok: true, msg: '注册成功', user: await publicUser(id) });
   } catch (e) { next(e); }
 });
 
 // 登录
-router.post('/login', (req, res, next) => {
+router.post('/login', async (req, res, next) => {
   try {
     const account = String(req.body.account || '').trim().toLowerCase();
     const password = String(req.body.password || '');
-    const u = db.prepare(`SELECT * FROM users WHERE account=?`).get(account);
+    const { rows } = await pool.query(`SELECT * FROM users WHERE account=$1`, [account]);
+    const u = rows[0];
     if (!u || !bcrypt.compareSync(password, u.pass_hash)) {
       return res.json({ ok: false, msg: '账号或密码错误' });
     }
-    const token = createSession(u.id);
+    const token = await createSession(u.id);
     res.cookie('lb_token', token, { httpOnly: true, sameSite: 'lax', maxAge: 30 * 864e5 });
-    res.json({ ok: true, msg: '登录成功', user: publicUser(u.id) });
+    res.json({ ok: true, msg: '登录成功', user: await publicUser(u.id) });
   } catch (e) { next(e); }
 });
 
-router.post('/logout', (req, res) => {
+router.post('/logout', async (req, res) => {
   const token = req.cookies?.lb_token;
-  if (token) db.prepare(`DELETE FROM sessions WHERE token=?`).run(token);
+  if (token) await pool.query(`DELETE FROM sessions WHERE token=$1`, [token]);
   res.clearCookie('lb_token');
   res.json({ ok: true });
 });
 
-router.get('/me', (req, res) => {
+router.get('/me', async (req, res) => {
   if (!req.user) return res.json({ ok: true, user: null });
-  res.json({ ok: true, user: publicUser(req.user.id) });
+  res.json({ ok: true, user: await publicUser(req.user.id) });
 });
 
-function publicUser(id) {
-  const u = db.prepare(`SELECT id,account,account_type,name,role,invite_code,paid_balance
-    FROM users WHERE id=?`).get(id);
-  return u;
+async function publicUser(id) {
+  const { rows } = await pool.query(
+    `SELECT id,account,account_type,name,role,invite_code,paid_balance FROM users WHERE id=$1`, [id]);
+  return rows[0] || null;
 }
 
 export default router;
