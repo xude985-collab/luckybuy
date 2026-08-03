@@ -56,34 +56,34 @@ router.post('/buy', requireAuth, async (req, res, next) => {
     const cost = shares * Number(p.price_per_share);
     const pricePerShare = Number(p.price_per_share);
 
-    // 免费金币逻辑：每个商品每人最多免费 1 份
-    let freeUse = 0;
-    if (useFree && p.free_quota > 0) {
-      const { rows: used } = await pool.query(
-        `SELECT COALESCE(SUM(free_coins),0) AS f FROM orders WHERE user_id=$1 AND product_id=$2`,
-        [uid, productId]);
-      const alreadyUsedFree = Number(used[0].f) > 0;
-      const productFreeLeft = Number(p.free_quota) - Number(p.free_used || 0);
-      if (!alreadyUsedFree && productFreeLeft >= pricePerShare) {
-        const { rows: ub } = await pool.query(`SELECT free_balance FROM users WHERE id=$1`, [uid]);
-        const userFreeBal = Number(ub[0]?.free_balance || 0);
-        if (userFreeBal >= pricePerShare) {
-          freeUse = pricePerShare; // exactly 1 share worth
-        }
-      }
-    }
-    const paidUse = cost - freeUse;
-
-    const { rows: ur } = await pool.query(`SELECT paid_balance FROM users WHERE id=$1`, [uid]);
-    const paidBal = Number(ur[0]?.paid_balance || 0);
-    if (paidBal < paidUse)
-      return res.status(400).json({ ok: false, msg: `余额不足，需 $${paidUse}，可先充值` });
-
     const result = await withTransaction(async (client) => {
       const { rows: s2 } = await client.query(
         `SELECT COALESCE(SUM(shares),0) AS s FROM orders WHERE product_id=$1`, [productId]);
       const sold2 = Number(s2[0].s);
       if (shares > p.total_shares - sold2) throw Object.assign(new Error('手慢了，份数不足'), { status: 400 });
+
+      // 免费金币逻辑：每个商品每人最多免费 1 份（事务内检查防并发）
+      let freeUse = 0;
+      if (useFree && p.free_quota > 0) {
+        const { rows: used } = await client.query(
+          `SELECT COALESCE(SUM(free_coins),0) AS f FROM orders WHERE user_id=$1 AND product_id=$2`,
+          [uid, productId]);
+        const alreadyUsedFree = Number(used[0].f) > 0;
+        const { rows: pf } = await client.query(`SELECT free_used FROM products WHERE id=$1`, [productId]);
+        const productFreeLeft = Number(p.free_quota) - Number(pf[0]?.free_used || 0);
+        if (!alreadyUsedFree && productFreeLeft >= pricePerShare) {
+          const { rows: ub } = await client.query(`SELECT free_balance FROM users WHERE id=$1`, [uid]);
+          const userFreeBal = Number(ub[0]?.free_balance || 0);
+          if (userFreeBal >= pricePerShare) {
+            freeUse = pricePerShare;
+          }
+        }
+      }
+      const paidUse = cost - freeUse;
+
+      const { rows: ur } = await client.query(`SELECT paid_balance FROM users WHERE id=$1`, [uid]);
+      const paidBal = Number(ur[0]?.paid_balance || 0);
+      if (paidBal < paidUse) throw Object.assign(new Error(`余额不足，需 $${paidUse}，可先充值`), { status: 400, needRecharge: true });
 
       const numbers = Array.from({ length: shares }, (_, i) => sold2 + 1 + i);
 
