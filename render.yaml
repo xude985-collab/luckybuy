@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: luckybuy
+    runtime: node
+    buildCommand: cd server && npm install
+    startCommand: cd server && node app.js
+    envVars:
+      - key: NODE_VERSION
+        value: 22
