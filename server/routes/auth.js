@@ -132,14 +132,17 @@ router.post('/logout', async (req, res) => {
   res.json({ ok: true });
 });
 
-router.get('/me', async (req, res) => {
-  if (!req.user) return res.json({ ok: true, user: null });
-  res.json({ ok: true, user: await publicUser(req.user.id) });
+router.get('/me', async (req, res, next) => {
+  try {
+    if (!req.user) return res.json({ ok: true, user: null });
+    res.json({ ok: true, user: await publicUser(req.user.id) });
+  } catch (e) { next(e); }
 });
 
 async function publicUser(id) {
   const { rows } = await pool.query(
-    `SELECT id,account,account_type,name,role,invite_code,paid_balance,free_balance FROM users WHERE id=$1`, [id]);
+    `SELECT id,account,account_type,name,role,invite_code,paid_balance,
+            COALESCE(free_balance,0) AS free_balance FROM users WHERE id=$1`, [id]);
   return rows[0] || null;
 }
 

@@ -391,8 +391,8 @@ const Store = (() => {
         refreshRecentBuys(),
         refreshConfig(),
       ]);
-      await refreshMe(); // 依赖 user，放最后；内部会拉 wallet
-      await refreshOrders();
+      await refreshMe().catch(() => {}); // 登录态接口失败不阻塞首屏
+      await refreshOrders().catch(() => {});
     })();
     return _ready;
   }
