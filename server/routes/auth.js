@@ -6,7 +6,7 @@ import pool from '../db.js';
 import { sendCode as deliverCode } from '../lib/mailer.js';
 import {
   now, genId, genInvite, createSession, attachUser, requireAuth,
-  walletTx, grantFree, getConfig, withTransaction,
+  walletTx, getConfig, withTransaction,
 } from '../lib/helpers.js';
 
 const router = express.Router();
@@ -139,7 +139,7 @@ router.get('/me', async (req, res) => {
 
 async function publicUser(id) {
   const { rows } = await pool.query(
-    `SELECT id,account,account_type,name,role,invite_code,paid_balance FROM users WHERE id=$1`, [id]);
+    `SELECT id,account,account_type,name,role,invite_code,paid_balance,free_balance FROM users WHERE id=$1`, [id]);
   return rows[0] || null;
 }
 

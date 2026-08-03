@@ -167,18 +167,24 @@ function setQty(v) { const el = document.getElementById('qty'); if (el) el.value
 async function buy() {
   if (!requireLogin()) return;
   const count = parseInt(document.getElementById('qty').value, 10) || 0;
+  if (count < 1) { toast('请选择至少 1 份'); return; }
   const btn = document.querySelector('.btn.block');
   if (btn) { btn.disabled = true; btn.textContent = '处理中…'; }
-  const r = await Store.buyShares(id, count);
-  if (r.needRecharge) { toast(r.msg); setTimeout(() => openRecharge('home'), 700); render(); return; }
-  if (r.ok) {
-    const o = r.order;
-    let extra = '';
-    if (o && o.freeUsed > 0) extra = `（免费 ${o.freeUsed} + 充值 ${o.paidUsed}）`;
-    toast(r.msg + extra);
-    await Store.refreshMe();      // 强制从服务端拉最新余额，避免顶栏显示旧值
-    renderTopbar('home'); render(); autoPoll();
-  } else { toast(r.msg); render(); }
+  try {
+    const r = await Store.buyShares(id, count);
+    if (r.needRecharge) { toast(r.msg); setTimeout(() => openRecharge('home'), 700); render(); return; }
+    if (r.ok) {
+      const o = r.order;
+      let extra = '';
+      if (o && o.freeUsed > 0) extra = `（免费 ${o.freeUsed} + 充值 ${o.paidUsed}）`;
+      toast(r.msg + extra);
+      await Store.refreshMe();
+      renderTopbar('home'); render(); autoPoll();
+    } else { toast(r.msg || '购买失败'); render(); }
+  } catch (e) {
+    toast('网络异常，请重试');
+    render();
+  }
 }
 
 async function fillAddress(orderId) {

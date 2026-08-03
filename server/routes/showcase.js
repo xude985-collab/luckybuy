@@ -92,7 +92,7 @@ router.post('/review/:id', requireAdmin, async (req, res, next) => {
       const { rows: cfgRows } = await pool.query(`SELECT v FROM config WHERE k='grantShowcase'`);
       const grant = cfgRows[0] ? Number(cfgRows[0].v) : 0;
       if (grant > 0) {
-        await pool.query(`UPDATE users SET paid_balance = paid_balance + $1 WHERE id = $2`,
+        await pool.query(`UPDATE users SET free_balance = free_balance + $1 WHERE id = $2`,
           [grant, sc.user_id]);
       }
     }

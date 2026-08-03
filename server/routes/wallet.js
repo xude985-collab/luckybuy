@@ -3,7 +3,7 @@ import express from 'express';
 import pool from '../db.js';
 import {
   attachUser, requireAuth, totalCoins, walletTx,
-  freeBalanceForProduct, genId, withTransaction, now,
+  genId, withTransaction, now,
 } from '../lib/helpers.js';
 import { futureRound, roundTime } from '../lib/drand.js';
 
@@ -13,11 +13,11 @@ router.use(attachUser);
 // 我的钱包概览
 router.get('/', requireAuth, async (req, res, next) => {
   try {
-    const { paid } = await totalCoins(req.user.id);
+    const { paid, free } = await totalCoins(req.user.id);
     const { rows: txRows } = await pool.query(
       `SELECT kind,amount,balance,ref,created_at FROM wallet_tx WHERE user_id=$1 ORDER BY created_at DESC LIMIT 50`,
       [req.user.id]);
-    res.json({ ok: true, paidBalance: paid, tx: txRows });
+    res.json({ ok: true, paidBalance: paid, freeBalance: free, tx: txRows });
   } catch (e) { next(e); }
 });
 
@@ -53,10 +53,25 @@ router.post('/buy', requireAuth, async (req, res, next) => {
     const remain = p.total_shares - sold;
     if (shares > remain) return res.status(400).json({ ok: false, msg: `仅剩 ${remain} 份` });
 
-    const cost = shares * p.price_per_share;
-    const userFree = useFree ? await freeBalanceForProduct(uid, productId) : 0;
-    const productFreeLeft = p.free_quota - p.free_used;
-    const freeUse = Math.max(0, Math.min(cost, userFree, productFreeLeft));
+    const cost = shares * Number(p.price_per_share);
+    const pricePerShare = Number(p.price_per_share);
+
+    // 免费金币逻辑：每个商品每人最多免费 1 份
+    let freeUse = 0;
+    if (useFree && p.free_quota > 0) {
+      const { rows: used } = await pool.query(
+        `SELECT COALESCE(SUM(free_coins),0) AS f FROM orders WHERE user_id=$1 AND product_id=$2`,
+        [uid, productId]);
+      const alreadyUsedFree = Number(used[0].f) > 0;
+      const productFreeLeft = Number(p.free_quota) - Number(p.free_used || 0);
+      if (!alreadyUsedFree && productFreeLeft >= pricePerShare) {
+        const { rows: ub } = await pool.query(`SELECT free_balance FROM users WHERE id=$1`, [uid]);
+        const userFreeBal = Number(ub[0]?.free_balance || 0);
+        if (userFreeBal >= pricePerShare) {
+          freeUse = pricePerShare; // exactly 1 share worth
+        }
+      }
+    }
     const paidUse = cost - freeUse;
 
     const { rows: ur } = await pool.query(`SELECT paid_balance FROM users WHERE id=$1`, [uid]);
@@ -74,8 +89,7 @@ router.post('/buy', requireAuth, async (req, res, next) => {
 
       if (freeUse > 0) {
         await client.query(
-          `UPDATE free_grants SET amount=amount-$1 WHERE user_id=$2 AND product_id=$3`,
-          [freeUse, uid, productId]);
+          `UPDATE users SET free_balance=free_balance-$1 WHERE id=$2`, [freeUse, uid]);
         await client.query(
           `UPDATE products SET free_used=free_used+$1 WHERE id=$2`, [freeUse, productId]);
       }

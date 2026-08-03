@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS users (
   invite_code   TEXT UNIQUE,
   invited_by    TEXT,
   paid_balance  BIGINT NOT NULL DEFAULT 0,
+  free_balance  BIGINT NOT NULL DEFAULT 0,
   created_at    BIGINT NOT NULL
 );
 
@@ -169,6 +170,9 @@ export async function initDB() {
   const client = await pool.connect();
   try {
     await client.query(SCHEMA);
+
+    // add free_balance column if missing (for existing databases)
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS free_balance BIGINT NOT NULL DEFAULT 0`).catch(() => {});
 
     // seed categories
     for (let i = 0; i < DEFAULT_CATEGORIES.length; i++) {

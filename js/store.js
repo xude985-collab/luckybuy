@@ -128,15 +128,16 @@ const Store = (() => {
       isAdmin: u.role === 'admin',
       inviteCode: u.invite_code,
       paidCoins: u.paid_balance || 0,
-      freeCoins: cache.user ? cache.user.freeCoins : 0, // 免费币按商品维度，全局展示留 0
+      freeCoins: u.free_balance || 0,
     };
   }
   async function refreshWallet() {
     if (!cache.user) return;
     const r = await get('/wallet');
     if (r.ok) {
-      cache.wallet = { paidBalance: r.paidBalance || 0, tx: r.tx || [] };
+      cache.wallet = { paidBalance: r.paidBalance || 0, freeBalance: r.freeBalance || 0, tx: r.tx || [] };
       cache.user.paidCoins = r.paidBalance || 0;
+      cache.user.freeCoins = r.freeBalance || 0;
     }
   }
   async function refreshProducts() {

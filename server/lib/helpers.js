@@ -72,14 +72,25 @@ export async function freeBalanceForProduct(userId, productId, client) {
 
 export async function totalCoins(userId, productId, client) {
   const q = client || pool;
-  const { rows } = await q.query(`SELECT paid_balance FROM users WHERE id=$1`, [userId]);
+  const { rows } = await q.query(`SELECT paid_balance, free_balance FROM users WHERE id=$1`, [userId]);
   const paid = rows[0] ? Number(rows[0].paid_balance) : 0;
-  const free = productId ? await freeBalanceForProduct(userId, productId, q) : 0;
+  const free = rows[0] ? Number(rows[0].free_balance) : 0;
   return { paid, free };
 }
 
 export async function walletTx(userId, kind, amount, ref, client) {
   const q = client || pool;
+  if (kind === 'grant') {
+    const { rows } = await q.query(`SELECT free_balance FROM users WHERE id=$1`, [userId]);
+    const balance = (rows[0] ? Number(rows[0].free_balance) : 0) + amount;
+    if (balance < 0) throw Object.assign(new Error('免费金币不足'), { status: 400 });
+    await q.query(`UPDATE users SET free_balance=$1 WHERE id=$2`, [balance, userId]);
+    await q.query(
+      `INSERT INTO wallet_tx (id,user_id,kind,amount,balance,ref,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      [genId('tx_'), userId, kind, amount, balance, ref || null, now()]);
+    return balance;
+  }
+  // recharge / spend — operate on paid_balance
   const { rows } = await q.query(`SELECT paid_balance FROM users WHERE id=$1`, [userId]);
   const balance = (rows[0] ? Number(rows[0].paid_balance) : 0) + amount;
   if (balance < 0) throw Object.assign(new Error('余额不足'), { status: 400 });
