@@ -123,8 +123,9 @@ async function renderShowcase() {
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
-onReady(() => {
+onReady(async () => {
   renderTopbar('home');
+  await Store.ready;
   renderMarquee();
   renderLiveFeed();
   renderCatTabs();

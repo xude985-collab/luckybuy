@@ -128,7 +128,13 @@ img { max-width: 100%; }
 }
 
 /* 晒单展示区 */
-.showcase-section { margin-top: 0; }
+.showcase-section {
+  margin-top: 0;
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
 .showcase-grid {
   display: grid; gap: 12px;
   grid-template-columns: 1fr;
