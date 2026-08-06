@@ -75,7 +75,7 @@ router.post('/buy', requireAuth, async (req, res, next) => {
           if (p.free_quota > 0) {
             const { rows: pf } = await client.query(`SELECT free_used FROM products WHERE id=$1`, [productId]);
             const productFreeLeft = Number(p.free_quota) - Number(pf[0]?.free_used || 0);
-            if (productFreeLeft < pricePerShare) quotaOk = false;
+            if (productFreeLeft < 1) quotaOk = false;
           }
           if (quotaOk) {
             const { rows: ub } = await client.query(`SELECT free_balance FROM users WHERE id=$1`, [uid]);
@@ -98,7 +98,7 @@ router.post('/buy', requireAuth, async (req, res, next) => {
         await client.query(
           `UPDATE users SET free_balance=free_balance-$1 WHERE id=$2`, [freeUse, uid]);
         await client.query(
-          `UPDATE products SET free_used=free_used+$1 WHERE id=$2`, [freeUse, productId]);
+          `UPDATE products SET free_used=free_used+1 WHERE id=$1`, [productId]);
       }
       if (paidUse > 0) await walletTx(uid, 'spend', -paidUse, `购买 ${p.name} ${shares}份`, client);
 

@@ -167,6 +167,12 @@ img { max-width: 100%; }
   font-size: 72px; background: linear-gradient(135deg, #fff7f2, #ffe9dd);
 }
 .card .body { padding: 14px; }
+.card-buy-btn {
+  width: 100%; margin-top: 12px; padding: 8px 16px; border: none; border-radius: 20px;
+  background: var(--brand); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: background .15s;
+}
+.card-buy-btn:hover { background: var(--brand-dark); }
 .card .name {
   font-size: 15px; font-weight: 600; height: 44px; overflow: hidden;
 }

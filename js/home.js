@@ -61,6 +61,9 @@ function cardHtml(p) {
   const cover = (p.gallery && p.gallery.length && p.gallery[0].url)
     ? `<img src="${p.gallery[0].url}" alt="${p.name}" style="width:100%;height:100%;object-fit:contain;background:#fafafa">`
     : (p.img || '🎁');
+  const buyBtn = (!done && !drawing)
+    ? `<button class="card-buy-btn" onclick="event.stopPropagation(); location.href='detail.html?id=${p.id}'">立即夺宝 ($${p.price}/份)</button>`
+    : '';
   return `
     <div class="card" onclick="location.href='detail.html?id=${p.id}'">
       <div class="thumb">${cover}</div>
@@ -75,6 +78,7 @@ function cardHtml(p) {
           ${done ? `<span class="remain">幸运号 <b>${p.winNumber}</b></span>`
                  : `<span class="remain">剩 <b>${remain}</b> 份</span>`}
         </div>
+        ${buyBtn}
       </div>
     </div>`;
 }
