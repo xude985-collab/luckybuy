@@ -132,12 +132,25 @@ async function renderShowcase() {
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
-onReady(async () => {
-  renderTopbar('home');
-  await Store.ready;
+function renderAll() {
   renderMarquee();
   renderLiveFeed();
   renderCatTabs();
   renderGrid();
+}
+
+onReady(async () => {
+  renderTopbar('home');
+  await Store.ready;
+  renderAll();
   renderShowcase();
+});
+
+// 页面恢复可见时刷新商品数据（解决从详情页返回时数据过期问题）
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    Promise.all([Store.refreshProducts(), Store.refreshRecentBuys()]).then(() => {
+      renderAll();
+    }).catch(() => {});
+  }
 });

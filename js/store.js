@@ -412,6 +412,8 @@ const Store = (() => {
     // 商品/类别
     listProducts, getProduct, listCategories, categoryOf,
     productFreeUsed, winnersFeed, recentBuys, getConfig, myOrders,
+    // 刷新
+    refreshProducts, refreshRecentBuys,
     // 购买/地址
     buyShares, saveAddress,
     // 后台
