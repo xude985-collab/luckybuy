@@ -13,7 +13,7 @@ function formatProduct(p) {
   return {
     id: p.id, sku: p.sku, name: p.name, category: p.category, emoji: p.emoji,
     pricePerShare: p.price_per_share, totalShares: p.total_shares,
-    freeQuota: p.free_quota, freeUsed: Number(p.real_free_used || p.free_used || 0),
+    freeQuota: p.free_quota, freeUsed: Number(p.free_used || 0),
     desc: p.desc || '',
     gallery: safeJSON(p.gallery, []),
     specs: safeJSON(p.specs, []),
@@ -36,11 +36,9 @@ router.get('/products', async (req, res, next) => {
   try {
     const cat = req.query.category;
     let rows;
-    const base = `SELECT p.*, COALESCE(s.total,0) AS sold, COALESCE(fu.used,0) AS real_free_used FROM products p
+    const base = `SELECT p.*, COALESCE(s.total,0) AS sold FROM products p
          LEFT JOIN (SELECT product_id, SUM(shares) AS total FROM orders GROUP BY product_id) s
-           ON s.product_id=p.id
-         LEFT JOIN (SELECT product_id, SUM(free_coins) AS used FROM orders GROUP BY product_id) fu
-           ON fu.product_id=p.id`;
+           ON s.product_id=p.id`;
     if (cat) {
       const r = await pool.query(base + ` WHERE p.category=$1 ORDER BY p.created_at DESC`, [cat]);
       rows = r.rows;
@@ -56,11 +54,9 @@ router.get('/products', async (req, res, next) => {
 router.get('/products/:id', async (req, res, next) => {
   try {
     const { rows: pr } = await pool.query(
-      `SELECT p.*, COALESCE(s.total,0) AS sold, COALESCE(fu.used,0) AS real_free_used FROM products p
+      `SELECT p.*, COALESCE(s.total,0) AS sold FROM products p
        LEFT JOIN (SELECT product_id, SUM(shares) AS total FROM orders GROUP BY product_id) s
          ON s.product_id=p.id
-       LEFT JOIN (SELECT product_id, SUM(free_coins) AS used FROM orders GROUP BY product_id) fu
-         ON fu.product_id=p.id
        WHERE p.id=$1`, [req.params.id]);
     const p = pr[0];
     if (!p) return res.status(404).json({ ok: false, msg: '商品不存在' });

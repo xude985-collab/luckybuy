@@ -95,10 +95,11 @@ router.post('/register', async (req, res, next) => {
         [id, account, type, name || account.split('@')[0],
          bcrypt.hashSync(password, 10), 'user', myInvite, invitedBy, 0, now()]);
 
-      if (cfg.grantRegister > 0) await walletTx(id, 'grant', cfg.grantRegister, '注册赠送', client);
       if (invitedBy) {
         if (cfg.grantInvitee > 0) await walletTx(id, 'grant', cfg.grantInvitee, '受邀奖励', client);
         if (cfg.grantInviter > 0) await walletTx(invitedBy, 'grant', cfg.grantInviter, '邀请好友奖励', client);
+      } else {
+        if (cfg.grantRegister > 0) await walletTx(id, 'grant', cfg.grantRegister, '注册赠送', client);
       }
       await client.query(`DELETE FROM email_codes WHERE account=$1`, [account]);
     });
