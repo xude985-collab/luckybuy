@@ -255,6 +255,17 @@ router.post('/reset-product/:productId', requireAdmin, async (req, res, next) =>
   } catch (e) { next(e); }
 });
 
+// 手动修正商品 free_used
+router.post('/fix-product-free', requireAdmin, async (req, res, next) => {
+  try {
+    const { productId, freeUsed } = req.body || {};
+    if (!productId) return res.status(400).json({ ok: false, msg: '缺少 productId' });
+    if (freeUsed === undefined) return res.status(400).json({ ok: false, msg: '缺少 freeUsed' });
+    await pool.query(`UPDATE products SET free_used=$1 WHERE id=$2`, [Number(freeUsed), productId]);
+    res.json({ ok: true, msg: 'free_used 已修正' });
+  } catch (e) { next(e); }
+});
+
 // ---- 用户管理 ----
 router.get('/users', requireAdmin, async (req, res, next) => {
   try {
