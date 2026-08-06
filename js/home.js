@@ -74,7 +74,7 @@ function cardHtml(p) {
           ${badge}</div>
         <div class="progress"><i style="width:${percent}%"></i></div>
         <div class="progress-meta">
-          <span>已售 ${percent}%</span>
+          <span>已售 ${percent === 0 && p.soldShares > 0 ? p.soldShares + '份' : percent + '%'}</span>
           ${done ? `<span class="remain">幸运号 <b>${p.winNumber}</b></span>`
                  : `<span class="remain">剩 <b>${remain}</b> 份</span>`}
         </div>

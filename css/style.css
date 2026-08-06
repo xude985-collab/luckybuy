@@ -60,7 +60,7 @@ img { max-width: 100%; }
 }
 /* 实时抢购动态 */
 .live-feed {
-  max-height: 360px;
+  height: 360px;
   background: var(--card);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
@@ -89,8 +89,8 @@ img { max-width: 100%; }
 .live-feed-item .product { font-weight: 600; }
 .live-feed-item .time { color: var(--muted); font-size: 11px; margin-top: 2px; }
 @keyframes scroll-down {
-  from { transform: translateY(-50%); }
-  to { transform: translateY(0); }
+  from { transform: translateY(0); }
+  to { transform: translateY(-50%); }
 }
 @media (max-width: 900px) {
   .home-layout { flex-direction: column; }
