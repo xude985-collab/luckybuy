@@ -11,6 +11,7 @@ import path from 'path';
 import 'dotenv/config';
 
 import { initDB } from './db.js';
+import { startDrawWorker } from './lib/drawWorker.js';
 import authRoutes from './routes/auth.js';
 import shopRoutes from './routes/shop.js';
 import walletRoutes from './routes/wallet.js';
@@ -53,4 +54,5 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`\n  Lucky Buy 后端已启动`);
   console.log(`  → http://localhost:${PORT}\n`);
+  startDrawWorker();
 });
