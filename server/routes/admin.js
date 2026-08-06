@@ -217,6 +217,44 @@ router.post('/fix-balance', requireAdmin, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// 重置单个商品的销售记录
+router.post('/reset-product/:productId', requireAdmin, async (req, res, next) => {
+  try {
+    const { productId } = req.params;
+    await withTransaction(async (client) => {
+      // 获取该商品的所有订单，退回金币
+      const { rows: orders } = await client.query(
+        `SELECT user_id, free_coins, paid_coins FROM orders WHERE product_id=$1`, [productId]);
+
+      for (const o of orders) {
+        if (o.free_coins > 0) {
+          await client.query(
+            `UPDATE users SET free_balance = free_balance + $1 WHERE id = $2`,
+            [o.free_coins, o.user_id]);
+        }
+        if (o.paid_coins > 0) {
+          await client.query(
+            `UPDATE users SET paid_balance = paid_balance + $1 WHERE id = $2`,
+            [o.paid_coins, o.user_id]);
+        }
+      }
+
+      // 删除该商品的订单
+      await client.query(`DELETE FROM orders WHERE product_id=$1`, [productId]);
+      // 删除该商品的开奖记录
+      await client.query(`DELETE FROM draws WHERE product_id=$1`, [productId]);
+      // 重置商品状态和免费金币使用记录
+      await client.query(
+        `UPDATE products SET free_used=0, status='active' WHERE id=$1`, [productId]);
+      // 清除该商品相关的消费流水
+      await client.query(
+        `DELETE FROM wallet_tx WHERE kind='spend' AND ref LIKE '%' || (SELECT name FROM products WHERE id=$1) || '%'`,
+        [productId]);
+    });
+    res.json({ ok: true, msg: '商品销售记录已重置，金币已退回' });
+  } catch (e) { next(e); }
+});
+
 // ---- 用户管理 ----
 router.get('/users', requireAdmin, async (req, res, next) => {
   try {
