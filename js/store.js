@@ -94,7 +94,7 @@ const Store = (() => {
       paidUsed: o.paid_coins || 0,
       numbers: parseNumbers(o.numbers),
       address: o.address ? safeParse(o.address) : null,
-      time: new Date(o.created_at).toISOString(),
+      time: new Date(Number(o.created_at)).toISOString(),
       winNumber: o.win_number,
     };
   }

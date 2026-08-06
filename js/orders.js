@@ -7,8 +7,8 @@ function inviteCard(u) {
   return `
     <div class="invite-card">
       <div class="invite-bal">
-        <span>免费金币 <b>${u.freeCoins || 0}</b></span>
         <span>充值金币 <b>${u.paidCoins || 0}</b></span>
+        <span>免费金币 <b>${u.freeCoins || 0}</b></span>
       </div>
       <div class="invite-title">邀请好友，双方得金币</div>
       <div class="invite-code-row">
