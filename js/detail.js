@@ -171,8 +171,9 @@ async function buy() {
 
   const p = Store.getProduct(id);
   const u = Store.currentUser();
-  const poolLeft = Math.max(0, (p.freeQuota || 0) - (p.freeUsed || 0));
   const myUsedFree = Store.myOrders().filter(o => o.productId === id).reduce((s, o) => s + (o.freeUsed || 0), 0) > 0;
+  const quota = p.freeQuota || 0;
+  const poolLeft = quota > 0 ? Math.max(0, quota - (p.freeUsed || 0)) : Infinity;
   const canUseFree = u.freeCoins > 0 && poolLeft > 0 && !myUsedFree;
 
   let useFree = false;

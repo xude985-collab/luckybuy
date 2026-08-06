@@ -64,18 +64,25 @@ router.post('/buy', requireAuth, async (req, res, next) => {
 
       // 免费金币逻辑：每个商品每人最多免费 1 份（事务内检查防并发）
       let freeUse = 0;
-      if (useFree && p.free_quota > 0) {
+      if (useFree) {
         const { rows: used } = await client.query(
           `SELECT COALESCE(SUM(free_coins),0) AS f FROM orders WHERE user_id=$1 AND product_id=$2`,
           [uid, productId]);
         const alreadyUsedFree = Number(used[0].f) > 0;
-        const { rows: pf } = await client.query(`SELECT free_used FROM products WHERE id=$1`, [productId]);
-        const productFreeLeft = Number(p.free_quota) - Number(pf[0]?.free_used || 0);
-        if (!alreadyUsedFree && productFreeLeft >= pricePerShare) {
-          const { rows: ub } = await client.query(`SELECT free_balance FROM users WHERE id=$1`, [uid]);
-          const userFreeBal = Number(ub[0]?.free_balance || 0);
-          if (userFreeBal >= pricePerShare) {
-            freeUse = pricePerShare;
+        if (!alreadyUsedFree) {
+          // 如果商品设了 free_quota，检查总额度是否用完
+          let quotaOk = true;
+          if (p.free_quota > 0) {
+            const { rows: pf } = await client.query(`SELECT free_used FROM products WHERE id=$1`, [productId]);
+            const productFreeLeft = Number(p.free_quota) - Number(pf[0]?.free_used || 0);
+            if (productFreeLeft < pricePerShare) quotaOk = false;
+          }
+          if (quotaOk) {
+            const { rows: ub } = await client.query(`SELECT free_balance FROM users WHERE id=$1`, [uid]);
+            const userFreeBal = Number(ub[0]?.free_balance || 0);
+            if (userFreeBal >= pricePerShare) {
+              freeUse = pricePerShare;
+            }
           }
         }
       }
