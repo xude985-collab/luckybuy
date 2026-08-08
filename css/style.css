@@ -536,6 +536,58 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
 .winner-card .winner-name { font-size: 13px; color: var(--ok); }
 .winner-card .winner-name b { font-weight: 700; }
 
+/* 中奖庆祝弹窗 */
+.win-celebrate-mask {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity .3s;
+}
+.win-celebrate-mask.show { opacity: 1; }
+.win-celebrate {
+  background: #fff; border-radius: 16px; padding: 32px 24px; width: 360px; max-width: 92vw;
+  text-align: center; position: relative; overflow: hidden;
+  box-shadow: 0 16px 48px rgba(0,0,0,.25);
+  animation: win-bounce .5s ease-out;
+}
+@keyframes win-bounce {
+  0% { transform: scale(.7) translateY(40px); opacity: 0; }
+  60% { transform: scale(1.03); }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+.win-confetti {
+  position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(
+    135deg,
+    transparent, transparent 10px,
+    rgba(255,183,77,.15) 10px, rgba(255,183,77,.15) 12px
+  );
+  animation: confetti-shift 2s linear infinite;
+}
+@keyframes confetti-shift { to { background-position: 50px 50px; } }
+.win-trophy { font-size: 56px; margin-bottom: 8px; animation: trophy-pulse 1s ease infinite alternate; }
+@keyframes trophy-pulse { from { transform: scale(1); } to { transform: scale(1.1); } }
+.win-title {
+  font-size: 24px; font-weight: 800; color: var(--brand-dark);
+  margin-bottom: 8px;
+}
+.win-product { font-size: 14px; color: #555; margin-bottom: 6px; }
+.win-lucky {
+  font-size: 16px; color: var(--brand); margin-bottom: 12px;
+  padding: 6px 16px; background: #fff8e1; border-radius: 20px; display: inline-block;
+}
+.win-lucky b { font-size: 22px; }
+.win-msg { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
+.win-form { display: flex; flex-direction: column; gap: 10px; text-align: left; }
+.win-form input, .win-form textarea {
+  padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px;
+  font-size: 14px; font-family: inherit; width: 100%;
+}
+.win-form input:focus, .win-form textarea:focus { outline: none; border-color: var(--brand); }
+.win-form textarea { resize: none; }
+.win-later {
+  display: inline-block; margin-top: 12px; font-size: 13px; color: var(--muted);
+}
+
 /* drand 信任横幅 */
 .trust-banner {
   background: linear-gradient(90deg, #e8f5e9, #f1f8e9);

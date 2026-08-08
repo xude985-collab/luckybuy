@@ -7,6 +7,7 @@ function onReady(cb) {
       if (Store.resumeDraws) await Store.resumeDraws().catch(() => {});
     } catch (_) {}
     try { cb(); } catch (e) { console.error(e); }
+    checkUnclaimedWins();
   }).catch(e => { console.error(e); toast('加载失败，请刷新重试'); });
 }
 
@@ -106,4 +107,59 @@ function renderMobNav(active, u) {
       <span class="nav-icon">👤</span>${u ? '我的' : '登录'}</a>
     ${isAdmin ? `<a href="admin.html" class="${active === 'admin' ? 'active' : ''}">
       <span class="nav-icon">⚙️</span>后台</a>` : ''}`;
+}
+
+function checkUnclaimedWins() {
+  const me = Store.currentUser();
+  if (!me) return;
+  const unclaimed = Store.listProducts().filter(
+    p => p.status === 'revealed' && p.winnerUserId === me.id && !p.hasAddress
+  );
+  if (!unclaimed.length) return;
+  const p = unclaimed[0];
+  showWinCelebration(p);
+}
+
+function showWinCelebration(p) {
+  const mask = document.createElement('div');
+  mask.className = 'win-celebrate-mask';
+  mask.innerHTML = `
+    <div class="win-celebrate">
+      <div class="win-confetti"></div>
+      <div class="win-trophy">🏆</div>
+      <div class="win-title">恭喜中奖！</div>
+      <div class="win-product">${p.img || '🎁'} ${p.name}</div>
+      <div class="win-lucky">幸运号码 <b>${p.winNumber}</b></div>
+      <div class="win-msg">请填写收货信息，我们将尽快安排发货</div>
+      <div class="win-form">
+        <input id="wf-name" placeholder="收件人姓名">
+        <input id="wf-phone" placeholder="联系电话">
+        <input id="wf-country" placeholder="国家/地区（可选）">
+        <textarea id="wf-address" placeholder="详细收货地址" rows="2"></textarea>
+      </div>
+      <button class="btn" id="wf-submit" style="width:100%;margin-top:12px">提交收货地址</button>
+      <a href="#" class="win-later" id="wf-later">稍后填写</a>
+    </div>`;
+  document.body.appendChild(mask);
+  setTimeout(() => mask.classList.add('show'), 50);
+
+  mask.querySelector('#wf-later').onclick = (e) => { e.preventDefault(); mask.remove(); };
+  mask.querySelector('#wf-submit').onclick = async () => {
+    const name = mask.querySelector('#wf-name').value.trim();
+    const phone = mask.querySelector('#wf-phone').value.trim();
+    const address = mask.querySelector('#wf-address').value.trim();
+    const country = mask.querySelector('#wf-country').value.trim();
+    if (!name || !address) { toast('请填写收件人和地址'); return; }
+    const btn = mask.querySelector('#wf-submit');
+    btn.disabled = true; btn.textContent = '提交中…';
+    const r = await Store.saveAddress(p.id, { name, phone, address, country });
+    if (r.ok) {
+      toast('收货地址已提交 ✓');
+      mask.remove();
+      await Store.refreshProducts();
+    } else {
+      toast(r.msg || '提交失败');
+      btn.disabled = false; btn.textContent = '提交收货地址';
+    }
+  };
 }
