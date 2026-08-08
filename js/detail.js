@@ -4,7 +4,7 @@ const id = param('id');
 let _slotTimer = null;
 function _clearSlot() { if (_slotTimer) { clearInterval(_slotTimer); _slotTimer = null; } }
 
-function myNumbersHtml() {
+function myNumbersHtml(winNumber) {
   const me = Store.currentUser();
   if (!me) return '';
   const orders = Store.myOrders().filter(o => String(o.productId) === String(id));
@@ -15,7 +15,10 @@ function myNumbersHtml() {
   return `
     <div class="my-numbers-box">
       <div class="my-numbers-title">🎫 我的号码（共 ${total} 份）</div>
-      <div class="my-numbers-list">${allNums.map(n => `<span class="num-chip">${n}</span>`).join('')}</div>
+      <div class="my-numbers-list">${allNums.map(n => {
+        const isWin = winNumber != null && Number(n) === Number(winNumber);
+        return `<span class="num-chip${isWin ? ' num-chip-win' : ''}">${n}${isWin ? ' 🏆' : ''}</span>`;
+      }).join('')}</div>
     </div>`;
 }
 
@@ -56,10 +59,10 @@ function render() {
           <div class="draw-winner-name">${p.winnerName || '幸运用户'}</div>
         </div>`;
 
-    const myResult = iWon ? myNumbersHtml()
+    const myResult = iWon ? myNumbersHtml(p.winNumber)
       : iParticipated ? `
         <div class="my-draw-result">
-          ${myNumbersHtml()}
+          ${myNumbersHtml(p.winNumber)}
           <div class="draw-encourage">
             <div>😊 本期未中选，好运还在后面！</div>
             <div class="draw-encourage-sub">你的参与让抽奖更公平，继续夺宝，每次都有机会成为幸运儿！</div>

@@ -600,6 +600,13 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   background: #fff; border: 1px solid #90caf9; font-size: 13px;
   font-weight: 600; color: #1565c0; font-family: Consolas, monospace;
 }
+.num-chip-win {
+  background: var(--brand) !important; color: #fff !important;
+  border-color: var(--brand-dark) !important; font-weight: 800 !important;
+  font-size: 14px; transform: scale(1.15); display: inline-block;
+  box-shadow: 0 0 10px rgba(255,87,34,.5);
+  animation: num-pop .6s cubic-bezier(.34,1.56,.64,1);
+}
 
 /* 开奖结果舞台 */
 .draw-result-stage {
