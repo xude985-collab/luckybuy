@@ -299,6 +299,36 @@ router.get('/users', requireAdmin, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+router.post('/users/:id/rename', requireAdmin, async (req, res, next) => {
+  try {
+    const name = (req.body?.name || '').trim();
+    if (!name) return res.status(400).json({ ok: false, msg: '名称不能为空' });
+    await pool.query(`UPDATE users SET name=$1 WHERE id=$2`, [name, req.params.id]);
+    res.json({ ok: true, msg: '昵称已修改' });
+  } catch (e) { next(e); }
+});
+
+router.post('/users/:id/reset-pwd', requireAdmin, async (req, res, next) => {
+  try {
+    const password = (req.body?.password || '').trim();
+    if (!password || password.length < 4) return res.status(400).json({ ok: false, msg: '密码至少4位' });
+    const { default: bcrypt } = await import('bcryptjs');
+    const hash = bcrypt.hashSync(password, 10);
+    await pool.query(`UPDATE users SET pass_hash=$1 WHERE id=$2`, [hash, req.params.id]);
+    res.json({ ok: true, msg: '密码已重置' });
+  } catch (e) { next(e); }
+});
+
+router.delete('/users/:id', requireAdmin, async (req, res, next) => {
+  try {
+    const uid = req.params.id;
+    const { rows } = await pool.query(`SELECT role FROM users WHERE id=$1`, [uid]);
+    if (rows[0]?.role === 'admin') return res.status(400).json({ ok: false, msg: '不能删除管理员' });
+    await pool.query(`DELETE FROM users WHERE id=$1`, [uid]);
+    res.json({ ok: true, msg: '用户已删除' });
+  } catch (e) { next(e); }
+});
+
 // ---- 中奖订单管理 ----
 router.get('/wins', requireAdmin, async (req, res, next) => {
   try {

@@ -229,13 +229,55 @@ function renderUsers(users) {
   document.getElementById('user-count').textContent = `共 ${users.length} 人`;
   const el = document.getElementById('user-list');
   if (!users.length) { el.innerHTML = '<div class="empty">无匹配用户</div>'; return; }
-  let html = '<table class="user-table"><tr><th>账号</th><th>昵称</th><th>角色</th><th>余额(金币)</th><th>注册时间</th></tr>';
+  let html = '<table class="user-table"><tr><th>账号</th><th>昵称</th><th>角色</th><th>余额(金币)</th><th>注册时间</th><th>操作</th></tr>';
   users.forEach(u => {
     const t = new Date(Number(u.created_at)).toLocaleDateString('zh-CN');
     const role = u.role === 'admin' ? '<span class="role-admin">管理员</span>' : '用户';
-    html += `<tr><td>${esc(u.account)}</td><td>${esc(u.name||'—')}</td><td>${role}</td><td>${u.paid_balance||0}</td><td>${t}</td></tr>`;
+    html += `<tr>
+      <td>${esc(u.account)}</td>
+      <td>${esc(u.name||'—')}</td>
+      <td>${role}</td>
+      <td>${u.paid_balance||0}</td>
+      <td>${t}</td>
+      <td>
+        <a href="#" onclick="renameUser('${u.id}','${esc(u.name||'')}');return false">改名</a> ·
+        <a href="#" onclick="resetPwd('${u.id}','${esc(u.account)}');return false">重置密码</a> ·
+        <a href="#" onclick="delUser('${u.id}','${esc(u.account)}');return false" style="color:#c00">删除</a>
+      </td>
+    </tr>`;
   });
   el.innerHTML = html + '</table>';
+}
+
+async function renameUser(uid, oldName) {
+  const name = prompt('输入新昵称：', oldName);
+  if (name === null || !name.trim()) return;
+  const r = await fetch('/api/admin/users/' + uid + '/rename', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: name.trim() })
+  });
+  const d = await r.json();
+  toast(d.msg || (d.ok ? '已修改' : '修改失败'));
+  if (d.ok) loadUsers();
+}
+
+async function resetPwd(uid, account) {
+  const pwd = prompt(`重置 ${account} 的密码为：`);
+  if (pwd === null || !pwd.trim()) return;
+  const r = await fetch('/api/admin/users/' + uid + '/reset-pwd', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: pwd.trim() })
+  });
+  const d = await r.json();
+  toast(d.msg || (d.ok ? '密码已重置' : '重置失败'));
+}
+
+async function delUser(uid, account) {
+  if (!confirm(`确定删除用户 ${account}？此操作不可恢复。`)) return;
+  const r = await fetch('/api/admin/users/' + uid, { method: 'DELETE' });
+  const d = await r.json();
+  toast(d.msg || (d.ok ? '已删除' : '删除失败'));
+  if (d.ok) loadUsers();
 }
 
 // ========== Settings: Rules ==========
