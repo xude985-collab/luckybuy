@@ -61,9 +61,24 @@ function cardHtml(p) {
   const cover = (p.gallery && p.gallery.length && p.gallery[0].url)
     ? `<img src="${p.gallery[0].url}" alt="${p.name}" style="width:100%;height:100%;object-fit:contain;background:#fafafa">`
     : (p.img || '🎁');
-  const buyBtn = (!done && !drawing)
-    ? `<button class="card-buy-btn" onclick="event.stopPropagation(); location.href='detail.html?id=${p.id}'">立即夺宝 ($${p.price}/份)</button>`
-    : '';
+  let buySection = '';
+  if (!done && !drawing) {
+    buySection = `
+      <div class="card-buy-section" onclick="event.stopPropagation()">
+        <div class="card-qty">
+          <button onclick="cardStep('${p.id}',-1)">−</button>
+          <input id="cqty-${p.id}" type="number" value="1" min="1" max="${remain}">
+          <button onclick="cardStep('${p.id}',1)">＋</button>
+        </div>
+        <div class="card-quick-pick">
+          <span onclick="cardSet('${p.id}',1)">1 份</span>
+          <span onclick="cardSet('${p.id}',5)">5 份</span>
+          <span onclick="cardSet('${p.id}',10)">10 份</span>
+          <span onclick="cardSet('${p.id}',${remain})">全包 (${remain})</span>
+        </div>
+        <button class="card-buy-btn" id="cbtn-${p.id}" onclick="cardBuy('${p.id}')">立即夺宝 ($${p.price}/份)</button>
+      </div>`;
+  }
   return `
     <div class="card" onclick="location.href='detail.html?id=${p.id}'">
       <div class="thumb">${cover}</div>
@@ -78,7 +93,7 @@ function cardHtml(p) {
           ${done ? `<span class="remain">幸运号 <b>${p.winNumber}</b></span>`
                  : `<span class="remain">剩 <b>${remain}</b> 份</span>`}
         </div>
-        ${buyBtn}
+        ${buySection}
       </div>
     </div>`;
 }
@@ -174,6 +189,40 @@ function renderAll() {
   renderLiveFeed();
   renderCatTabs();
   renderGrid();
+}
+
+/* ---- 首页快速购买 ---- */
+function cardStep(pid, d) {
+  const el = document.getElementById('cqty-' + pid);
+  if (!el) return;
+  const p = Store.getProduct(pid);
+  const max = p ? p.totalShares - p.soldShares : 999;
+  el.value = Math.max(1, Math.min(max, (parseInt(el.value) || 1) + d));
+}
+function cardSet(pid, v) {
+  const el = document.getElementById('cqty-' + pid);
+  if (el) el.value = v;
+}
+async function cardBuy(pid) {
+  if (!requireLogin()) return;
+  const el = document.getElementById('cqty-' + pid);
+  const count = parseInt(el?.value) || 1;
+  if (count < 1) { toast('请选择至少 1 份'); return; }
+  const btn = document.getElementById('cbtn-' + pid);
+  if (btn) { btn.disabled = true; btn.textContent = '处理中…'; }
+  try {
+    const r = await Store.buyShares(pid, count, false);
+    if (r.needRecharge) { toast(r.msg); setTimeout(() => openRecharge('home'), 700); return; }
+    if (r.ok) {
+      toast(r.msg || '购买成功');
+      await Store.refreshMe();
+      renderTopbar('home');
+      renderGrid();
+    } else { toast(r.msg || '购买失败'); }
+  } catch (e) { toast('网络异常，请重试'); }
+  finally {
+    if (btn) { btn.disabled = false; const p = Store.getProduct(pid); btn.textContent = `立即夺宝 ($${p?.price||1}/份)`; }
+  }
 }
 
 onReady(async () => {
