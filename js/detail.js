@@ -29,7 +29,7 @@ function render() {
   const done = p.status === 'revealed';
   const me = Store.currentUser();
   const iWon = done && me && p.winnerUserId === me.id;
-  const iParticipated = me && Store.myOrders().some(o => o.productId === id);
+  const iParticipated = me && Store.myOrders().some(o => String(o.productId) === String(id));
 
   const drawing = p.status === 'drawing';
   let action;
