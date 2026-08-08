@@ -38,7 +38,7 @@ router.get('/overview', requireAdmin, async (req, res, next) => {
 router.get('/recent-orders', requireAdmin, async (req, res, next) => {
   try {
     const { rows } = await pool.query(
-      `SELECT o.shares, o.paid_coins, o.created_at, u.account, p.name AS product_name
+      `SELECT o.shares, o.paid_coins, o.free_coins, o.created_at, u.account, p.name AS product_name
        FROM orders o
        LEFT JOIN users u ON u.id = o.user_id
        LEFT JOIN products p ON p.id = o.product_id

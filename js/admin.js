@@ -38,10 +38,28 @@ async function loadRecentOrders() {
     const d = await r.json();
     const el = document.getElementById('recent-orders');
     if (!d.ok || !d.orders || !d.orders.length) { el.innerHTML = '<div class="empty">暂无订单</div>'; return; }
-    let html = '<table class="orders-table"><tr><th>用户</th><th>商品</th><th>份数</th><th>金币</th><th>时间</th></tr>';
+
+    // per-product revenue summary
+    const rev = {};
+    d.orders.forEach(o => {
+      const name = o.product_name || '未知商品';
+      if (!rev[name]) rev[name] = { free: 0, paid: 0 };
+      rev[name].free += Number(o.free_coins) || 0;
+      rev[name].paid += Number(o.paid_coins) || 0;
+    });
+    let totalPaid = 0, totalFree = 0;
+    let revHtml = '<div style="margin-bottom:12px;font-size:13px"><b>商品收入明细（近20单）：</b>';
+    for (const [name, v] of Object.entries(rev)) {
+      totalPaid += v.paid;
+      totalFree += v.free;
+      revHtml += `<span style="display:inline-block;margin:2px 10px 2px 0;background:#f5f5f5;padding:2px 8px;border-radius:4px">${esc(name)}：充值 ${v.paid} / 免费 ${v.free}</span>`;
+    }
+    revHtml += `<div style="margin-top:4px;font-weight:600">合计：充值金币 ${totalPaid}（收入） · 免费金币 ${totalFree}</div></div>`;
+
+    let html = revHtml + '<table class="orders-table"><tr><th>用户</th><th>商品</th><th>份数</th><th>充值金币</th><th>免费金币</th><th>时间</th></tr>';
     d.orders.forEach(o => {
       const t = new Date(Number(o.created_at)).toLocaleString('zh-CN');
-      html += `<tr><td>${esc(o.account||'')}</td><td>${esc(o.product_name||'')}</td><td>${o.shares}</td><td>${o.paid_coins}</td><td>${t}</td></tr>`;
+      html += `<tr><td>${esc(o.account||'')}</td><td>${esc(o.product_name||'')}</td><td>${o.shares}</td><td>${o.paid_coins||0}</td><td>${o.free_coins||0}</td><td>${t}</td></tr>`;
     });
     el.innerHTML = html + '</table>';
   } catch (e) {
