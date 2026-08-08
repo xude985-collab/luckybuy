@@ -181,6 +181,7 @@ function applyDraft(d, url) {
     const result = Math.round(d.refPrice * 1.5 / 1);
     document.getElementById('f-total').value = result;
     document.getElementById('multi-result').textContent = `= ${result} 份`;
+    bindMultiplierAuto();
   }
   const urls = Array.isArray(d.gallery) ? d.gallery.map(g => g.url).filter(Boolean) : [];
   if (urls.length) document.getElementById('f-gallery').value = urls.join('\n');
@@ -197,6 +198,13 @@ function applyMultiplier() {
   document.getElementById('f-total').value = result;
   document.getElementById('f-price').value = perShare;
   document.getElementById('multi-result').textContent = `= ${result} 份`;
+}
+
+function bindMultiplierAuto() {
+  const multEl = document.getElementById('f-multiplier');
+  const perEl = document.getElementById('f-per-share');
+  multEl.oninput = applyMultiplier;
+  perEl.oninput = applyMultiplier;
 }
 
 // ========== Users ==========
