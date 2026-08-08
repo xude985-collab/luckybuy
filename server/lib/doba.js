@@ -17,16 +17,42 @@ function stripTags(s) {
 }
 
 async function fetchBuildId() {
-  // 请求一个不存在的 _buildManifest 会返回包含正确 buildId 的 404 页面
-  const resp = await fetch(
-    'https://www.doba.com/_next/static/PROBE/_buildManifest.js',
-    { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(10000) }
-  );
-  const html = await resp.text();
-  const m = html.match(/"buildId":"([^"]+)"/);
-  if (!m) throw new Error('无法获取 Doba buildId');
-  return m[1];
+  const headers = {
+    'User-Agent': UA,
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Connection': 'keep-alive',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'none',
+  };
+  // 方法1: 请求错误 buildId 的 _buildManifest，404 页面含正确 buildId
+  try {
+    const resp = await fetch(
+      'https://www.doba.com/_next/static/PROBE/_buildManifest.js',
+      { headers, signal: AbortSignal.timeout(10000) }
+    );
+    const html = await resp.text();
+    const m = html.match(/"buildId":"([^"]+)"/);
+    if (m) return m[1];
+  } catch {}
+  // 方法2: 请求错误 buildId 的 _next/data
+  try {
+    const resp = await fetch(
+      'https://www.doba.com/_next/data/PROBE/index.json',
+      { headers, signal: AbortSignal.timeout(10000) }
+    );
+    const html = await resp.text();
+    const m = html.match(/"buildId":"([^"]+)"/);
+    if (m) return m[1];
+  } catch {}
+  // 方法3: 使用缓存的已知 buildId（需要定期更新）
+  return FALLBACK_BUILD_ID;
 }
+
+// 当动态获取失败时使用的 fallback（Doba 每次部署会更新）
+let FALLBACK_BUILD_ID = '9a1ab413bc0f43dad71e9427ca9d124d';
 
 export function parseDobaUrl(url) {
   // https://www.doba.com/product/{skuId}/{slug}.html
@@ -39,13 +65,33 @@ export async function fetchDoba(url) {
   const parsed = parseDobaUrl(url);
   if (!parsed) throw new Error('无效的 Doba 商品链接');
 
-  const buildId = await fetchBuildId();
-  const dataUrl = `https://www.doba.com/_next/data/${buildId}/product/${parsed.skuId}/${parsed.slug}.html.json`;
+  const headers = {
+    'User-Agent': UA,
+    'Accept': 'application/json, text/plain, */*',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Referer': 'https://www.doba.com/',
+    'Sec-Fetch-Dest': 'empty',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Site': 'same-origin',
+  };
 
-  const resp = await fetch(dataUrl, {
-    headers: { 'User-Agent': UA },
-    signal: AbortSignal.timeout(15000),
-  });
+  let buildId = await fetchBuildId();
+  let dataUrl = `https://www.doba.com/_next/data/${buildId}/product/${parsed.skuId}/${parsed.slug}.html.json`;
+
+  let resp = await fetch(dataUrl, { headers, signal: AbortSignal.timeout(15000) });
+
+  // buildId 过期时返回 404，尝试从 404 页面提取新 buildId
+  if (resp.status === 404) {
+    const body = await resp.text();
+    const m = body.match(/"buildId":"([^"]+)"/);
+    if (m && m[1] !== buildId) {
+      FALLBACK_BUILD_ID = m[1];
+      buildId = m[1];
+      dataUrl = `https://www.doba.com/_next/data/${buildId}/product/${parsed.skuId}/${parsed.slug}.html.json`;
+      resp = await fetch(dataUrl, { headers, signal: AbortSignal.timeout(15000) });
+    }
+  }
+
   if (!resp.ok) throw new Error(`Doba API 返回 ${resp.status}`);
 
   const json = await resp.json();
