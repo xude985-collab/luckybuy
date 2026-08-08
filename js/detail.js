@@ -1,6 +1,21 @@
 /* 商品详情：买份额（需登录）+ 开奖公示 + 中奖填地址 */
 const id = param('id');
 
+function myNumbersHtml() {
+  const me = Store.currentUser();
+  if (!me) return '';
+  const orders = Store.myOrders().filter(o => o.productId === id);
+  if (!orders.length) return '';
+  const allNums = orders.flatMap(o => o.numbers || []);
+  if (!allNums.length) return '';
+  const total = orders.reduce((s, o) => s + o.count, 0);
+  return `
+    <div class="my-numbers-box">
+      <div class="my-numbers-title">🎫 我的号码（共 ${total} 份）</div>
+      <div class="my-numbers-list">${allNums.map(n => `<span class="num-chip">${n}</span>`).join('')}</div>
+    </div>`;
+}
+
 function render() {
   const p = Store.getProduct(id);
   const box = document.getElementById('detail');
@@ -11,6 +26,7 @@ function render() {
   const done = p.status === 'revealed';
   const me = Store.currentUser();
   const iWon = done && me && p.winnerUserId === me.id;
+  const iParticipated = me && Store.myOrders().some(o => o.productId === id);
 
   const drawing = p.status === 'drawing';
   let action;
@@ -21,15 +37,27 @@ function render() {
         <div style="font-size:13px;color:#8a5a00;margin-top:8px">
           开奖使用 drand 公共随机信标第 <b>${p.drandRound || '—'}</b> 轮（约 30 秒后产生，届时全网可验证）。
         </div>
-      </div>`;
+      </div>
+      ${myNumbersHtml()}`;
   } else if (done) {
-    let winBlock = `<div>得主：${p.winnerName || '暂无幸运儿'}</div>`;
-    if (iWon) {
-      winBlock = `<div class="win-tag" style="font-size:18px">🎉 恭喜，你是本期幸运儿！</div>` +
-        (p.hasAddress
-          ? `<div style="margin-top:8px">收货地址已提交 ✓</div>`
-          : `<button class="btn" style="margin-top:10px" onclick="fillAddress('${p.id}')">填写收货地址</button>`);
-    }
+    const winnerCard = iWon
+      ? `<div class="draw-winner-card me">
+          <div class="draw-winner-tag">🎉 恭喜！你是幸运儿</div>
+          ${p.hasAddress
+            ? `<div class="draw-winner-status">✅ 收货地址已提交，等待发货</div>`
+            : `<button class="btn" onclick="fillAddress('${p.id}')">填写收货地址</button>`}
+        </div>`
+      : `<div class="draw-winner-card">
+          <div class="draw-winner-label">🏆 本期幸运儿</div>
+          <div class="draw-winner-name">${p.winnerName || '幸运用户'}</div>
+        </div>`;
+
+    const myResult = (!iWon && iParticipated) ? `
+      <div class="my-draw-result">
+        <div>😊 本期未中选，下次好运！</div>
+        ${myNumbersHtml()}
+      </div>` : (iWon ? myNumbersHtml() : '');
+
     const proofBlock = p.proof ? `
       <div class="proof-box">
         <div class="proof-title">🔒 开奖凭据（可独立验证）</div>
@@ -39,12 +67,18 @@ function render() {
         <button class="btn ghost" style="margin-top:8px" onclick="verifyDraw('${p.id}')">验证开奖结果</button>
         <div id="verifyResult" class="proof-row" style="margin-top:6px"></div>
       </div>` : '';
+
     action = `
-      <div class="reveal-box">
-        <div>本期幸运号码</div>
-        <div class="num">${p.winNumber}</div>
-        ${winBlock}
-      </div>${proofBlock}`;
+      <div class="draw-result-stage">
+        <div class="draw-result-header">🎯 开奖结果</div>
+        <div class="draw-result-number">
+          <div class="draw-result-label">幸运号码</div>
+          <div class="draw-result-num">${p.winNumber}</div>
+        </div>
+        ${winnerCard}
+      </div>
+      ${myResult}
+      ${proofBlock}`;
   } else {
     let quotaTip = '';
     const quota = p.freeQuota || 0;
@@ -73,7 +107,8 @@ function render() {
         <span onclick="setQty(10)">10 份</span>
         <span onclick="setQty(${remain})">全包 (${remain})</span>
       </div>
-      <button class="btn block" onclick="buy()">立即夺宝（$${p.price} / 份）</button>`;
+      <button class="btn block" onclick="buy()">立即夺宝（$${p.price} / 份）</button>
+      ${myNumbersHtml()}`;
   }
 
   box.innerHTML = `

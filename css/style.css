@@ -588,6 +588,56 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   display: inline-block; margin-top: 12px; font-size: 13px; color: var(--muted);
 }
 
+/* 我的号码 */
+.my-numbers-box {
+  margin: 16px 0; padding: 14px; border-radius: var(--radius);
+  background: linear-gradient(135deg, #e3f2fd, #f3e5f5); border: 1px solid #bbdefb;
+}
+.my-numbers-title { font-size: 14px; font-weight: 700; margin-bottom: 10px; color: #1565c0; }
+.my-numbers-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.num-chip {
+  display: inline-block; padding: 4px 10px; border-radius: 14px;
+  background: #fff; border: 1px solid #90caf9; font-size: 13px;
+  font-weight: 600; color: #1565c0; font-family: Consolas, monospace;
+}
+
+/* 开奖结果舞台 */
+.draw-result-stage {
+  margin: 16px 0; padding: 24px; border-radius: var(--radius);
+  background: linear-gradient(135deg, #fff8e1, #fff3e0);
+  border: 2px solid #ffe082; text-align: center;
+}
+.draw-result-header {
+  font-size: 18px; font-weight: 700; color: var(--brand-dark); margin-bottom: 16px;
+}
+.draw-result-number { margin-bottom: 20px; }
+.draw-result-label { font-size: 14px; color: #8a5a00; margin-bottom: 6px; }
+.draw-result-num {
+  font-size: 36px; font-weight: 900; color: var(--brand-dark);
+  padding: 8px 24px; background: #fff; border-radius: 12px;
+  display: inline-block; border: 2px solid #ffcc80;
+}
+
+/* 中奖人卡片 */
+.draw-winner-card {
+  display: inline-block; padding: 16px 28px; border-radius: 12px;
+  background: #fff; box-shadow: 0 4px 16px rgba(0,0,0,.08);
+}
+.draw-winner-card.me {
+  background: linear-gradient(135deg, #e8f5e9, #f1f8e9);
+  border: 2px solid #a5d6a7;
+}
+.draw-winner-label { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+.draw-winner-name { font-size: 20px; font-weight: 700; color: var(--ok); }
+.draw-winner-tag { font-size: 18px; font-weight: 700; color: var(--ok); margin-bottom: 10px; }
+.draw-winner-status { font-size: 14px; color: var(--ok); }
+
+/* 未中选结果 */
+.my-draw-result {
+  margin: 14px 0; padding: 14px; border-radius: var(--radius);
+  background: #f5f5f5; color: #666; font-size: 14px; text-align: center;
+}
+
 /* drand 信任横幅 */
 .trust-banner {
   background: linear-gradient(90deg, #e8f5e9, #f1f8e9);
