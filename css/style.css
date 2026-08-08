@@ -742,4 +742,54 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
 
   /* 底部导航占位 */
   body { padding-bottom: 70px; }
+
+  /* 开奖动画 */
+  .drawing-stage { padding: 20px 14px; }
+  .drawing-reel { font-size: 40px; }
+  .drawing-reel-wrap { padding: 14px 24px; }
+}
+
+/* 开奖中 · 老虎机动画 */
+.drawing-stage {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border-radius: 16px; padding: 28px 20px; text-align: center; margin: 20px 0;
+}
+.drawing-header {
+  font-size: 18px; font-weight: 700; color: #fff;
+  margin-bottom: 20px; letter-spacing: 1px;
+}
+.drawing-reel-wrap {
+  background: #0f3460; border: 3px solid #e94560; border-radius: 12px;
+  padding: 18px 32px; display: inline-block; margin-bottom: 14px;
+  box-shadow: 0 0 24px rgba(233,69,96,.5);
+}
+.drawing-reel {
+  font-size: 52px; font-weight: 900; color: #f5a623;
+  font-family: 'Courier New', monospace; min-width: 3ch;
+  display: inline-block; text-align: center;
+  text-shadow: 0 0 16px rgba(245,166,35,.8);
+}
+.drawing-meta { font-size: 12px; color: #aaa; }
+
+/* 开奖号码弹出动画 */
+@keyframes num-pop {
+  0% { transform: scale(0.3); opacity: 0; }
+  55% { transform: scale(1.25); opacity: 1; }
+  75% { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+.draw-result-num { animation: num-pop .8s cubic-bezier(.34,1.56,.64,1); }
+
+/* 未中选鼓励区 */
+.draw-encourage {
+  margin-top: 12px; padding: 14px; background: #fff; border-radius: 10px;
+  border: 1px solid #e0e0e0; text-align: center; color: #555; font-size: 14px;
+}
+.draw-encourage-sub { font-size: 12px; color: #999; margin-top: 4px; }
+
+/* 未参与访客提示 */
+.draw-visit-hint {
+  margin: 14px 0; padding: 18px; border-radius: var(--radius);
+  background: linear-gradient(135deg, #fff8e1, #fff3e0);
+  border: 1px solid #ffe082; text-align: center; font-size: 14px; color: #8a5a00;
 }

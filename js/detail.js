@@ -1,10 +1,13 @@
 /* 商品详情：买份额（需登录）+ 开奖公示 + 中奖填地址 */
 const id = param('id');
 
+let _slotTimer = null;
+function _clearSlot() { if (_slotTimer) { clearInterval(_slotTimer); _slotTimer = null; } }
+
 function myNumbersHtml() {
   const me = Store.currentUser();
   if (!me) return '';
-  const orders = Store.myOrders().filter(o => o.productId === id);
+  const orders = Store.myOrders().filter(o => String(o.productId) === String(id));
   if (!orders.length) return '';
   const allNums = orders.flatMap(o => o.numbers || []);
   if (!allNums.length) return '';
@@ -32,11 +35,12 @@ function render() {
   let action;
   if (drawing) {
     action = `
-      <div class="reveal-box">
-        <div>🎲 已售罄，正在开奖…</div>
-        <div style="font-size:13px;color:#8a5a00;margin-top:8px">
-          开奖使用 drand 公共随机信标第 <b>${p.drandRound || '—'}</b> 轮（约 30 秒后产生，届时全网可验证）。
+      <div class="drawing-stage">
+        <div class="drawing-header">🎲 正在开奖中</div>
+        <div class="drawing-reel-wrap">
+          <div class="drawing-reel" id="slot-reel">—</div>
         </div>
+        <div class="drawing-meta">drand 公链第 <b>${p.drandRound || '—'}</b> 轮随机信标 · 约 30 秒揭晓</div>
       </div>
       ${myNumbersHtml()}`;
   } else if (done) {
@@ -52,11 +56,20 @@ function render() {
           <div class="draw-winner-name">${p.winnerName || '幸运用户'}</div>
         </div>`;
 
-    const myResult = (!iWon && iParticipated) ? `
-      <div class="my-draw-result">
-        <div>😊 本期未中选，下次好运！</div>
-        ${myNumbersHtml()}
-      </div>` : (iWon ? myNumbersHtml() : '');
+    const myResult = iWon ? myNumbersHtml()
+      : iParticipated ? `
+        <div class="my-draw-result">
+          ${myNumbersHtml()}
+          <div class="draw-encourage">
+            <div>😊 本期未中选，好运还在后面！</div>
+            <div class="draw-encourage-sub">你的参与让抽奖更公平，继续夺宝，每次都有机会成为幸运儿！</div>
+            <a href="index.html" class="btn ghost" style="margin-top:10px;display:inline-block;font-size:13px">看看其他商品 →</a>
+          </div>
+        </div>`
+      : `<div class="draw-visit-hint">
+          本期已圆满开奖！想成为下一位幸运儿？参与还在进行的商品，人人都有机会！
+          <div><a href="index.html" class="btn" style="margin-top:12px;display:inline-block;font-size:13px">去参与夺宝 →</a></div>
+        </div>`;
 
     const proofBlock = p.proof ? `
       <div class="proof-box">
@@ -136,6 +149,17 @@ function render() {
       ${specsHtml(p)}
     </div>
     ${longDetailHtml(p)}`;
+
+  if (drawing) {
+    _clearSlot();
+    _slotTimer = setInterval(() => {
+      const el = document.getElementById('slot-reel');
+      if (!el) { _clearSlot(); return; }
+      el.textContent = Math.floor(Math.random() * p.totalShares) + 1;
+    }, 80);
+  } else {
+    _clearSlot();
+  }
 }
 
 // 图册：主图 + 缩略图；无图时退化为原来的 emoji 大图
