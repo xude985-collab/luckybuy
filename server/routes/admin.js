@@ -299,4 +299,34 @@ router.get('/users', requireAdmin, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// ---- 中奖订单管理 ----
+router.get('/wins', requireAdmin, async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT d.product_id, d.win_number, d.winner_user_id, d.win_address,
+              d.drawn_at, d.ship_status, d.ship_note,
+              p.name AS product_name, p.sku,
+              u.account AS winner_account, u.name AS winner_name
+       FROM draws d
+       LEFT JOIN products p ON p.id = d.product_id
+       LEFT JOIN users u ON u.id = d.winner_user_id
+       WHERE d.winner_user_id IS NOT NULL
+       ORDER BY d.drawn_at DESC`);
+    res.json({ ok: true, wins: rows });
+  } catch (e) { next(e); }
+});
+
+router.post('/wins/:productId/ship', requireAdmin, async (req, res, next) => {
+  try {
+    const { productId } = req.params;
+    const { status, note } = req.body || {};
+    const validStatus = ['pending', 'shipped', 'done'];
+    if (!validStatus.includes(status)) return res.status(400).json({ ok: false, msg: '无效状态' });
+    await pool.query(
+      `UPDATE draws SET ship_status=$1, ship_note=$2 WHERE product_id=$3`,
+      [status, note || null, productId]);
+    res.json({ ok: true, msg: '已更新' });
+  } catch (e) { next(e); }
+});
+
 export default router;

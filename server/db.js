@@ -183,6 +183,8 @@ export async function initDB() {
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS free_balance BIGINT NOT NULL DEFAULT 0`).catch(() => {});
     await client.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS free_used INTEGER NOT NULL DEFAULT 0`).catch(() => {});
     await client.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS free_quota INTEGER NOT NULL DEFAULT 0`).catch(() => {});
+    await client.query(`ALTER TABLE draws ADD COLUMN IF NOT EXISTS ship_status TEXT NOT NULL DEFAULT 'pending'`).catch(() => {});
+    await client.query(`ALTER TABLE draws ADD COLUMN IF NOT EXISTS ship_note TEXT`).catch(() => {});
 
     // seed categories
     for (let i = 0; i < DEFAULT_CATEGORIES.length; i++) {

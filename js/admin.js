@@ -356,6 +356,63 @@ async function reviewSC(id, action) {
   if (r.ok) loadShowcases();
 }
 
+// ========== 中奖订单管理 ==========
+async function loadWins() {
+  const el = document.getElementById('wins-list');
+  try {
+    const r = await fetch('/api/admin/wins');
+    const d = await r.json();
+    if (!d.ok || !d.wins || !d.wins.length) { el.innerHTML = '<div class="empty">暂无中奖记录</div>'; return; }
+    let html = '<table class="orders-table"><tr><th>商品</th><th>中奖号</th><th>中奖用户</th><th>地址</th><th>状态</th><th>备注</th><th>操作</th></tr>';
+    d.wins.forEach(w => {
+      const addr = w.win_address ? (() => { try { const a = JSON.parse(w.win_address); return `${a.name} ${a.phone}<br>${a.address}`; } catch { return w.win_address; } })() : '<span style="color:#c00">未填写</span>';
+      const statusMap = { pending: '待发货', shipped: '已发货', done: '已完成' };
+      const statusCls = { pending: 'color:#e65100', shipped: 'color:#1565c0', done: 'color:#2e7d32' };
+      const st = w.ship_status || 'pending';
+      html += `<tr>
+        <td>${esc(w.sku||'')} ${esc(w.product_name||'')}</td>
+        <td><b>${w.win_number}</b></td>
+        <td>${esc(w.winner_account||'')} (${esc(w.winner_name||'')})</td>
+        <td style="font-size:12px">${addr}</td>
+        <td style="${statusCls[st]||''};font-weight:600">${statusMap[st]||st}</td>
+        <td style="font-size:12px">${esc(w.ship_note||'')}</td>
+        <td>
+          <select onchange="updateShip('${w.product_id}',this.value)" style="font-size:12px">
+            <option value="pending" ${st==='pending'?'selected':''}>待发货</option>
+            <option value="shipped" ${st==='shipped'?'selected':''}>已发货</option>
+            <option value="done" ${st==='done'?'selected':''}>已完成</option>
+          </select>
+          <a href="#" onclick="editShipNote('${w.product_id}');return false" style="font-size:12px;margin-left:4px">备注</a>
+        </td>
+      </tr>`;
+    });
+    el.innerHTML = html + '</table>';
+  } catch (e) { el.innerHTML = '<div class="empty">加载失败</div>'; }
+}
+
+async function updateShip(productId, status) {
+  const r = await fetch('/api/admin/wins/' + productId + '/ship', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status })
+  });
+  const d = await r.json();
+  toast(d.msg || (d.ok ? '已更新' : '更新失败'));
+}
+
+async function editShipNote(productId) {
+  const note = prompt('输入备注（如快递单号）：');
+  if (note === null) return;
+  const el = document.querySelector(`select[onchange*="${productId}"]`);
+  const status = el ? el.value : 'pending';
+  const r = await fetch('/api/admin/wins/' + productId + '/ship', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status, note })
+  });
+  const d = await r.json();
+  toast(d.msg || (d.ok ? '已更新' : '更新失败'));
+  if (d.ok) loadWins();
+}
+
 // ========== Init ==========
 onReady(() => {
   const u = Store.currentUser();
@@ -379,6 +436,8 @@ onReady(() => {
   loadUsers();
   // Showcase
   loadShowcases();
+  // Wins
+  loadWins();
   // Settings
   loadRules();
   renderCats();
