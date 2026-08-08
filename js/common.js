@@ -49,6 +49,8 @@ function renderTopbar(active) {
   if (lo) lo.onclick = async (e) => {
     e.preventDefault(); await Store.logout(); toast('已退出'); location.href = 'index.html';
   };
+
+  renderMobNav(active, u);
 }
 
 // 充值弹窗：填了 Stripe 测试密钥会跳转 Checkout，否则模拟到账
@@ -82,3 +84,20 @@ function toast(msg) {
 
 function pct(prod) { return Math.min(100, Math.round(prod.soldShares / prod.totalShares * 100)); }
 function param(name) { return new URLSearchParams(location.search).get(name); }
+
+function renderMobNav(active, u) {
+  let nav = document.getElementById('mob-nav');
+  if (!nav) {
+    nav = document.createElement('nav');
+    nav.id = 'mob-nav';
+    nav.className = 'mob-nav';
+    document.body.appendChild(nav);
+  }
+  nav.innerHTML = `
+    <a href="index.html" class="${active === 'home' ? 'active' : ''}">
+      <span class="nav-icon">🏠</span>首页</a>
+    <a href="orders.html" class="${active === 'orders' ? 'active' : ''}">
+      <span class="nav-icon">📋</span>记录</a>
+    <a href="${u ? 'profile.html' : 'login.html'}" class="${active === 'profile' ? 'active' : ''}">
+      <span class="nav-icon">👤</span>${u ? '我的' : '登录'}</a>`;
+}

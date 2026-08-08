@@ -310,7 +310,22 @@ tr:last-child td { border-bottom: none; }
   .detail { grid-template-columns: 1fr; }
   .detail .big-thumb { height: 200px; font-size: 96px; }
   .topbar nav { display: none; }
+  .topbar .mob-nav { display: flex; }
 }
+
+/* 移动端底部导航 */
+.mob-nav {
+  display: none; position: fixed; bottom: 0; left: 0; right: 0;
+  background: #fff; border-top: 1px solid var(--line); z-index: 60;
+  justify-content: space-around; padding: 8px 0 env(safe-area-inset-bottom, 8px);
+  box-shadow: 0 -2px 8px rgba(0,0,0,.06);
+}
+.mob-nav a {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  font-size: 11px; color: var(--muted); text-decoration: none; padding: 4px 12px;
+}
+.mob-nav a.active { color: var(--brand); font-weight: 600; }
+.mob-nav a .nav-icon { font-size: 20px; }
 
 /* 邀请 / 账户卡 */
 .invite-card {
@@ -510,3 +525,109 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
 .coin-choice-free { background: var(--gold); color: #fff; border: none; border-radius: 6px; cursor: pointer; }
 .coin-choice-free:hover { opacity: .9; }
 .coin-choice-cancel { font-size: 13px; color: var(--muted); }
+
+/* drand 信任横幅 */
+.trust-banner {
+  background: linear-gradient(90deg, #e8f5e9, #f1f8e9);
+  border-bottom: 1px solid #c8e6c9;
+  padding: 8px 20px;
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; color: #2e7d32;
+}
+.trust-banner .trust-icon { font-size: 16px; flex: none; }
+.trust-banner a { color: #1b5e20; font-weight: 600; }
+.trust-banner .trust-link {
+  margin-left: auto; white-space: nowrap; font-size: 12px;
+  padding: 3px 10px; background: rgba(46,125,50,.1); border-radius: 12px;
+}
+
+/* ===== 手机适配 ===== */
+@media (max-width: 600px) {
+  /* 顶栏精简 */
+  .topbar { padding: 10px 12px; gap: 8px; flex-wrap: wrap; }
+  .topbar .logo { font-size: 17px; }
+  .topbar .logo small { display: none; }
+  .topbar nav { display: none; }
+  .topbar .wallet { font-size: 12px; padding: 4px 10px; }
+
+  /* 信任横幅 */
+  .trust-banner { font-size: 11px; padding: 6px 12px; flex-wrap: wrap; gap: 6px; }
+  .trust-banner .trust-link { margin-left: 0; }
+
+  /* 跑马灯 */
+  .marquee { height: 34px; }
+  .marquee .label { font-size: 11px; padding: 0 10px; }
+  .marquee .item { font-size: 12px; }
+
+  /* 容器 */
+  .container { padding: 12px; }
+  .page-title { font-size: 17px; margin: 4px 0 10px; }
+
+  /* 首页布局 */
+  .home-layout { flex-direction: column; }
+  .left-col { width: 100%; position: static; margin: 0; order: 2; padding: 0 12px; }
+  .left-col .live-feed { max-height: 150px; border-radius: 8px; }
+  .home-layout .container { order: 1; }
+
+  /* 分类标签 */
+  .cat-tabs { gap: 6px; margin-bottom: 12px; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 6px; }
+  .cat-tab { padding: 5px 12px; font-size: 12px; white-space: nowrap; flex: none; }
+
+  /* 商品网格：两列 */
+  .grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .card .thumb { height: 110px; font-size: 48px; }
+  .card .body { padding: 10px; }
+  .card .name { font-size: 13px; height: 36px; }
+  .card .period { font-size: 11px; margin: 2px 0 6px; }
+  .card-buy-btn { font-size: 12px; padding: 6px 10px; margin-top: 8px; }
+  .progress { height: 5px; }
+  .progress-meta { font-size: 11px; margin-top: 4px; }
+
+  /* 详情页 */
+  .detail { grid-template-columns: 1fr; padding: 14px; gap: 14px; }
+  .detail .big-thumb { height: 200px; font-size: 80px; }
+  .detail h1 { font-size: 18px; }
+  .detail .stat-row { gap: 16px; margin: 12px 0; }
+  .detail .stat b { font-size: 17px; }
+  .gallery .g-main { height: 220px; }
+  .g-thumbs { gap: 6px; }
+  .g-thumb { width: 44px; height: 44px; }
+  .qty button { width: 34px; height: 34px; }
+  .qty input { width: 56px; height: 34px; font-size: 14px; }
+  .quick-pick span { padding: 3px 10px; font-size: 12px; }
+  .reveal-box { padding: 14px; margin: 12px 0; }
+  .reveal-box .num { font-size: 28px; }
+  .proof-box { padding: 10px 12px; }
+  .proof-row { font-size: 11px; }
+  .long-detail img { border-radius: 4px; }
+
+  /* 金币选择弹窗 */
+  .coin-choice-modal { width: 90vw; max-width: 320px; padding: 20px 16px; }
+
+  /* 认证卡 */
+  .auth-card { margin: 20px 12px; padding: 20px; }
+
+  /* 邀请/个人中心 */
+  .invite-card { padding: 14px; }
+  .invite-code { font-size: 18px; padding: 4px 12px; }
+  .invite-bal { flex-wrap: wrap; gap: 12px; }
+
+  /* 充值页 */
+  .pkg-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .pkg-card { padding: 14px 10px; }
+  .pkg-amount { font-size: 20px; }
+  .pay-methods { flex-direction: column; }
+
+  /* 表格 */
+  table { font-size: 12px; }
+  th, td { padding: 8px 10px; }
+
+  /* 晒单 */
+  .showcase-item .media { height: 120px; }
+
+  /* toast */
+  .toast { font-size: 13px; padding: 8px 16px; max-width: 85vw; }
+
+  /* 底部导航占位 */
+  body { padding-bottom: 70px; }
+}
