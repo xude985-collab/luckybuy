@@ -104,7 +104,7 @@ img { max-width: 100%; }
   }
 }
 
-/* 中奖跑马灯 */
+/* 幸运跑马灯 */
 .marquee {
   background: linear-gradient(90deg, #fff3e0, #ffe0b2);
   border-bottom: 1px solid #ffe0b2; overflow: hidden; white-space: nowrap;
@@ -235,7 +235,7 @@ img { max-width: 100%; }
 }
 .quick-pick span:hover { border-color: var(--brand); color: var(--brand); }
 
-/* 中奖公示 */
+/* 幸运公示 */
 .reveal-box {
   background: linear-gradient(135deg, #fff8e1, #ffecb3);
   border-radius: var(--radius); padding: 20px; text-align: center; margin: 16px 0;
@@ -349,7 +349,7 @@ tr:last-child td { border-bottom: none; }
 .invite-stat { font-size: 13px; color: var(--muted); }
 .invite-stat b { color: var(--ok); }
 
-/* 开奖中徽章 */
+/* 揭晓中徽章 */
 .badge.drawing { background: #e3f2fd; color: #1565c0; }
 
 /* 分类标签栏 */
@@ -377,7 +377,7 @@ tr:last-child td { border-bottom: none; }
 .card .sku { color: var(--muted); background: #f5f5f5; padding: 1px 8px; border-radius: 6px; }
 td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; border-radius: 6px; }
 
-/* 开奖凭据框 */
+/* 幸运凭据框 */
 .proof-box {
   margin-top: 14px; padding: 14px 16px;
   background: #f7f9fc; border: 1px solid #e3e8f0; border-radius: var(--radius);
@@ -526,7 +526,7 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
 .coin-choice-free:hover { opacity: .9; }
 .coin-choice-cancel { font-size: 13px; color: var(--muted); }
 
-/* 开奖区卡片 */
+/* 幸运区卡片 */
 .winner-card .winner-result {
   margin: 10px 0 0; padding: 10px; border-radius: 8px;
   background: linear-gradient(135deg, #fff8e1, #f1f8e9);
@@ -536,7 +536,7 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
 .winner-card .winner-name { font-size: 13px; color: var(--ok); }
 .winner-card .winner-name b { font-weight: 700; }
 
-/* 中奖庆祝弹窗 */
+/* 幸运庆祝弹窗 */
 .win-celebrate-mask {
   position: fixed; inset: 0; z-index: 10000;
   background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center;
@@ -608,7 +608,7 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   animation: num-pop .6s cubic-bezier(.34,1.56,.64,1);
 }
 
-/* 开奖结果舞台 */
+/* 幸运结果舞台 */
 .draw-result-stage {
   margin: 16px 0; padding: 24px; border-radius: var(--radius);
   background: linear-gradient(135deg, #fff8e1, #fff3e0);
@@ -625,7 +625,7 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   display: inline-block; border: 2px solid #ffcc80;
 }
 
-/* 中奖人卡片 */
+/* 幸运儿卡片 */
 .draw-winner-card {
   display: inline-block; padding: 16px 28px; border-radius: 12px;
   background: #fff; box-shadow: 0 4px 16px rgba(0,0,0,.08);
@@ -639,7 +639,7 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
 .draw-winner-tag { font-size: 18px; font-weight: 700; color: var(--ok); margin-bottom: 10px; }
 .draw-winner-status { font-size: 14px; color: var(--ok); }
 
-/* 未中选结果 */
+/* 未选中结果 */
 .my-draw-result {
   margin: 14px 0; padding: 14px; border-radius: var(--radius);
   background: #f5f5f5; color: #666; font-size: 14px; text-align: center;
@@ -750,13 +750,13 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   /* 底部导航占位 */
   body { padding-bottom: 70px; }
 
-  /* 开奖动画 */
+  /* 揭晓动画 */
   .drawing-stage { padding: 20px 14px; }
   .drawing-reel { font-size: 40px; }
   .drawing-reel-wrap { padding: 14px 24px; }
 }
 
-/* 开奖中 · 老虎机动画 */
+/* 揭晓中 · 老虎机动画 */
 .drawing-stage {
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
   border-radius: 16px; padding: 28px 20px; text-align: center; margin: 20px 0;
@@ -778,7 +778,7 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
 }
 .drawing-meta { font-size: 12px; color: #aaa; }
 
-/* 开奖号码弹出动画 */
+/* 幸运号码弹出动画 */
 @keyframes num-pop {
   0% { transform: scale(0.3); opacity: 0; }
   55% { transform: scale(1.25); opacity: 1; }
@@ -787,7 +787,7 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
 }
 .draw-result-num { animation: num-pop .8s cubic-bezier(.34,1.56,.64,1); }
 
-/* 未中选鼓励区 */
+/* 未选中鼓励区 */
 .draw-encourage {
   margin-top: 12px; padding: 14px; background: #fff; border-radius: 10px;
   border: 1px solid #e0e0e0; text-align: center; color: #555; font-size: 14px;

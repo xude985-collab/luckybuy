@@ -1,4 +1,4 @@
-/* 商品详情：买份额（需登录）+ 开奖公示 + 中奖填地址 */
+/* 商品详情：买份额（需登录）+ 幸运公示 + 幸运儿填地址 */
 const id = param('id');
 
 let _slotTimer = null;
@@ -39,7 +39,7 @@ function render() {
   if (drawing) {
     action = `
       <div class="drawing-stage">
-        <div class="drawing-header">🎲 正在开奖中</div>
+        <div class="drawing-header">🎲 正在揭晓幸运儿</div>
         <div class="drawing-reel-wrap">
           <div class="drawing-reel" id="slot-reel">—</div>
         </div>
@@ -70,23 +70,23 @@ function render() {
           </div>
         </div>`
       : `<div class="draw-visit-hint">
-          本期已圆满开奖！想成为下一位幸运儿？参与还在进行的商品，人人都有机会！
+          本期已圆满揭晓！想成为下一位幸运儿？参与还在进行的商品，人人都有机会！
           <div><a href="index.html" class="btn" style="margin-top:12px;display:inline-block;font-size:13px">去参与夺宝 →</a></div>
         </div>`;
 
     const proofBlock = p.proof ? `
       <div class="proof-box">
-        <div class="proof-title">🔒 开奖凭据（可独立验证）</div>
+        <div class="proof-title">🔒 幸运凭据（可独立验证）</div>
         <div class="proof-row">随机源：drand 公共信标 · 第 <b>${p.proof.round}</b> 轮</div>
         <div class="proof-row">randomness：<code>${p.proof.randomness}</code></div>
         <div class="proof-row">公式：winNumber = int(HMAC-SHA256(randomness, "${p.period}")) mod ${p.totalShares} + 1</div>
-        <button class="btn ghost" style="margin-top:8px" onclick="verifyDraw('${p.id}')">验证开奖结果</button>
+        <button class="btn ghost" style="margin-top:8px" onclick="verifyDraw('${p.id}')">验证幸运结果</button>
         <div id="verifyResult" class="proof-row" style="margin-top:6px"></div>
       </div>` : '';
 
     action = `
       <div class="draw-result-stage">
-        <div class="draw-result-header">🎯 开奖结果</div>
+        <div class="draw-result-header">🎯 幸运结果</div>
         <div class="draw-result-number">
           <div class="draw-result-label">幸运号码</div>
           <div class="draw-result-num">${p.winNumber}</div>
@@ -139,8 +139,8 @@ function render() {
         <code class="sku">编号 ${p.sku || '—'}</code>
       </div>
       <div class="period">${p.period} ·
-        ${done ? '<span class="badge done">已开奖</span>'
-               : drawing ? '<span class="badge drawing">开奖中</span>'
+        ${done ? '<span class="badge done">已揭晓</span>'
+               : drawing ? '<span class="badge drawing">揭晓中</span>'
                : '<span class="badge">进行中</span>'}
         · 单价 <b>$${p.price}</b> / 份</div>
       <div class="stat-row">
@@ -149,7 +149,7 @@ function render() {
         <div class="stat"><b>${remain}</b><span>剩余</span></div>
       </div>
       <div class="progress"><i style="width:${percent}%"></i></div>
-      <div class="progress-meta"><span>完成度 ${percent}%（满额即开奖）</span></div>
+      <div class="progress-meta"><span>完成度 ${percent}%（满额即揭晓）</span></div>
       ${action}
       <p class="desc">${p.desc || ''}</p>
       ${specsHtml(p)}

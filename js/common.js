@@ -32,7 +32,7 @@ function renderTopbar(active) {
     <div class="logo">Lucky&nbsp;Buy <small>幸运购</small></div>
     <nav>
       <a href="index.html" class="${active === 'home' ? 'active' : ''}">全部商品</a>
-      <a href="winners.html" class="${active === 'winners' ? 'active' : ''}">开奖区</a>
+      <a href="winners.html" class="${active === 'winners' ? 'active' : ''}">幸运区</a>
       <a href="orders.html" class="${active === 'orders' ? 'active' : ''}">我的记录</a>
       ${u ? `<a href="profile.html" class="${active === 'profile' ? 'active' : ''}">个人中心</a>` : ''}
       ${isAdmin ? `<a href="admin.html" class="${active === 'admin' ? 'active' : ''}">后台</a>` : ''}
@@ -100,7 +100,7 @@ function renderMobNav(active, u) {
     <a href="index.html" class="${active === 'home' ? 'active' : ''}">
       <span class="nav-icon">🏠</span>首页</a>
     <a href="winners.html" class="${active === 'winners' ? 'active' : ''}">
-      <span class="nav-icon">🏆</span>开奖区</a>
+      <span class="nav-icon">🏆</span>幸运区</a>
     <a href="orders.html" class="${active === 'orders' ? 'active' : ''}">
       <span class="nav-icon">📋</span>记录</a>
     <a href="${u ? 'profile.html' : 'login.html'}" class="${active === 'profile' ? 'active' : ''}">
@@ -127,7 +127,7 @@ function showWinCelebration(p) {
     <div class="win-celebrate">
       <div class="win-confetti"></div>
       <div class="win-trophy">🏆</div>
-      <div class="win-title">恭喜中奖！</div>
+      <div class="win-title">恭喜成为幸运儿！</div>
       <div class="win-product">${p.img || '🎁'} ${p.name}</div>
       <div class="win-lucky">幸运号码 <b>${p.winNumber}</b></div>
       <div class="win-msg">请填写收货信息，我们将尽快安排发货</div>

@@ -31,7 +31,7 @@ router.post('/submit', async (req, res, next) => {
 
     const { rows: wins } = await pool.query(
       `SELECT 1 FROM draws WHERE product_id=$1 AND winner_user_id=$2`, [productId, req.user.id]);
-    if (!wins.length) return res.status(403).json({ ok: false, msg: '只有中奖者才能晒单' });
+    if (!wins.length) return res.status(403).json({ ok: false, msg: '只有幸运儿才能晒单' });
 
     const { rows: dup } = await pool.query(
       `SELECT 1 FROM showcases WHERE user_id=$1 AND product_id=$2`, [req.user.id, productId]);

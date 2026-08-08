@@ -97,7 +97,7 @@ router.post('/products', requireAdmin, async (req, res, next) => {
       const { rows: cur } = await pool.query(`SELECT * FROM products WHERE id=$1`, [b.id]);
       if (!cur.length) return res.status(404).json({ ok: false, msg: '商品不存在' });
       if (cur[0].status !== 'active' && (totalShares !== cur[0].total_shares || pricePerShare !== cur[0].price_per_share))
-        return res.status(400).json({ ok: false, msg: '开奖中/已结束的商品不能改价格或份数' });
+        return res.status(400).json({ ok: false, msg: '揭晓中/已结束的商品不能改价格或份数' });
       await pool.query(
         `UPDATE products SET name=$1,category=$2,emoji=$3,price_per_share=$4,total_shares=$5,
          free_quota=$6,"desc"=$7,gallery=$8,specs=$9,source_url=$10 WHERE id=$11`,

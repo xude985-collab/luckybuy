@@ -54,8 +54,8 @@ function cardHtml(p) {
   const remain = p.totalShares - p.soldShares;
   const done = p.status === 'revealed';
   const drawing = p.status === 'drawing';
-  const badge = done ? '<span class="badge done">已开奖</span>'
-    : drawing ? '<span class="badge drawing">开奖中</span>'
+  const badge = done ? '<span class="badge done">已揭晓</span>'
+    : drawing ? '<span class="badge drawing">揭晓中</span>'
     : '<span class="badge">进行中</span>';
   // 封面:优先用真实商品图(gallery第一张),否则显示emoji
   const cover = (p.gallery && p.gallery.length && p.gallery[0].url)
@@ -113,7 +113,7 @@ async function renderShowcase() {
   if (!items.length) {
     wrap.innerHTML = `
       <div class="page-title">🎬 幸运晒单</div>
-      <div class="empty">开奖后，幸运儿的收货照片和视频会展示在这里。</div>`;
+      <div class="empty">揭晓后，幸运儿的收货照片和视频会展示在这里。</div>`;
     return;
   }
   const cards = items.map(s => {

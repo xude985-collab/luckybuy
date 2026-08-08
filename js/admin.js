@@ -62,7 +62,7 @@ function renderProductList(list) {
   list.forEach(p => {
     const sold = p.soldShares || 0;
     const pct = p.totalShares ? Math.round(sold / p.totalShares * 100) : 0;
-    const state = p.status === 'revealed' ? '已开奖' : p.status === 'drawing' ? '开奖中' : '进行中';
+    const state = p.status === 'revealed' ? '已揭晓' : p.status === 'drawing' ? '揭晓中' : '进行中';
     html += `<tr>
       <td>${esc(p.sku||'—')}</td>
       <td>${p.img||''} ${esc(p.name)}</td>

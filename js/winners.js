@@ -1,4 +1,4 @@
-/* 开奖区：展示所有已开奖商品 */
+/* 幸运区：展示所有已揭晓商品 */
 
 function winnerCardHtml(p) {
   const cover = (p.gallery && p.gallery.length && p.gallery[0].url)
@@ -12,7 +12,7 @@ function winnerCardHtml(p) {
         <div class="name">${p.name}</div>
         <div class="winner-result">
           <div class="winner-number">🎯 幸运号 <b>${p.winNumber ?? '—'}</b></div>
-          <div class="winner-name">🎉 得主：<b>${p.winnerName || '暂无'}</b></div>
+          <div class="winner-name">🎉 幸运儿：<b>${p.winnerName || '暂无'}</b></div>
         </div>
         <button class="btn ghost" style="width:100%;margin-top:10px;font-size:13px">查看详情 & 验证</button>
       </div>
@@ -23,7 +23,7 @@ function renderWinners() {
   const list = Store.listProducts().filter(p => p.status === 'revealed');
   const grid = document.getElementById('winners-grid');
   if (!list.length) {
-    grid.innerHTML = '<div class="empty">暂无已开奖商品，敬请期待！</div>';
+    grid.innerHTML = '<div class="empty">暂无已揭晓商品，敬请期待！</div>';
     return;
   }
   grid.innerHTML = list.map(winnerCardHtml).join('');

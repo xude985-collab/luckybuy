@@ -1,4 +1,4 @@
-/* 商品 / 类别 / 详情 / 中奖动态（公开只读接口） */
+/* 商品 / 类别 / 详情 / 幸运动态（公开只读接口） */
 import express from 'express';
 import pool from '../db.js';
 import { attachUser } from '../lib/helpers.js';

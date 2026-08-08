@@ -36,17 +36,17 @@ async function resolvePendingDraws() {
         );
         if (updated.length) {
           await client.query(`UPDATE products SET status='done' WHERE id=$1`, [d.product_id]);
-          console.log(`[draw] ${d.product_id} 开奖完成 → 幸运号 ${winNumber}，得主 ${winner?.user_id || '无'}`);
+          console.log(`[draw] ${d.product_id} 揭晓完成 → 幸运号 ${winNumber}，得主 ${winner?.user_id || '无'}`);
         }
       });
     } catch (e) {
-      console.error(`[draw] ${d.product_id} 开奖异常:`, e.message);
+      console.error(`[draw] ${d.product_id} 揭晓异常:`, e.message);
     }
   }
 }
 
 export function startDrawWorker() {
-  console.log('[draw] 开奖 worker 已启动（每 15 秒轮询）');
+  console.log('[draw] 揭晓 worker 已启动（每 15 秒轮询）');
   resolvePendingDraws().catch(e => console.error('[draw] 初始轮询失败:', e.message));
   setInterval(
     () => resolvePendingDraws().catch(e => console.error('[draw] 轮询失败:', e.message)),

@@ -1,4 +1,4 @@
-/* 钱包 / 购买 / 开奖 / 订单 */
+/* 钱包 / 购买 / 揭晓 / 订单 */
 import express from 'express';
 import pool from '../db.js';
 import {
@@ -301,9 +301,9 @@ router.post('/address', requireAuth, async (req, res, next) => {
     const b = req.body || {};
     const { rows: dr } = await pool.query(`SELECT * FROM draws WHERE product_id=$1`, [b.productId]);
     const d = dr[0];
-    if (!d || !d.winner_user_id) return res.status(400).json({ ok: false, msg: '尚未开奖' });
+    if (!d || !d.winner_user_id) return res.status(400).json({ ok: false, msg: '尚未揭晓' });
     if (d.winner_user_id !== req.user.id)
-      return res.status(403).json({ ok: false, msg: '非中奖本人' });
+      return res.status(403).json({ ok: false, msg: '非幸运儿本人' });
     if (!b.name || !b.address)
       return res.status(400).json({ ok: false, msg: '收件人和地址为必填' });
 
@@ -324,12 +324,12 @@ router.post('/draw/:productId', requireAuth, async (req, res, next) => {
     const pid = req.params.productId;
     const { rows: dr } = await pool.query(`SELECT * FROM draws WHERE product_id=$1`, [pid]);
     const d = dr[0];
-    if (!d) return res.status(404).json({ ok: false, msg: '该商品未进入开奖' });
+    if (!d) return res.status(404).json({ ok: false, msg: '该商品未进入揭晓' });
     if (d.drawn_at) return res.json({ ok: true, done: true, draw: publicDraw(d) });
 
     const { getRound, computeWinner, roundTime: rt } = await import('../lib/drand.js');
     if (Date.now() < rt(d.round))
-      return res.json({ ok: true, done: false, msg: '开奖轮次尚未产生，请稍候', drawTime: rt(d.round) });
+      return res.json({ ok: true, done: false, msg: '幸运轮次尚未产生，请稍候', drawTime: rt(d.round) });
 
     const rd = await getRound(d.round);
     if (!rd) return res.json({ ok: true, done: false, msg: '随机数生成中，请稍候' });

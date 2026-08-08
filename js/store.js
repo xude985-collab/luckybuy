@@ -351,7 +351,7 @@ const Store = (() => {
   // ---- 开奖验证 / 续开 ----
   async function verifyProof(pid) {
     const p = getProduct(pid);
-    if (!p || !p.proof) return { ok: false, msg: '暂无开奖凭据' };
+    if (!p || !p.proof) return { ok: false, msg: '暂无幸运凭据' };
     // 用 published randomness 在前端独立复算，与后端 draws 记录比对
     try {
       const enc = new TextEncoder();
