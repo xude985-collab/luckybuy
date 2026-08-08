@@ -311,6 +311,11 @@ tr:last-child td { border-bottom: none; }
   .detail .big-thumb { height: 200px; font-size: 96px; }
   .topbar nav { display: none; }
   .mob-nav { display: flex; }
+  body { padding-bottom: 70px; }
+  .topbar .wallet { font-size: 12px; padding: 4px 10px; }
+  .topbar .wallet b { font-size: 13px; }
+  .trust-banner { font-size: 12px; padding: 6px 14px; flex-wrap: wrap; gap: 6px; }
+  .trust-banner .trust-link { margin-left: 0; font-size: 11px; }
 }
 
 /* 移动端底部导航 */
@@ -799,4 +804,56 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   margin: 14px 0; padding: 18px; border-radius: var(--radius);
   background: linear-gradient(135deg, #fff8e1, #fff3e0);
   border: 1px solid #ffe082; text-align: center; font-size: 14px; color: #8a5a00;
+}
+
+/* ===== 手机端补充 ===== */
+@media (max-width: 480px) {
+  /* 顶栏极简：只留 logo + 简短余额 */
+  .topbar { padding: 8px 12px; gap: 6px; }
+  .topbar .logo { font-size: 16px; }
+  .topbar .wallet {
+    font-size: 11px; padding: 3px 8px;
+  }
+  .topbar .wallet-user { display: none; }
+  .topbar .checkin-link { display: none; }
+
+  /* 信任横幅超简 */
+  .trust-banner { font-size: 10px; padding: 5px 10px; }
+  .trust-banner .trust-link { display: none; }
+
+  /* 个人中心签到卡 */
+  .checkin-card h2 { font-size: 16px !important; }
+  .checkin-card .btn { font-size: 14px !important; padding: 10px 18px !important; }
+
+  /* 幸运区 / 首页卡片文字 */
+  .winner-card .winner-result { padding: 8px; }
+  .winner-card .winner-number { font-size: 12px; }
+  .winner-card .winner-name { font-size: 11px; }
+
+  /* 幸运号码 chip 区 */
+  .my-numbers-box { padding: 10px; }
+  .my-numbers-title { font-size: 13px; }
+  .num-chip { padding: 3px 7px; font-size: 11px; }
+
+  /* 揭晓动画 */
+  .drawing-stage { padding: 16px 10px; margin: 12px 0; }
+  .drawing-header { font-size: 16px; margin-bottom: 14px; }
+  .drawing-reel { font-size: 36px; }
+  .drawing-reel-wrap { padding: 12px 20px; }
+
+  /* 幸运结果 */
+  .draw-result-stage { padding: 16px; }
+  .draw-result-header { font-size: 16px; }
+  .draw-result-num { font-size: 30px; padding: 6px 18px; }
+  .draw-winner-card { padding: 12px 18px; }
+  .draw-winner-name { font-size: 17px; }
+
+  /* 免费金币提示 */
+  .free-quota-tip { font-size: 11px; padding: 8px 10px; }
+
+  /* 凭据框 */
+  .proof-box { padding: 8px 10px; }
+  .proof-title { font-size: 13px; }
+  .proof-row { font-size: 10px; }
+  .proof-row code { font-size: 9px; }
 }

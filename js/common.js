@@ -19,11 +19,12 @@ function renderTopbar(active) {
 
   const right = u ? `
     <div class="wallet">
-      充值金币：<b>${u.paidCoins||0}</b> 免费金币：<b>${u.freeCoins||0}</b>
+      <span class="wallet-label">💰</span><b>${u.paidCoins||0}</b>
+      <span class="wallet-label"> 🪙</span><b>${u.freeCoins||0}</b>
       &nbsp;·&nbsp; <a href="#" id="recharge">充值</a>
-      ${Store.canCheckin() ? '&nbsp;·&nbsp; <a href="#" id="checkin">签到领币</a>' : ''}
+      ${Store.canCheckin() ? '&nbsp;·&nbsp; <a href="#" id="checkin" class="checkin-link">签到</a>' : ''}
     </div>
-    <div class="wallet">👤 ${u.name}
+    <div class="wallet wallet-user">👤 ${u.name}
       &nbsp;·&nbsp; <a href="#" id="logout">退出</a></div>`
     : `<a href="login.html" class="wallet">登录 / 注册</a>`;
 
