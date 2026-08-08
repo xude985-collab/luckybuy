@@ -83,6 +83,8 @@ function cardHtml(p) {
     </div>`;
 }
 let activeCat = 'all';
+let currentPage = 1;
+const PAGE_SIZE = window.innerWidth <= 600 ? 8 : 20;
 
 function renderCatTabs() {
   const tabs = [{ key: 'all', name: '全部', icon: '🏷️' }].concat(Store.listCategories());
@@ -93,6 +95,7 @@ function renderCatTabs() {
 
 function selectCat(key) {
   activeCat = key;
+  currentPage = 1;
   renderCatTabs();
   renderGrid();
 }
@@ -101,9 +104,43 @@ function renderGrid() {
   let list = Store.listProducts().filter(p => p.status !== 'revealed');
   if (activeCat !== 'all') list = list.filter(p => (p.category || 'other') === activeCat);
   const grid = document.getElementById('grid');
-  grid.innerHTML = list.length
-    ? list.map(cardHtml).join('')
-    : '<div class="empty">该类别下暂无商品。</div>';
+  const total = list.length;
+  const totalPages = Math.ceil(total / PAGE_SIZE) || 1;
+  if (currentPage > totalPages) currentPage = totalPages;
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const pageItems = list.slice(start, start + PAGE_SIZE);
+
+  if (!total) {
+    grid.innerHTML = '<div class="empty">该类别下暂无商品。</div>';
+    removePagination();
+    return;
+  }
+  grid.innerHTML = pageItems.map(cardHtml).join('');
+  renderPagination(totalPages);
+}
+
+function renderPagination(totalPages) {
+  let pg = document.getElementById('pagination');
+  if (totalPages <= 1) { removePagination(); return; }
+  if (!pg) {
+    pg = document.createElement('div');
+    pg.id = 'pagination';
+    pg.className = 'pagination';
+    document.getElementById('grid').after(pg);
+  }
+  pg.innerHTML = `
+    <button onclick="goPage(${currentPage - 1})" ${currentPage <= 1 ? 'disabled' : ''}>上一页</button>
+    <span class="page-info">${currentPage} / ${totalPages}</span>
+    <button onclick="goPage(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled' : ''}>下一页</button>`;
+}
+function removePagination() {
+  const pg = document.getElementById('pagination');
+  if (pg) pg.remove();
+}
+function goPage(n) {
+  currentPage = n;
+  renderGrid();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 /* ---- 晒单展示区 ---- */

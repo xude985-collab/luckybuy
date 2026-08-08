@@ -156,6 +156,20 @@ img { max-width: 100%; }
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
 }
 
+/* 分页 */
+.pagination {
+  display: flex; justify-content: center; align-items: center; gap: 12px;
+  margin: 20px 0; padding: 10px 0;
+}
+.pagination button {
+  padding: 8px 16px; border: 1px solid var(--line); border-radius: 20px;
+  background: var(--card); font-size: 14px; cursor: pointer; color: var(--text);
+  transition: all .15s;
+}
+.pagination button:hover:not(:disabled) { border-color: var(--brand); color: var(--brand); }
+.pagination button:disabled { opacity: .4; cursor: not-allowed; }
+.pagination .page-info { font-size: 13px; color: var(--muted); }
+
 /* 商品卡 */
 .card {
   background: var(--card); border-radius: var(--radius);
@@ -311,6 +325,7 @@ tr:last-child td { border-bottom: none; }
   .detail { grid-template-columns: 1fr; }
   .detail .big-thumb { height: 200px; font-size: 96px; }
   .topbar nav { display: none; }
+  .topbar .wallet-user { display: none; }
   .mob-nav { display: flex; }
   body { padding-bottom: 70px; }
   .topbar .wallet { font-size: 12px; padding: 4px 10px; }
@@ -669,11 +684,13 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
 /* ===== 手机适配 ===== */
 @media (max-width: 600px) {
   /* 顶栏精简 */
-  .topbar { padding: 10px 12px; gap: 8px; flex-wrap: wrap; }
-  .topbar .logo { font-size: 17px; }
+  .topbar { padding: 10px 12px; gap: 8px; flex-wrap: nowrap; }
+  .topbar .logo { font-size: 17px; flex: none; }
   .topbar .logo small { display: none; }
   .topbar nav { display: none; }
-  .topbar .wallet { font-size: 12px; padding: 4px 10px; }
+  .topbar .spacer { flex: 1; min-width: 0; }
+  .topbar .wallet { font-size: 12px; padding: 4px 10px; flex: none; white-space: nowrap; }
+  .topbar .wallet-user { display: none; }
 
   /* 信任横幅 */
   .trust-banner { font-size: 11px; padding: 6px 12px; flex-wrap: wrap; gap: 6px; }
@@ -688,11 +705,9 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   .container { padding: 12px; }
   .page-title { font-size: 17px; margin: 4px 0 10px; }
 
-  /* 首页布局 */
+  /* 首页布局：隐藏抢购动态和晒单 */
   .home-layout { flex-direction: column; }
-  .left-col { width: 100%; position: static; margin: 0; order: 2; padding: 0 12px; }
-  .left-col .live-feed { max-height: 150px; border-radius: 8px; }
-  .home-layout .container { order: 1; }
+  .left-col { display: none; }
 
   /* 分类标签 */
   .cat-tabs { gap: 6px; margin-bottom: 12px; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 6px; }
@@ -763,6 +778,10 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   .drawing-stage { padding: 20px 14px; }
   .drawing-reel { font-size: 40px; }
   .drawing-reel-wrap { padding: 14px 24px; }
+
+  /* 分页 */
+  .pagination { margin: 16px 0; }
+  .pagination button { padding: 8px 14px; font-size: 13px; }
 }
 
 /* 揭晓中 · 老虎机动画 */
