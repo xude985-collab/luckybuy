@@ -25,12 +25,10 @@ function render() {
   } else if (done) {
     let winBlock = `<div>得主：${p.winnerName || '暂无幸运儿'}</div>`;
     if (iWon) {
-      const order = Store.myOrders().find(o => o.id === p.winnerOrderId);
-      const hasAddr = order && order.address;
       winBlock = `<div class="win-tag" style="font-size:18px">🎉 恭喜，你是本期幸运儿！</div>` +
-        (hasAddr
+        (p.hasAddress
           ? `<div style="margin-top:8px">收货地址已提交 ✓</div>`
-          : `<button class="btn" style="margin-top:10px" onclick="fillAddress('${p.winnerOrderId}')">填写收货地址</button>`);
+          : `<button class="btn" style="margin-top:10px" onclick="fillAddress('${p.id}')">填写收货地址</button>`);
     }
     const proofBlock = p.proof ? `
       <div class="proof-box">
@@ -223,13 +221,40 @@ function showCoinChoice(u, p) {
   });
 }
 
-async function fillAddress(orderId) {
-  const name = prompt('收件人姓名：'); if (!name) return;
-  const phone = prompt('联系电话：'); if (!phone) return;
-  const addr = prompt('详细收货地址：'); if (!addr) return;
-  const r = await Store.saveAddress(orderId, { name, phone, addr });
-  toast(r.msg);
-  render();
+async function fillAddress(productId) {
+  return new Promise((resolve) => {
+    const mask = document.createElement('div');
+    mask.className = 'coin-choice-mask';
+    mask.innerHTML = `
+      <div class="coin-choice-modal" style="max-width:380px">
+        <div class="coin-choice-title">🎉 填写收货信息</div>
+        <div style="margin:12px 0;font-size:13px;color:#666">请填写收货地址，我们将尽快安排发货</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <input id="addr-name" placeholder="收件人姓名" style="padding:10px;border:1px solid #ddd;border-radius:6px">
+          <input id="addr-phone" placeholder="联系电话" style="padding:10px;border:1px solid #ddd;border-radius:6px">
+          <input id="addr-country" placeholder="国家/地区（可选）" style="padding:10px;border:1px solid #ddd;border-radius:6px">
+          <textarea id="addr-detail" placeholder="详细收货地址" rows="3" style="padding:10px;border:1px solid #ddd;border-radius:6px;resize:none"></textarea>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:10px">
+          <button class="btn" id="addr-submit" style="flex:1">提交</button>
+          <button class="btn ghost" id="addr-cancel" style="flex:1">取消</button>
+        </div>
+      </div>`;
+    document.body.appendChild(mask);
+    mask.querySelector('#addr-cancel').onclick = () => { mask.remove(); resolve(); };
+    mask.querySelector('#addr-submit').onclick = async () => {
+      const name = mask.querySelector('#addr-name').value.trim();
+      const phone = mask.querySelector('#addr-phone').value.trim();
+      const address = mask.querySelector('#addr-detail').value.trim();
+      const country = mask.querySelector('#addr-country').value.trim();
+      if (!name || !address) { toast('请填写收件人和地址'); return; }
+      const r = await Store.saveAddress(productId, { name, phone, address, country });
+      toast(r.msg || (r.ok ? '已提交' : '提交失败'));
+      mask.remove();
+      if (r.ok) { await Store.refreshProducts(); render(); }
+      resolve();
+    };
+  });
 }
 
 async function verifyDraw(pid) {

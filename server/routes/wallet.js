@@ -304,8 +304,8 @@ router.post('/address', requireAuth, async (req, res, next) => {
     if (!d || !d.winner_user_id) return res.status(400).json({ ok: false, msg: '尚未开奖' });
     if (d.winner_user_id !== req.user.id)
       return res.status(403).json({ ok: false, msg: '非中奖本人' });
-    if (!b.name || !b.address || !b.country)
-      return res.status(400).json({ ok: false, msg: '收件人、国家、地址为必填' });
+    if (!b.name || !b.address)
+      return res.status(400).json({ ok: false, msg: '收件人和地址为必填' });
 
     const addr = {
       name: b.name, phone: b.phone || '', country: b.country,

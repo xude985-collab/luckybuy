@@ -10,7 +10,7 @@ function safeJSON(s, d) { try { return s ? JSON.parse(s) : d; } catch { return d
 
 function formatProduct(p) {
   if (!p) return null;
-  return {
+  const out = {
     id: p.id, sku: p.sku, name: p.name, category: p.category, emoji: p.emoji,
     pricePerShare: p.price_per_share, totalShares: p.total_shares,
     freeQuota: p.free_quota, freeUsed: Number(p.free_used || 0),
@@ -21,6 +21,18 @@ function formatProduct(p) {
     status: p.status, createdAt: p.created_at,
     sold: Number(p.sold || 0),
   };
+  if (p.draw_round != null) {
+    out.draw = {
+      round: p.draw_round,
+      win_number: p.win_number,
+      winner_user_id: p.winner_user_id,
+      winner_name: p.winner_name || null,
+      randomness: p.randomness,
+      signature: p.signature,
+      win_address: p.win_address ? true : false,
+    };
+  }
+  return out;
 }
 
 // 类别列表
@@ -36,9 +48,14 @@ router.get('/products', async (req, res, next) => {
   try {
     const cat = req.query.category;
     let rows;
-    const base = `SELECT p.*, COALESCE(s.total,0) AS sold FROM products p
-         LEFT JOIN (SELECT product_id, SUM(shares) AS total FROM orders GROUP BY product_id) s
-           ON s.product_id=p.id`;
+    const base = `SELECT p.*, COALESCE(s.total,0) AS sold,
+         d.round AS draw_round, d.win_number, d.winner_user_id, d.randomness, d.signature, d.win_address,
+         wu.name AS winner_name
+       FROM products p
+       LEFT JOIN (SELECT product_id, SUM(shares) AS total FROM orders GROUP BY product_id) s
+         ON s.product_id=p.id
+       LEFT JOIN draws d ON d.product_id=p.id
+       LEFT JOIN users wu ON wu.id=d.winner_user_id`;
     if (cat) {
       const r = await pool.query(base + ` WHERE p.category=$1 ORDER BY p.created_at DESC`, [cat]);
       rows = r.rows;
@@ -54,15 +71,19 @@ router.get('/products', async (req, res, next) => {
 router.get('/products/:id', async (req, res, next) => {
   try {
     const { rows: pr } = await pool.query(
-      `SELECT p.*, COALESCE(s.total,0) AS sold FROM products p
+      `SELECT p.*, COALESCE(s.total,0) AS sold,
+              d.round AS draw_round, d.win_number, d.winner_user_id, d.randomness, d.signature, d.win_address,
+              wu.name AS winner_name
+       FROM products p
        LEFT JOIN (SELECT product_id, SUM(shares) AS total FROM orders GROUP BY product_id) s
          ON s.product_id=p.id
+       LEFT JOIN draws d ON d.product_id=p.id
+       LEFT JOIN users wu ON wu.id=d.winner_user_id
        WHERE p.id=$1`, [req.params.id]);
     const p = pr[0];
     if (!p) return res.status(404).json({ ok: false, msg: '商品不存在' });
-    const { rows: dr } = await pool.query(
-      `SELECT round,randomness,signature,win_number,winner_user_id,drawn_at FROM draws WHERE product_id=$1`, [p.id]);
-    res.json({ ok: true, product: formatProduct(p), draw: dr[0] || null });
+    const product = formatProduct(p);
+    res.json({ ok: true, product, draw: product.draw || null });
   } catch (e) { next(e); }
 });
 

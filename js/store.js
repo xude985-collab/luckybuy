@@ -68,6 +68,8 @@ const Store = (() => {
       out.drandRound = d.round;
       out.winNumber = d.win_number;
       out.winnerUserId = d.winner_user_id;
+      out.winnerName = d.winner_name || null;
+      out.hasAddress = !!d.win_address;
       if (d.randomness) {
         out.proof = { round: d.round, randomness: d.randomness, signature: d.signature };
       }
@@ -259,10 +261,11 @@ const Store = (() => {
   }
 
   // ---- 幸运儿填地址 ----
-  async function saveAddress(orderId, addr) {
+  async function saveAddress(productId, addr) {
     const r = await post('/wallet/address', {
-      orderId,
-      name: addr.name, phone: addr.phone, address: addr.addr,
+      productId,
+      name: addr.name, phone: addr.phone, address: addr.address,
+      country: addr.country || '',
     });
     if (r.ok) await refreshOrders();
     return r;
