@@ -153,9 +153,9 @@ async function save() {
   if (r.ok) { cancelEdit(); loadProducts(); loadDashboard(); }
 }
 
-async function importFromAmazon() {
+async function importProduct() {
   const url = v('f-source');
-  if (!url) { toast('请先粘贴亚马逊商品链接'); return; }
+  if (!url) { toast('请先粘贴商品链接'); return; }
   const btn = document.getElementById('amz-btn');
   btn.disabled = true; btn.textContent = '导入中…';
   try {
@@ -342,6 +342,38 @@ async function reviewSC(id, action) {
   if (r.ok) loadShowcases();
 }
 
+// ========== Saleyee Cookie ==========
+async function loadSyCookie() {
+  try {
+    const r = await fetch('/api/admin/saleyee-cookie');
+    const d = await r.json();
+    const el = document.getElementById('sy-cookie-status');
+    if (d.ok && d.hasCookie) {
+      el.innerHTML = `<span style="color:var(--ok)">✓ 已配置</span> <small style="color:#888">${d.preview}</small>`;
+    } else {
+      el.innerHTML = '<span style="color:#c00">未配置Cookie，导入赛盈商品前请先设置</span>';
+    }
+  } catch (e) {}
+}
+
+async function saveSyCookie() {
+  const cookie = document.getElementById('sy-cookie').value.trim();
+  if (!cookie) { toast('请粘贴Cookie内容'); return; }
+  try {
+    const r = await fetch('/api/admin/saleyee-cookie', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cookie }),
+    });
+    const d = await r.json();
+    toast(d.msg || (d.ok ? '保存成功' : '保存失败'));
+    if (d.ok) {
+      document.getElementById('sy-cookie').value = '';
+      loadSyCookie();
+    }
+  } catch (e) { toast('保存失败'); }
+}
+
 // ========== Init ==========
 onReady(() => {
   const u = Store.currentUser();
@@ -369,6 +401,7 @@ onReady(() => {
   loadRules();
   renderCats();
   loadPkgs();
+  loadSyCookie();
 });
 
 

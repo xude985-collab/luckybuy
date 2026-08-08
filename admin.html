@@ -68,11 +68,12 @@
           <label>商品描述</label>
           <textarea id="f-desc" rows="3" placeholder="商品说明、揭晓规则等"></textarea>
           <div class="amz-import">
-            <label>亚马逊来源链接（选填）</label>
+            <label>商品来源链接（赛盈 / 亚马逊）</label>
             <div class="amz-row">
-              <input id="f-source" placeholder="https://www.amazon.com/dp/XXXXXXXXXX">
-              <button type="button" class="btn ghost" id="amz-btn" onclick="importFromAmazon()">自动导入</button>
+              <input id="f-source" placeholder="https://www.saleyee.com/item/xxx.html 或 amazon 链接">
+              <button type="button" class="btn ghost" id="amz-btn" onclick="importProduct()">自动导入</button>
             </div>
+            <div class="amz-hint">粘贴赛盈或亚马逊商品链接，自动获取名称、图片、规格</div>
           </div>
           <label>详情图片 / 视频（每行一个 URL）</label>
           <textarea id="f-gallery" rows="4" placeholder="https://.../main.jpg&#10;https://.../detail1.jpg"></textarea>
@@ -124,6 +125,13 @@
           <label>邀请新用户（邀请人）</label><input id="r-inviter" type="number" min="0">
         </div>
         <button class="btn" style="margin-top:12px" onclick="saveRules()">保存规则</button>
+      </div>
+      <div class="settings-section">
+        <h3>赛盈分销平台对接</h3>
+        <p style="font-size:13px;color:#888;margin:0 0 8px">登录赛盈后台后，从浏览器开发者工具(F12)复制Cookie粘贴到这里，用于自动导入商品</p>
+        <div id="sy-cookie-status" style="font-size:13px;margin-bottom:8px"></div>
+        <textarea id="sy-cookie" rows="3" placeholder="在浏览器F12→Application→Cookies中复制所有Cookie值粘贴到这里" style="width:100%;padding:8px 12px;border:1px solid #e0e0e0;border-radius:8px;font-size:13px;font-family:Consolas,monospace"></textarea>
+        <button class="btn" style="margin-top:8px" onclick="saveSyCookie()">保存赛盈Cookie</button>
       </div>
       <div class="settings-section">
         <h3>充值套餐</h3>

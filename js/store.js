@@ -341,8 +341,8 @@ const Store = (() => {
     return r;
   }
   async function importAmazon(url) {
-    const r = await post('/admin/import-amazon', { url });
-    return r; // { ok, draft:{name,desc,price,images,videos,specs} }
+    const r = await post('/admin/import-product', { url });
+    return r;
   }
 
   // ---- 晒单 ----
