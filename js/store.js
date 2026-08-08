@@ -340,10 +340,8 @@ const Store = (() => {
     if (r.ok) await refreshCategories();
     return r;
   }
-  async function importAmazon(url, html) {
-    const body = { url };
-    if (html) body.html = html;
-    const r = await post('/admin/import-product', body);
+  async function importAmazon(url) {
+    const r = await post('/admin/import-product', { url });
     return r;
   }
 

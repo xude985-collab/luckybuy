@@ -160,14 +160,7 @@ async function importProduct() {
   btn.disabled = true; btn.textContent = '导入中…';
   try {
     const resp = await Store.importAmazon(url);
-    if (!resp) throw new Error('导入失败');
-    // 赛盈链接：需要粘贴页面源码
-    if (!resp.ok && resp.needHtml) {
-      btn.disabled = false; btn.textContent = '自动导入';
-      showSaleyeeHelper(url);
-      return;
-    }
-    if (!resp.ok) throw new Error(resp.msg || '导入失败');
+    if (!resp || !resp.ok) throw new Error((resp && resp.msg) || '导入失败');
     applyDraft(resp.draft, url);
     toast('已导入，请检查后保存');
   } catch (e) { toast(e.message || '导入失败'); }
@@ -194,47 +187,6 @@ function applyDraft(d, url) {
   if (Array.isArray(d.specs) && d.specs.length)
     document.getElementById('f-specs').value = d.specs.map(r => `${r.k}=${r.v}`).join('\n');
   document.getElementById('f-source').value = d.sourceUrl || url;
-}
-
-function showSaleyeeHelper(url) {
-  let old = document.getElementById('sy-helper-modal');
-  if (old) old.remove();
-
-  const modal = document.createElement('div');
-  modal.id = 'sy-helper-modal';
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
-  modal.innerHTML = `
-    <div style="background:#fff;border-radius:16px;padding:24px;max-width:520px;width:100%;max-height:80vh;overflow-y:auto">
-      <h3 style="margin:0 0 12px">赛盈商品导入</h3>
-      <p style="font-size:13px;color:#666;margin:0 0 16px">赛盈需要登录才能查看，无法直接抓取。请用以下方法把页面内容复制过来：</p>
-      <div style="background:#f0f7ff;border:1px solid #c8e0ff;border-radius:8px;padding:14px;margin-bottom:16px">
-        <p style="margin:0 0 6px;font-size:14px;font-weight:600;color:#1a73e8">操作步骤：</p>
-        <p style="margin:0 0 4px;font-size:13px">① 在浏览器打开赛盈商品页（确保已登录能看到商品）</p>
-        <p style="margin:0 0 4px;font-size:13px">② 按 <kbd style="background:#eee;padding:2px 6px;border-radius:3px;border:1px solid #ccc;font-size:12px">Ctrl</kbd> + <kbd style="background:#eee;padding:2px 6px;border-radius:3px;border:1px solid #ccc;font-size:12px">U</kbd> 打开网页源代码</p>
-        <p style="margin:0 0 4px;font-size:13px">③ 按 <kbd style="background:#eee;padding:2px 6px;border-radius:3px;border:1px solid #ccc;font-size:12px">Ctrl</kbd> + <kbd style="background:#eee;padding:2px 6px;border-radius:3px;border:1px solid #ccc;font-size:12px">A</kbd> 全选</p>
-        <p style="margin:0 0 0;font-size:13px">④ 按 <kbd style="background:#eee;padding:2px 6px;border-radius:3px;border:1px solid #ccc;font-size:12px">Ctrl</kbd> + <kbd style="background:#eee;padding:2px 6px;border-radius:3px;border:1px solid #ccc;font-size:12px">C</kbd> 复制，然后粘贴到下面</p>
-      </div>
-      <textarea id="sy-html-input" rows="6" placeholder="把源代码页面的内容粘贴到这里（很长的一大段HTML代码）" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:12px;font-family:Consolas,monospace;resize:vertical"></textarea>
-      <div style="display:flex;gap:8px;margin-top:12px">
-        <button class="btn" onclick="submitSaleyeeHtml('${url.replace(/'/g, "\\'")}')">解析导入</button>
-        <button class="btn ghost" onclick="document.getElementById('sy-helper-modal').remove()">取消</button>
-      </div>
-    </div>`;
-  document.body.appendChild(modal);
-  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
-}
-
-async function submitSaleyeeHtml(url) {
-  const html = document.getElementById('sy-html-input').value.trim();
-  if (!html) { toast('请先粘贴页面源代码内容'); return; }
-  if (html.length < 200 || !/</.test(html)) { toast('请粘贴网页源代码（Ctrl+U打开的那个页面的内容）'); return; }
-  try {
-    const resp = await Store.importAmazon(url, html);
-    if (!resp || !resp.ok) throw new Error((resp && resp.msg) || '解析失败');
-    applyDraft(resp.draft, url);
-    document.getElementById('sy-helper-modal').remove();
-    toast('已导入，请检查后保存');
-  } catch (e) { toast(e.message || '解析失败'); }
 }
 
 function applyMultiplier() {

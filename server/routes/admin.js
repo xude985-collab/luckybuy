@@ -3,7 +3,7 @@ import express from 'express';
 import pool from '../db.js';
 import { attachUser, requireAdmin, getConfig, genId, withTransaction } from '../lib/helpers.js';
 import { fetchAmazon } from '../lib/amazon.js';
-import { parseSaleyeeHtml } from '../lib/saleyee.js';
+import { fetchSaleyee } from '../lib/saleyee.js';
 
 const router = express.Router();
 router.use(attachUser);
@@ -130,29 +130,12 @@ router.delete('/products/:id', requireAdmin, async (req, res, next) => {
 // ---- 商品链接导入（赛盈 / 亚马逊） ----
 router.post('/import-product', requireAdmin, async (req, res) => {
   const url = (req.body?.url || '').trim();
-  const html = (req.body?.html || '').trim();
-
-  // 赛盈：接受粘贴的页面HTML直接解析
-  if (html && /saleyee/i.test(html)) {
-    try {
-      const draft = parseSaleyeeHtml(html, url);
-      return res.json({ ok: true, draft });
-    } catch (e) {
-      return res.status(502).json({ ok: false, msg: '解析失败：' + (e.message || '页面内容格式异常') });
-    }
-  }
-
   if (!url) return res.status(400).json({ ok: false, msg: '请填写商品链接' });
 
   try {
     let draft;
     if (/saleyee\.com/i.test(url)) {
-      // 赛盈链接 — 需要用户粘贴页面源码
-      return res.status(400).json({
-        ok: false,
-        needHtml: true,
-        msg: '赛盈需要登录，请在商品页Console中复制页面内容',
-      });
+      draft = await fetchSaleyee(url);
     } else if (/amazon\./i.test(url)) {
       draft = await fetchAmazon(url);
     } else {
