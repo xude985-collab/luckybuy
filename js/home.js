@@ -208,21 +208,60 @@ async function cardBuy(pid) {
   const el = document.getElementById('cqty-' + pid);
   const count = parseInt(el?.value) || 1;
   if (count < 1) { toast('请选择至少 1 份'); return; }
+
+  const p = Store.getProduct(pid);
+  const u = Store.currentUser();
+  const myUsedFree = Store.myOrders().filter(o => o.productId === pid).reduce((s, o) => s + (o.freeUsed || 0), 0) > 0;
+  const quota = p.freeQuota || 0;
+  const poolLeft = quota > 0 ? Math.max(0, quota - (p.freeUsed || 0)) : Infinity;
+  const canUseFree = u.freeCoins > 0 && poolLeft > 0 && !myUsedFree;
+
+  let useFree = false;
+  if (canUseFree) {
+    useFree = await showCardCoinChoice(u, p);
+    if (useFree === null) return;
+  }
+
   const btn = document.getElementById('cbtn-' + pid);
   if (btn) { btn.disabled = true; btn.textContent = '处理中…'; }
   try {
-    const r = await Store.buyShares(pid, count, false);
+    const r = await Store.buyShares(pid, count, useFree);
     if (r.needRecharge) { toast(r.msg); setTimeout(() => openRecharge('home'), 700); return; }
     if (r.ok) {
-      toast(r.msg || '购买成功');
+      const o = r.order;
+      let extra = '';
+      if (o && o.freeUsed > 0) extra = `（免费 ${o.freeUsed} + 充值 ${o.paidUsed}）`;
+      toast((r.msg || '购买成功') + extra);
       await Store.refreshMe();
       renderTopbar('home');
       renderGrid();
     } else { toast(r.msg || '购买失败'); }
   } catch (e) { toast('网络异常，请重试'); }
   finally {
-    if (btn) { btn.disabled = false; const p = Store.getProduct(pid); btn.textContent = `立即夺宝 ($${p?.price||1}/份)`; }
+    if (btn) { btn.disabled = false; const pp = Store.getProduct(pid); btn.textContent = `立即夺宝 ($${pp?.price||1}/份)`; }
   }
+}
+
+function showCardCoinChoice(u, p) {
+  return new Promise((resolve) => {
+    const mask = document.createElement('div');
+    mask.className = 'coin-choice-mask';
+    mask.innerHTML = `
+      <div class="coin-choice-modal">
+        <div class="coin-choice-title">选择支付方式</div>
+        <div class="coin-choice-info">充值金币：<b>${u.paidCoins||0}</b> · 免费金币：<b>${u.freeCoins||0}</b></div>
+        <div class="coin-choice-tip">每人每商品限用 1 次免费金币</div>
+        <div class="coin-choice-btns">
+          <button class="btn coin-choice-free">使用免费金币</button>
+          <button class="btn ghost coin-choice-paid">使用充值金币</button>
+        </div>
+        <a href="#" class="coin-choice-cancel">取消</a>
+      </div>`;
+    document.body.appendChild(mask);
+    mask.querySelector('.coin-choice-free').onclick = () => { mask.remove(); resolve(true); };
+    mask.querySelector('.coin-choice-paid').onclick = () => { mask.remove(); resolve(false); };
+    mask.querySelector('.coin-choice-cancel').onclick = (e) => { e.preventDefault(); mask.remove(); resolve(null); };
+  });
 }
 
 onReady(async () => {
