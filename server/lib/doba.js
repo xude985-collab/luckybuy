@@ -12,19 +12,17 @@ const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
   '(KHTML, like Gecko) Chrome/126.0 Safari/537.36';
 
-const DOBA_UA = 'luckybuy/1.0';
-
 function stripTags(s) {
   return (s || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 async function fetchBuildId() {
-  const headers = { 'User-Agent': DOBA_UA };
+  // 不带任何自定义 headers — Doba WAF 对带 User-Agent 的服务器请求返回 403/567
   // 方法1: 请求错误 buildId 的 _buildManifest，404 页面含正确 buildId
   try {
     const resp = await fetch(
       'https://www.doba.com/_next/static/PROBE/_buildManifest.js',
-      { headers, signal: AbortSignal.timeout(10000) }
+      { signal: AbortSignal.timeout(10000) }
     );
     const html = await resp.text();
     const m = html.match(/"buildId":"([^"]+)"/);
@@ -34,13 +32,13 @@ async function fetchBuildId() {
   try {
     const resp = await fetch(
       'https://www.doba.com/_next/data/PROBE/index.json',
-      { headers, signal: AbortSignal.timeout(10000) }
+      { signal: AbortSignal.timeout(10000) }
     );
     const html = await resp.text();
     const m = html.match(/"buildId":"([^"]+)"/);
     if (m) return m[1];
   } catch {}
-  // 方法3: 使用缓存的已知 buildId（需要定期更新）
+  // 方法3: 使用缓存的已知 buildId
   return FALLBACK_BUILD_ID;
 }
 
@@ -58,12 +56,10 @@ export async function fetchDoba(url) {
   const parsed = parseDobaUrl(url);
   if (!parsed) throw new Error('无效的 Doba 商品链接');
 
-  const headers = { 'User-Agent': DOBA_UA };
-
   let buildId = await fetchBuildId();
   let dataUrl = `https://www.doba.com/_next/data/${buildId}/product/${parsed.skuId}/${parsed.slug}.html.json`;
 
-  let resp = await fetch(dataUrl, { headers, signal: AbortSignal.timeout(15000) });
+  let resp = await fetch(dataUrl, { signal: AbortSignal.timeout(15000) });
 
   // buildId 过期时返回 404，尝试从 404 页面提取新 buildId
   if (resp.status === 404) {
@@ -73,7 +69,7 @@ export async function fetchDoba(url) {
       FALLBACK_BUILD_ID = m[1];
       buildId = m[1];
       dataUrl = `https://www.doba.com/_next/data/${buildId}/product/${parsed.skuId}/${parsed.slug}.html.json`;
-      resp = await fetch(dataUrl, { headers, signal: AbortSignal.timeout(15000) });
+      resp = await fetch(dataUrl, { signal: AbortSignal.timeout(15000) });
     }
   }
 
