@@ -96,8 +96,9 @@ img { max-width: 100%; }
   .home-layout { flex-direction: column; }
   .left-col {
     width: 100%; position: static;
-    margin: 0 0 12px 0;
+    margin: 0 0 12px 0; order: 2; padding: 0 12px;
   }
+  .home-layout .container { order: 1; }
   .live-feed {
     max-height: 200px;
     border-radius: 0;
@@ -735,6 +736,9 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   .invite-card { padding: 14px; }
   .invite-code { font-size: 18px; padding: 4px 12px; }
   .invite-bal { flex-wrap: wrap; gap: 12px; }
+  .invite-link-row { flex-direction: column; }
+  .invite-link-row input { font-size: 12px; }
+  .invite-code-row { flex-wrap: wrap; gap: 8px; }
 
   /* 充值页 */
   .pkg-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
@@ -743,8 +747,8 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   .pay-methods { flex-direction: column; }
 
   /* 表格 */
-  table { font-size: 12px; }
-  th, td { padding: 8px 10px; }
+  table { font-size: 12px; display: block; overflow-x: auto; }
+  th, td { padding: 8px 10px; white-space: nowrap; }
 
   /* 晒单 */
   .showcase-item .media { height: 120px; }
@@ -825,6 +829,14 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   .checkin-card h2 { font-size: 16px !important; }
   .checkin-card .btn { font-size: 14px !important; padding: 10px 18px !important; }
 
+  /* 个人中心整体 */
+  .profile-wrap { padding: 0 10px; margin: 12px auto; }
+  .profile-card { padding: 14px; margin-bottom: 14px; }
+  .balance-row { gap: 10px; }
+  .balance-item { padding: 12px 14px; }
+  .balance-item .num { font-size: 22px; }
+  .balance-item .lbl { font-size: 12px; }
+
   /* 幸运区 / 首页卡片文字 */
   .winner-card .winner-result { padding: 8px; }
   .winner-card .winner-number { font-size: 12px; }
@@ -857,3 +869,22 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   .proof-row { font-size: 10px; }
   .proof-row code { font-size: 9px; }
 }
+
+/* 订单卡片（手机端） */
+.order-cards { display: flex; flex-direction: column; gap: 12px; }
+.order-card {
+  background: var(--card); border-radius: var(--radius); padding: 14px;
+  box-shadow: var(--shadow);
+}
+.order-card-top {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 6px;
+}
+.order-card-name { font-weight: 600; font-size: 14px; flex: 1; margin-right: 8px; }
+.order-card-time { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.order-card-meta { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.order-card-nums {
+  font-size: 12px; color: var(--brand); word-break: break-all;
+  margin-bottom: 8px; font-family: Consolas, monospace;
+}
+.order-card-result { font-size: 13px; }

@@ -28,6 +28,8 @@ function copyText(t) {
   else toast('请手动复制：' + t);
 }
 
+function isMobile() { return window.innerWidth <= 600; }
+
 function render() {
   const box = document.getElementById('orders');
   if (!Store.isLoggedIn()) {
@@ -41,6 +43,14 @@ function render() {
     box.innerHTML = card + '<div class="empty">还没有参与记录，去首页夺宝试试～</div>';
     return;
   }
+  if (isMobile()) {
+    box.innerHTML = card + renderOrderCards(orders);
+  } else {
+    box.innerHTML = card + renderOrderTable(orders);
+  }
+}
+
+function renderOrderTable(orders) {
   const rows = orders.map(o => {
     const p = Store.getProduct(o.productId);
     const revealed = p && p.status === 'revealed';
@@ -68,13 +78,42 @@ function render() {
       <td><small>${o.time.slice(0, 16).replace('T', ' ')}</small></td>
     </tr>`;
   }).join('');
-  box.innerHTML = card + `
-    <table>
-      <thead><tr>
-        <th>商品</th><th>份数</th><th>花费</th><th>幸运号码</th><th>结果</th><th>时间</th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table>`;
+  return `<table>
+    <thead><tr>
+      <th>商品</th><th>份数</th><th>花费</th><th>幸运号码</th><th>结果</th><th>时间</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function renderOrderCards(orders) {
+  return '<div class="order-cards">' + orders.map(o => {
+    const p = Store.getProduct(o.productId);
+    const revealed = p && p.status === 'revealed';
+    const won = revealed && o.numbers.includes(p.winNumber);
+    const nums = o.numbers.length > 8
+      ? o.numbers.slice(0, 8).join(', ') + ` …共${o.numbers.length}个`
+      : o.numbers.join(', ');
+    let result = '<span style="color:#888">进行中</span>';
+    if (revealed) {
+      if (won) {
+        result = o.address
+          ? '<span class="win-tag">🎉 幸运中选 · 已填地址</span>'
+          : `<span class="win-tag">🎉 幸运中选</span> <button class="btn" style="padding:4px 10px;font-size:11px" onclick="fillAddress('${o.id}')">填地址</button>`;
+      } else {
+        result = '<span style="color:#999">未中选</span>';
+      }
+    }
+    return `<div class="order-card">
+      <div class="order-card-top">
+        <span class="order-card-name">${o.productName}</span>
+        <span class="order-card-time">${o.time.slice(5, 16).replace('T', ' ')}</span>
+      </div>
+      <div class="order-card-meta">${o.count}份 · $${o.cost} · ${o.period}</div>
+      <div class="order-card-nums">号码：${nums}</div>
+      <div class="order-card-result">${result}</div>
+    </div>`;
+  }).join('') + '</div>';
 }
 
 async function fillAddress(orderId) {
