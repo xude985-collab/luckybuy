@@ -12,21 +12,14 @@ const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
   '(KHTML, like Gecko) Chrome/126.0 Safari/537.36';
 
+const DOBA_UA = 'luckybuy/1.0';
+
 function stripTags(s) {
   return (s || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 async function fetchBuildId() {
-  const headers = {
-    'User-Agent': UA,
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-    'Accept-Language': 'en-US,en;q=0.9',
-    'Accept-Encoding': 'gzip, deflate, br',
-    'Connection': 'keep-alive',
-    'Sec-Fetch-Dest': 'document',
-    'Sec-Fetch-Mode': 'navigate',
-    'Sec-Fetch-Site': 'none',
-  };
+  const headers = { 'User-Agent': DOBA_UA };
   // 方法1: 请求错误 buildId 的 _buildManifest，404 页面含正确 buildId
   try {
     const resp = await fetch(
@@ -65,15 +58,7 @@ export async function fetchDoba(url) {
   const parsed = parseDobaUrl(url);
   if (!parsed) throw new Error('无效的 Doba 商品链接');
 
-  const headers = {
-    'User-Agent': UA,
-    'Accept': 'application/json, text/plain, */*',
-    'Accept-Language': 'en-US,en;q=0.9',
-    'Referer': 'https://www.doba.com/',
-    'Sec-Fetch-Dest': 'empty',
-    'Sec-Fetch-Mode': 'cors',
-    'Sec-Fetch-Site': 'same-origin',
-  };
+  const headers = { 'User-Agent': DOBA_UA };
 
   let buildId = await fetchBuildId();
   let dataUrl = `https://www.doba.com/_next/data/${buildId}/product/${parsed.skuId}/${parsed.slug}.html.json`;
