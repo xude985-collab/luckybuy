@@ -189,7 +189,16 @@ const Store = (() => {
   function currentUser() { return cache.user; }
   function isLoggedIn() { return !!cache.user; }
   function totalCoins(u) { u = u || cache.user; return u ? (u.paidCoins || 0) + (u.freeCoins || 0) : 0; }
-  function canCheckin() { return false; } // 签到未接后端，暂关闭
+  function canCheckin() { return cache.user && !cache._checkedInToday; }
+
+  async function refreshCheckinStatus() {
+    if (!cache.user) return;
+    const r = await get('/wallet/checkin-status');
+    if (r.ok) {
+      cache._checkedInToday = r.checkedIn;
+      cache._checkinStreak = r.streak || 0;
+    }
+  }
 
   async function sendCode(account) {
     const r = await post('/auth/send-code', { account });
@@ -218,7 +227,15 @@ const Store = (() => {
     if (r.ok) await refreshWallet();
     return r;
   }
-  async function checkin() { return { ok: false, msg: '签到功能即将上线' }; }
+  async function checkin() {
+    const r = await post('/wallet/checkin', {});
+    if (r.ok) {
+      cache._checkedInToday = true;
+      cache._checkinStreak = r.streak || 0;
+      await refreshMe();
+    }
+    return r;
+  }
 
   async function getPackages() {
     const r = await get('/wallet/packages');
@@ -402,6 +419,7 @@ const Store = (() => {
       ]);
       await refreshMe().catch(() => {}); // 登录态接口失败不阻塞首屏
       await refreshOrders().catch(() => {});
+      await refreshCheckinStatus().catch(() => {});
     })();
     return _ready;
   }
