@@ -109,10 +109,10 @@ function render() {
           .reduce((s, o) => s + (o.freeUsed || 0), 0);
         mine = Math.min(poolLeft, u.freeCoins || 0, Math.max(0, 1 - myUsed));
       }
-      const alreadyUsed = u && mine === 0 && Store.myOrders().some(
+      const alreadyUsed = u && Store.myOrders().some(
         o => String(o.productId) === String(id) && (o.freeUsed || 0) > 0
       );
-      quotaTip = `<div class="free-quota-tip">🪙 本商品免费金币额度 <b>${quota}</b> 枚（全场共享，先到先得，每人仅限 1 枚）· 剩余 <b>${poolLeft}</b> 枚${u ? `${alreadyUsed ? ' · <span style="color:#c62828">本商品免费额度已用</span>' : ` · 本单可用 <b>${mine}</b> 枚免费金币`}，其余用充值金币` : ''}。</div>`;
+      quotaTip = `<div class="free-quota-tip">🪙 本商品免费金币额度 <b>${quota}</b> 枚（全场共享，先到先得，每人仅限 1 枚）· 剩余 <b>${poolLeft}</b> 枚${u ? `${alreadyUsed ? ' · <span style="color:#c62828">你已用过本商品的免费金币</span>' : ` · 本单可用 <b>${mine}</b> 枚免费金币`}，其余用充值金币` : ''}。</div>`;
     }
     action = quotaTip + `
       <div class="qty">
