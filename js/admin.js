@@ -167,8 +167,76 @@ async function importProduct() {
       ? '已导入。' + resp.draft.priceNote
       : '已导入，请检查后保存';
     toast(msg);
-  } catch (e) { toast(e.message || '导入失败'); }
+  } catch (e) {
+    if (/doba\.com/i.test(url)) {
+      showDobaFallback(url);
+    } else {
+      toast(e.message || '导入失败');
+    }
+  }
   finally { btn.disabled = false; btn.textContent = '自动导入'; }
+}
+
+function showDobaFallback(url) {
+  const mask = document.createElement('div');
+  mask.className = 'coin-choice-mask';
+  mask.innerHTML = `
+    <div class="coin-choice-modal" style="max-width:600px;width:90%">
+      <div class="coin-choice-title">Doba 导入（需要页面源码）</div>
+      <div style="font-size:13px;color:#666;margin:8px 0;line-height:1.6">
+        Doba 需要登录才能查看商品。请按以下步骤操作：<br>
+        1. <a href="${url}" target="_blank" style="color:#ff5722">点击此处打开商品页</a>（确保已登录 Doba）<br>
+        2. 按 <b>Ctrl+U</b> 查看页面源代码<br>
+        3. <b>Ctrl+A</b> 全选，<b>Ctrl+C</b> 复制<br>
+        4. 粘贴到下方文本框
+      </div>
+      <textarea id="doba-html-input" rows="8" style="width:100%;font-size:12px;font-family:monospace;border:1px solid #ddd;border-radius:8px;padding:8px;resize:vertical" placeholder="粘贴页面源代码..."></textarea>
+      <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+        <button class="btn ghost" onclick="this.closest('.coin-choice-mask').remove()">取消</button>
+        <button class="btn" onclick="parseDobaHtml()">解析导入</button>
+      </div>
+    </div>`;
+  document.body.appendChild(mask);
+}
+
+function parseDobaHtml() {
+  const html = document.getElementById('doba-html-input').value;
+  if (!html || html.length < 100) { toast('请粘贴完整的页面源代码'); return; }
+  const m = html.match(/__NEXT_DATA__[^>]*>([\s\S]*?)<\/script/);
+  if (!m) { toast('无法解析，请确认粘贴的是完整源代码'); return; }
+  try {
+    const data = JSON.parse(m[1]);
+    const pp = data.props.pageProps;
+    if (pp.abnormalType === 'UN_LOGIN' || (pp.productDetail && pp.productDetail.errorPage)) {
+      toast('页面未登录，请先在浏览器登录 Doba 后重新复制源码');
+      return;
+    }
+    const pd = pp.productDetail || {};
+    const draft = { name: '', gallery: [], specs: [], desc: '', sourceUrl: v('f-source') || '' };
+    draft.name = pd.title || pd.name || pp.productTitle || '';
+    if (pd.imgList && pd.imgList.length) {
+      draft.gallery = pd.imgList.map(u => ({ type: 'image', url: u }));
+    } else if (pd.images && pd.images.length) {
+      draft.gallery = pd.images.map(u => ({ type: 'image', url: typeof u === 'string' ? u : u.url || '' }));
+    }
+    if (pd.maxPriceProfitDiff && pd.maxPriceProfitDiffRate) {
+      draft.refPrice = Math.round(pd.maxPriceProfitDiff / (pd.maxPriceProfitDiffRate / 100) * 100) / 100;
+    } else if (pd.price) {
+      draft.refPrice = parseFloat(pd.price);
+    } else if (pd.retailPrice) {
+      draft.refPrice = parseFloat(pd.retailPrice);
+    }
+    if (pd.description) draft.desc = pd.description;
+    if (pd.attributes && Array.isArray(pd.attributes)) {
+      draft.specs = pd.attributes.map(a => ({ k: a.name || a.key, v: a.value }));
+    }
+    draft.priceNote = draft.refPrice ? `参考价 $${draft.refPrice}` : '';
+    applyDraft(draft, draft.sourceUrl);
+    document.querySelector('.coin-choice-mask').remove();
+    toast(draft.refPrice ? `已导入，参考价 $${draft.refPrice}` : '已导入，请检查后保存');
+  } catch (e) {
+    toast('解析失败：' + (e.message || '数据格式异常'));
+  }
 }
 
 function applyDraft(d, url) {

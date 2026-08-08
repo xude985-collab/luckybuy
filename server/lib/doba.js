@@ -1,52 +1,16 @@
 /*
  * Doba.com 商品页解析。
  *
- * Doba 是 Next.js 应用，产品页被 Tencent Cloud EdgeOne WAF 拦截，
- * 但 _next/data API 可正常访问并返回完整 JSON 数据。
- *
- * 价格数据需要登录（skuPriceDetail 为空），其余信息公开可获取。
- * buildId 通过请求一个错误 buildId 的 404 页面来动态获取。
+ * Doba 是 Next.js 应用，产品页需要登录查看。
+ * 服务器 IP 被 WAF 拦截，通过 Jina Reader 代理绕过。
+ * 如果产品需要登录（大部分情况），前端会 fallback 到让管理员粘贴页面源码。
  */
-
-const UA =
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
-  '(KHTML, like Gecko) Chrome/126.0 Safari/537.36';
 
 function stripTags(s) {
   return (s || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-async function fetchBuildId() {
-  // 不带任何自定义 headers — Doba WAF 对带 User-Agent 的服务器请求返回 403/567
-  // 方法1: 请求错误 buildId 的 _buildManifest，404 页面含正确 buildId
-  try {
-    const resp = await fetch(
-      'https://www.doba.com/_next/static/PROBE/_buildManifest.js',
-      { signal: AbortSignal.timeout(10000) }
-    );
-    const html = await resp.text();
-    const m = html.match(/"buildId":"([^"]+)"/);
-    if (m) return m[1];
-  } catch {}
-  // 方法2: 请求错误 buildId 的 _next/data
-  try {
-    const resp = await fetch(
-      'https://www.doba.com/_next/data/PROBE/index.json',
-      { signal: AbortSignal.timeout(10000) }
-    );
-    const html = await resp.text();
-    const m = html.match(/"buildId":"([^"]+)"/);
-    if (m) return m[1];
-  } catch {}
-  // 方法3: 使用缓存的已知 buildId
-  return FALLBACK_BUILD_ID;
-}
-
-// 当动态获取失败时使用的 fallback（Doba 每次部署会更新）
-let FALLBACK_BUILD_ID = '9a1ab413bc0f43dad71e9427ca9d124d';
-
 export function parseDobaUrl(url) {
-  // https://www.doba.com/product/{skuId}/{slug}.html
   const m = url.match(/doba\.com\/product\/([^/]+)\/([^/.]+)/i);
   if (!m) return null;
   return { skuId: m[1], slug: m[2] };
@@ -56,45 +20,44 @@ export async function fetchDoba(url) {
   const parsed = parseDobaUrl(url);
   if (!parsed) throw new Error('无效的 Doba 商品链接');
 
-  let buildId = await fetchBuildId();
-  let dataUrl = `https://www.doba.com/_next/data/${buildId}/product/${parsed.skuId}/${parsed.slug}.html.json`;
+  // 通过 Jina Reader 获取页面 HTML（绕过 WAF）
+  const jinaUrl = 'https://r.jina.ai/' + url;
+  const resp = await fetch(jinaUrl, {
+    headers: { 'X-Respond-With': 'html' },
+    signal: AbortSignal.timeout(20000),
+  });
 
-  let resp = await fetch(dataUrl, { signal: AbortSignal.timeout(15000) });
+  if (!resp.ok) throw new Error(`Doba 页面获取失败 (${resp.status})`);
 
-  // buildId 过期时返回 404，尝试从 404 页面提取新 buildId
-  if (resp.status === 404) {
-    const body = await resp.text();
-    const m = body.match(/"buildId":"([^"]+)"/);
-    if (m && m[1] !== buildId) {
-      FALLBACK_BUILD_ID = m[1];
-      buildId = m[1];
-      dataUrl = `https://www.doba.com/_next/data/${buildId}/product/${parsed.skuId}/${parsed.slug}.html.json`;
-      resp = await fetch(dataUrl, { signal: AbortSignal.timeout(15000) });
-    }
+  const html = await resp.text();
+  const m = html.match(/__NEXT_DATA__[^>]*>([\s\S]*?)<\/script/);
+  if (!m) throw new Error('Doba 页面解析失败');
+
+  const data = JSON.parse(m[1]);
+  const pp = data.props?.pageProps;
+  if (!pp) throw new Error('Doba 数据结构异常');
+
+  if (pp.abnormalType === 'UN_LOGIN' || (pp.productDetail && pp.productDetail.errorPage)) {
+    throw new Error('Doba 需要登录，请在弹窗中粘贴页面源码');
   }
 
-  if (!resp.ok) throw new Error(`Doba API 返回 ${resp.status}`);
-
-  const json = await resp.json();
-  const pd = json?.pageProps?.productDetail;
-  if (!pd || pd.invalidPage) throw new Error('商品不存在或已下架');
+  const pd = pp.productDetail;
+  if (!pd) throw new Error('商品不存在或已下架');
 
   return buildDraft(pd, url);
 }
 
 function buildDraft(pd, url) {
-  const name = pd.goodsName || '';
+  const name = pd.goodsName || pd.title || pd.name || '';
 
-  // 图片
-  const gallery = (pd.goodsImg || [])
+  const gallery = (pd.goodsImg || pd.imgList || pd.images || [])
     .map(img => {
-      const u = img.imgBigUrl || img.imgUrl || '';
+      const u = typeof img === 'string' ? img : (img.imgBigUrl || img.imgUrl || img.url || '');
       return u ? { type: 'image', url: u.startsWith('//') ? 'https:' + u : u } : null;
     })
     .filter(Boolean)
     .slice(0, 15);
 
-  // 规格尺寸
   const specs = [];
   const size = pd.goodsSize || {};
   if (size.length) specs.push({ k: `长(${size.dimUnit || 'in.'})`, v: size.length });
@@ -106,20 +69,20 @@ function buildDraft(pd, url) {
   if (pd.selectedSku?.itemNo) specs.push({ k: 'ItemNo', v: pd.selectedSku.itemNo });
   if (pd.selectedSku?.selfPickUpLocation) specs.push({ k: '发货地', v: pd.selectedSku.selfPickUpLocation });
 
-  // 描述：highlights + productDetail 文本
   const bullets = [];
-  if (Array.isArray(pd.highlights)) {
-    bullets.push(...pd.highlights.filter(Boolean));
-  }
+  if (Array.isArray(pd.highlights)) bullets.push(...pd.highlights.filter(Boolean));
   const detailText = stripTags(pd.productDetail || '').slice(0, 1500);
   if (detailText) bullets.push(detailText);
 
-  // 价格：公开API无法拿到，用 maxPriceProfitDiff 估算参考价
   let refPrice = 0;
   const profitDiff = parseFloat(pd.maxPriceProfitDiff) || 0;
   const profitRate = parseFloat(pd.maxPriceProfitDiffRate) || 0;
   if (profitDiff > 0 && profitRate > 0) {
     refPrice = Math.round((profitDiff / (profitRate / 100)) * 100) / 100;
+  } else if (pd.price) {
+    refPrice = parseFloat(pd.price);
+  } else if (pd.retailPrice) {
+    refPrice = parseFloat(pd.retailPrice);
   }
 
   return {
