@@ -3,7 +3,7 @@ import express from 'express';
 import pool from '../db.js';
 import { attachUser, requireAdmin, getConfig, genId, withTransaction } from '../lib/helpers.js';
 import { fetchAmazon } from '../lib/amazon.js';
-import { fetchSaleyee } from '../lib/saleyee.js';
+import { parseSaleyeeHtml } from '../lib/saleyee.js';
 
 const router = express.Router();
 router.use(attachUser);
@@ -66,11 +66,6 @@ router.post('/config', requireAdmin, async (req, res, next) => {
       await pool.query(
         `INSERT INTO config (k,v) VALUES ($1,$2) ON CONFLICT(k) DO UPDATE SET v=EXCLUDED.v`,
         ['recharge_packages', JSON.stringify(req.body.recharge_packages)]);
-    }
-    if (req.body.saleyee_cookie != null) {
-      await pool.query(
-        `INSERT INTO config (k,v) VALUES ($1,$2) ON CONFLICT(k) DO UPDATE SET v=EXCLUDED.v`,
-        ['saleyee_cookie', req.body.saleyee_cookie]);
     }
     res.json({ ok: true, config: await getConfig() });
   } catch (e) { next(e); }
@@ -135,15 +130,29 @@ router.delete('/products/:id', requireAdmin, async (req, res, next) => {
 // ---- 商品链接导入（赛盈 / 亚马逊） ----
 router.post('/import-product', requireAdmin, async (req, res) => {
   const url = (req.body?.url || '').trim();
+  const html = (req.body?.html || '').trim();
+
+  // 赛盈：接受粘贴的页面HTML直接解析
+  if (html && /saleyee/i.test(html)) {
+    try {
+      const draft = parseSaleyeeHtml(html, url);
+      return res.json({ ok: true, draft });
+    } catch (e) {
+      return res.status(502).json({ ok: false, msg: '解析失败：' + (e.message || '页面内容格式异常') });
+    }
+  }
+
   if (!url) return res.status(400).json({ ok: false, msg: '请填写商品链接' });
 
   try {
     let draft;
     if (/saleyee\.com/i.test(url)) {
-      // 赛盈链接 — 需要Cookie
-      const { rows } = await pool.query(`SELECT v FROM config WHERE k='saleyee_cookie'`);
-      const cookie = rows[0]?.v || '';
-      draft = await fetchSaleyee(url, cookie);
+      // 赛盈链接 — 需要用户粘贴页面源码
+      return res.status(400).json({
+        ok: false,
+        needHtml: true,
+        msg: '赛盈需要登录，请在商品页Console中复制页面内容',
+      });
     } else if (/amazon\./i.test(url)) {
       draft = await fetchAmazon(url);
     } else {
@@ -166,22 +175,6 @@ router.post('/import-amazon', requireAdmin, async (req, res) => {
   } catch (e) {
     res.status(502).json({ ok: false, msg: '抓取失败：' + (e.message || '可稍后重试或手动录入') });
   }
-});
-
-// ---- 赛盈Cookie管理 ----
-router.post('/saleyee-cookie', requireAdmin, async (req, res) => {
-  const cookie = (req.body?.cookie || '').trim();
-  if (!cookie) return res.status(400).json({ ok: false, msg: '请粘贴Cookie内容' });
-  await pool.query(
-    `INSERT INTO config (k,v) VALUES ('saleyee_cookie',$1) ON CONFLICT(k) DO UPDATE SET v=EXCLUDED.v`,
-    [cookie]);
-  res.json({ ok: true, msg: '赛盈Cookie已保存' });
-});
-
-router.get('/saleyee-cookie', requireAdmin, async (req, res) => {
-  const { rows } = await pool.query(`SELECT v FROM config WHERE k='saleyee_cookie'`);
-  const cookie = rows[0]?.v || '';
-  res.json({ ok: true, hasCookie: !!cookie, preview: cookie ? cookie.slice(0, 30) + '...' : '' });
 });
 
 // ---- 类别管理 ----

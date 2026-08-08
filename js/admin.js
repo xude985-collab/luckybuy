@@ -160,30 +160,82 @@ async function importProduct() {
   btn.disabled = true; btn.textContent = '导入中…';
   try {
     const resp = await Store.importAmazon(url);
-    if (!resp || !resp.ok) throw new Error((resp && resp.msg) || '导入失败');
-    const d = resp.draft;
-    if (d.name) document.getElementById('f-name').value = d.name;
-    const descText = Array.isArray(d.bullets) && d.bullets.length
-      ? d.bullets.map((b, i) => `${i+1}. ${b}`).join('\n') : (d.desc || '');
-    if (descText) document.getElementById('f-desc').value = descText;
-    if (d.refPrice && d.refPrice > 0) {
-      document.getElementById('f-price').value = 1;
-      document.getElementById('base-price').textContent = d.refPrice;
-      document.getElementById('multiplier-row').style.display = 'block';
-      document.getElementById('f-multiplier').value = '1.5';
-      document.getElementById('f-per-share').value = '1';
-      const result = Math.round(d.refPrice * 1.5 / 1);
-      document.getElementById('f-total').value = result;
-      document.getElementById('multi-result').textContent = `= ${result} 份`;
+    if (!resp) throw new Error('导入失败');
+    // 赛盈链接：需要粘贴页面源码
+    if (!resp.ok && resp.needHtml) {
+      btn.disabled = false; btn.textContent = '自动导入';
+      showSaleyeeHelper(url);
+      return;
     }
-    const urls = Array.isArray(d.gallery) ? d.gallery.map(g => g.url).filter(Boolean) : [];
-    if (urls.length) document.getElementById('f-gallery').value = urls.join('\n');
-    if (Array.isArray(d.specs) && d.specs.length)
-      document.getElementById('f-specs').value = d.specs.map(r => `${r.k}=${r.v}`).join('\n');
-    document.getElementById('f-source').value = d.sourceUrl || url;
+    if (!resp.ok) throw new Error(resp.msg || '导入失败');
+    applyDraft(resp.draft, url);
     toast('已导入，请检查后保存');
   } catch (e) { toast(e.message || '导入失败'); }
   finally { btn.disabled = false; btn.textContent = '自动导入'; }
+}
+
+function applyDraft(d, url) {
+  if (d.name) document.getElementById('f-name').value = d.name;
+  const descText = Array.isArray(d.bullets) && d.bullets.length
+    ? d.bullets.map((b, i) => `${i+1}. ${b}`).join('\n') : (d.desc || '');
+  if (descText) document.getElementById('f-desc').value = descText;
+  if (d.refPrice && d.refPrice > 0) {
+    document.getElementById('f-price').value = 1;
+    document.getElementById('base-price').textContent = d.refPrice;
+    document.getElementById('multiplier-row').style.display = 'block';
+    document.getElementById('f-multiplier').value = '1.5';
+    document.getElementById('f-per-share').value = '1';
+    const result = Math.round(d.refPrice * 1.5 / 1);
+    document.getElementById('f-total').value = result;
+    document.getElementById('multi-result').textContent = `= ${result} 份`;
+  }
+  const urls = Array.isArray(d.gallery) ? d.gallery.map(g => g.url).filter(Boolean) : [];
+  if (urls.length) document.getElementById('f-gallery').value = urls.join('\n');
+  if (Array.isArray(d.specs) && d.specs.length)
+    document.getElementById('f-specs').value = d.specs.map(r => `${r.k}=${r.v}`).join('\n');
+  document.getElementById('f-source').value = d.sourceUrl || url;
+}
+
+function showSaleyeeHelper(url) {
+  // 如果已有弹框就移除
+  let old = document.getElementById('sy-helper-modal');
+  if (old) old.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'sy-helper-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:16px;padding:24px;max-width:520px;width:100%;max-height:80vh;overflow-y:auto">
+      <h3 style="margin:0 0 12px">赛盈商品导入</h3>
+      <p style="font-size:13px;color:#666;margin:0 0 12px">赛盈需要登录才能查看商品。请按以下步骤操作：</p>
+      <div style="background:#f5f5f5;border-radius:8px;padding:12px;margin-bottom:12px">
+        <p style="margin:0 0 8px;font-size:13px;font-weight:600">步骤1：在赛盈商品页按 F12 → Console</p>
+        <p style="margin:0 0 8px;font-size:13px;font-weight:600">步骤2：粘贴以下代码并回车：</p>
+        <code style="display:block;background:#1e1e1e;color:#4ec9b0;padding:8px 12px;border-radius:6px;font-size:12px;word-break:break-all;cursor:pointer" onclick="navigator.clipboard.writeText(this.textContent);this.style.outline='2px solid #4caf50'">copy(document.documentElement.outerHTML)</code>
+        <p style="margin:8px 0 0;font-size:12px;color:#888">点击上方代码可复制</p>
+      </div>
+      <p style="font-size:13px;color:#666;margin:0 0 8px">步骤3：将复制的内容粘贴到下方：</p>
+      <textarea id="sy-html-input" rows="5" placeholder="在这里粘贴从赛盈页面复制的内容…" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:12px;font-family:Consolas,monospace;resize:vertical"></textarea>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn" onclick="submitSaleyeeHtml('${url.replace(/'/g, "\\'")}')">解析导入</button>
+        <button class="btn ghost" onclick="document.getElementById('sy-helper-modal').remove()">取消</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+}
+
+async function submitSaleyeeHtml(url) {
+  const html = document.getElementById('sy-html-input').value.trim();
+  if (!html) { toast('请先粘贴页面内容'); return; }
+  if (html.length < 500) { toast('内容太短，请确保复制了完整页面'); return; }
+  try {
+    const resp = await Store.importAmazon(url, html);
+    if (!resp || !resp.ok) throw new Error((resp && resp.msg) || '解析失败');
+    applyDraft(resp.draft, url);
+    document.getElementById('sy-helper-modal').remove();
+    toast('已导入，请检查后保存');
+  } catch (e) { toast(e.message || '解析失败'); }
 }
 
 function applyMultiplier() {
@@ -342,38 +394,6 @@ async function reviewSC(id, action) {
   if (r.ok) loadShowcases();
 }
 
-// ========== Saleyee Cookie ==========
-async function loadSyCookie() {
-  try {
-    const r = await fetch('/api/admin/saleyee-cookie');
-    const d = await r.json();
-    const el = document.getElementById('sy-cookie-status');
-    if (d.ok && d.hasCookie) {
-      el.innerHTML = `<span style="color:var(--ok)">✓ 已配置</span> <small style="color:#888">${d.preview}</small>`;
-    } else {
-      el.innerHTML = '<span style="color:#c00">未配置Cookie，导入赛盈商品前请先设置</span>';
-    }
-  } catch (e) {}
-}
-
-async function saveSyCookie() {
-  const cookie = document.getElementById('sy-cookie').value.trim();
-  if (!cookie) { toast('请粘贴Cookie内容'); return; }
-  try {
-    const r = await fetch('/api/admin/saleyee-cookie', {
-      method: 'POST', credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cookie }),
-    });
-    const d = await r.json();
-    toast(d.msg || (d.ok ? '保存成功' : '保存失败'));
-    if (d.ok) {
-      document.getElementById('sy-cookie').value = '';
-      loadSyCookie();
-    }
-  } catch (e) { toast('保存失败'); }
-}
-
 // ========== Init ==========
 onReady(() => {
   const u = Store.currentUser();
@@ -401,7 +421,6 @@ onReady(() => {
   loadRules();
   renderCats();
   loadPkgs();
-  loadSyCookie();
 });
 
 
