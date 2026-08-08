@@ -197,7 +197,6 @@ function applyDraft(d, url) {
 }
 
 function showSaleyeeHelper(url) {
-  // 如果已有弹框就移除
   let old = document.getElementById('sy-helper-modal');
   if (old) old.remove();
 
@@ -207,15 +206,15 @@ function showSaleyeeHelper(url) {
   modal.innerHTML = `
     <div style="background:#fff;border-radius:16px;padding:24px;max-width:520px;width:100%;max-height:80vh;overflow-y:auto">
       <h3 style="margin:0 0 12px">赛盈商品导入</h3>
-      <p style="font-size:13px;color:#666;margin:0 0 12px">赛盈需要登录才能查看商品。请按以下步骤操作：</p>
-      <div style="background:#f5f5f5;border-radius:8px;padding:12px;margin-bottom:12px">
-        <p style="margin:0 0 8px;font-size:13px;font-weight:600">步骤1：在赛盈商品页按 F12 → Console</p>
-        <p style="margin:0 0 8px;font-size:13px;font-weight:600">步骤2：粘贴以下代码并回车：</p>
-        <code style="display:block;background:#1e1e1e;color:#4ec9b0;padding:8px 12px;border-radius:6px;font-size:12px;word-break:break-all;cursor:pointer" onclick="navigator.clipboard.writeText(this.textContent);this.style.outline='2px solid #4caf50'">copy(document.documentElement.outerHTML)</code>
-        <p style="margin:8px 0 0;font-size:12px;color:#888">点击上方代码可复制</p>
+      <p style="font-size:13px;color:#666;margin:0 0 16px">赛盈需要登录才能查看，无法直接抓取。请用以下方法把页面内容复制过来：</p>
+      <div style="background:#f0f7ff;border:1px solid #c8e0ff;border-radius:8px;padding:14px;margin-bottom:16px">
+        <p style="margin:0 0 6px;font-size:14px;font-weight:600;color:#1a73e8">操作步骤：</p>
+        <p style="margin:0 0 4px;font-size:13px">① 在浏览器打开赛盈商品页（确保已登录能看到商品）</p>
+        <p style="margin:0 0 4px;font-size:13px">② 按 <kbd style="background:#eee;padding:2px 6px;border-radius:3px;border:1px solid #ccc;font-size:12px">Ctrl</kbd> + <kbd style="background:#eee;padding:2px 6px;border-radius:3px;border:1px solid #ccc;font-size:12px">U</kbd> 打开网页源代码</p>
+        <p style="margin:0 0 4px;font-size:13px">③ 按 <kbd style="background:#eee;padding:2px 6px;border-radius:3px;border:1px solid #ccc;font-size:12px">Ctrl</kbd> + <kbd style="background:#eee;padding:2px 6px;border-radius:3px;border:1px solid #ccc;font-size:12px">A</kbd> 全选</p>
+        <p style="margin:0 0 0;font-size:13px">④ 按 <kbd style="background:#eee;padding:2px 6px;border-radius:3px;border:1px solid #ccc;font-size:12px">Ctrl</kbd> + <kbd style="background:#eee;padding:2px 6px;border-radius:3px;border:1px solid #ccc;font-size:12px">C</kbd> 复制，然后粘贴到下面</p>
       </div>
-      <p style="font-size:13px;color:#666;margin:0 0 8px">步骤3：将复制的内容粘贴到下方：</p>
-      <textarea id="sy-html-input" rows="5" placeholder="在这里粘贴从赛盈页面复制的内容…" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:12px;font-family:Consolas,monospace;resize:vertical"></textarea>
+      <textarea id="sy-html-input" rows="6" placeholder="把源代码页面的内容粘贴到这里（很长的一大段HTML代码）" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:12px;font-family:Consolas,monospace;resize:vertical"></textarea>
       <div style="display:flex;gap:8px;margin-top:12px">
         <button class="btn" onclick="submitSaleyeeHtml('${url.replace(/'/g, "\\'")}')">解析导入</button>
         <button class="btn ghost" onclick="document.getElementById('sy-helper-modal').remove()">取消</button>
@@ -227,8 +226,8 @@ function showSaleyeeHelper(url) {
 
 async function submitSaleyeeHtml(url) {
   const html = document.getElementById('sy-html-input').value.trim();
-  if (!html) { toast('请先粘贴页面内容'); return; }
-  if (html.length < 500) { toast('内容太短，请确保复制了完整页面'); return; }
+  if (!html) { toast('请先粘贴页面源代码内容'); return; }
+  if (html.length < 200 || !/</.test(html)) { toast('请粘贴网页源代码（Ctrl+U打开的那个页面的内容）'); return; }
   try {
     const resp = await Store.importAmazon(url, html);
     if (!resp || !resp.ok) throw new Error((resp && resp.msg) || '解析失败');
