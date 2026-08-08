@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>开奖区 · 幸运购</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header id="topbar" class="topbar"></header>
+  <div class="trust-banner">
+    <span class="trust-icon">🔒</span>
+    <span>开奖采用 <a href="https://drand.love" target="_blank" rel="noopener"><b>drand</b></a>（League of Entropy）公共随机信标，全网可验证、不可篡改</span>
+    <a href="https://api.drand.sh/52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971/info" target="_blank" rel="noopener" class="trust-link">验证链信息 →</a>
+  </div>
+  <main class="container">
+    <div class="page-title">🏆 开奖区 · 中奖公示</div>
+    <p style="color:#888;font-size:13px;margin-bottom:18px">所有已开奖商品公示于此，点击查看详情及验证开奖凭据</p>
+    <div id="winners-grid" class="grid"></div>
+  </main>
+  <script src="js/seed.js"></script>
+  <script src="js/rng.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/winners.js"></script>
+</body>
+</html>

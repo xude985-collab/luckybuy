@@ -310,7 +310,7 @@ tr:last-child td { border-bottom: none; }
   .detail { grid-template-columns: 1fr; }
   .detail .big-thumb { height: 200px; font-size: 96px; }
   .topbar nav { display: none; }
-  .topbar .mob-nav { display: flex; }
+  .mob-nav { display: flex; }
 }
 
 /* 移动端底部导航 */
@@ -525,6 +525,16 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
 .coin-choice-free { background: var(--gold); color: #fff; border: none; border-radius: 6px; cursor: pointer; }
 .coin-choice-free:hover { opacity: .9; }
 .coin-choice-cancel { font-size: 13px; color: var(--muted); }
+
+/* 开奖区卡片 */
+.winner-card .winner-result {
+  margin: 10px 0 0; padding: 10px; border-radius: 8px;
+  background: linear-gradient(135deg, #fff8e1, #f1f8e9);
+}
+.winner-card .winner-number { font-size: 14px; color: var(--brand-dark); margin-bottom: 4px; }
+.winner-card .winner-number b { font-size: 18px; }
+.winner-card .winner-name { font-size: 13px; color: var(--ok); }
+.winner-card .winner-name b { font-weight: 700; }
 
 /* drand 信任横幅 */
 .trust-banner {

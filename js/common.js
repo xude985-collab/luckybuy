@@ -31,6 +31,7 @@ function renderTopbar(active) {
     <div class="logo">Lucky&nbsp;Buy <small>幸运购</small></div>
     <nav>
       <a href="index.html" class="${active === 'home' ? 'active' : ''}">全部商品</a>
+      <a href="winners.html" class="${active === 'winners' ? 'active' : ''}">开奖区</a>
       <a href="orders.html" class="${active === 'orders' ? 'active' : ''}">我的记录</a>
       ${u ? `<a href="profile.html" class="${active === 'profile' ? 'active' : ''}">个人中心</a>` : ''}
       ${isAdmin ? `<a href="admin.html" class="${active === 'admin' ? 'active' : ''}">后台</a>` : ''}
@@ -93,11 +94,16 @@ function renderMobNav(active, u) {
     nav.className = 'mob-nav';
     document.body.appendChild(nav);
   }
+  const isAdmin = u && u.isAdmin;
   nav.innerHTML = `
     <a href="index.html" class="${active === 'home' ? 'active' : ''}">
       <span class="nav-icon">🏠</span>首页</a>
+    <a href="winners.html" class="${active === 'winners' ? 'active' : ''}">
+      <span class="nav-icon">🏆</span>开奖区</a>
     <a href="orders.html" class="${active === 'orders' ? 'active' : ''}">
       <span class="nav-icon">📋</span>记录</a>
     <a href="${u ? 'profile.html' : 'login.html'}" class="${active === 'profile' ? 'active' : ''}">
-      <span class="nav-icon">👤</span>${u ? '我的' : '登录'}</a>`;
+      <span class="nav-icon">👤</span>${u ? '我的' : '登录'}</a>
+    ${isAdmin ? `<a href="admin.html" class="${active === 'admin' ? 'active' : ''}">
+      <span class="nav-icon">⚙️</span>后台</a>` : ''}`;
 }

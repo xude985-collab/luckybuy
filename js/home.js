@@ -98,7 +98,7 @@ function selectCat(key) {
 }
 
 function renderGrid() {
-  let list = Store.listProducts();
+  let list = Store.listProducts().filter(p => p.status !== 'revealed');
   if (activeCat !== 'all') list = list.filter(p => (p.category || 'other') === activeCat);
   const grid = document.getElementById('grid');
   grid.innerHTML = list.length
