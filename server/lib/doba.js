@@ -17,8 +17,9 @@ function stripTags(s) {
 }
 
 async function fetchBuildId() {
+  // 请求一个不存在的 _buildManifest 会返回包含正确 buildId 的 404 页面
   const resp = await fetch(
-    'https://www.doba.com/_next/data/PROBE/index.json',
+    'https://www.doba.com/_next/static/PROBE/_buildManifest.js',
     { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(10000) }
   );
   const html = await resp.text();
