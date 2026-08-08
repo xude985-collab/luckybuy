@@ -6,14 +6,14 @@ async function loadProfile() {
   if (!u) { location.href = 'index.html'; return; }
   document.getElementById('p-coins').textContent = (u.paidBalance || 0) + (u.freeBalance || 0);
 
-  // 中奖记录
+  // 幸运记录
   try {
     const resp = await fetch('/api/shop/my-wins', { credentials: 'same-origin' });
     const data = await resp.json();
     const wins = data.ok ? data.wins : [];
     document.getElementById('p-wins').textContent = wins.length;
     const el = document.getElementById('win-list');
-    if (!wins.length) { el.innerHTML = '<div class="empty">暂无中奖记录</div>'; }
+    if (!wins.length) { el.innerHTML = '<div class="empty">暂无幸运记录</div>'; }
     else {
       el.innerHTML = wins.map(w => {
         const t = new Date(Number(w.drawn_at)).toLocaleDateString('zh-CN');
@@ -69,7 +69,7 @@ async function submitSC() {
   const mediaType = document.getElementById('sc-type').value;
   const mediaUrl = document.getElementById('sc-url').value.trim();
   const caption = document.getElementById('sc-caption').value.trim();
-  if (!productId) { toast('请选择中奖商品'); return; }
+  if (!productId) { toast('请选择幸运商品'); return; }
   if (!mediaUrl) { toast('请填写图片或视频链接'); return; }
 
   const r = await Store.submitShowcase({ productId, mediaType, mediaUrl, caption });
@@ -81,7 +81,36 @@ async function submitSC() {
   }
 }
 
+async function initCheckinCard() {
+  const card = document.getElementById('checkin-card');
+  const btn = document.getElementById('checkin-btn');
+  const info = document.getElementById('checkin-info');
+  if (!Store.canCheckin()) {
+    btn.disabled = true;
+    btn.textContent = '今日已签到 ✓';
+    btn.style.background = '#4caf50';
+    info.textContent = '明天再来，连续签到奖励更多哦！';
+  }
+}
+
+async function doCheckin() {
+  const btn = document.getElementById('checkin-btn');
+  btn.disabled = true; btn.textContent = '签到中…';
+  const r = await Store.checkin();
+  toast(r.msg);
+  if (r.ok) {
+    btn.textContent = '今日已签到 ✓';
+    btn.style.background = '#4caf50';
+    document.getElementById('checkin-info').textContent = '明天再来，连续签到奖励更多哦！';
+    await Store.refreshMe();
+    renderTopbar('profile');
+  } else {
+    btn.disabled = false; btn.textContent = '签到领币';
+  }
+}
+
 onReady(() => {
   renderTopbar('profile');
   loadProfile();
+  initCheckinCard();
 });

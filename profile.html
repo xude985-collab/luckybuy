@@ -36,6 +36,17 @@
 <body>
   <header id="topbar" class="topbar"></header>
   <div class="profile-wrap">
+    <div class="profile-card checkin-card" id="checkin-card">
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <div style="font-size:36px">📅</div>
+        <div style="flex:1">
+          <h2 style="margin:0 0 4px">每日签到</h2>
+          <div style="font-size:13px;color:#888" id="checkin-info">连续签到天数越多，奖励越丰厚（最高 7 天 700 金币）</div>
+        </div>
+        <button class="btn" id="checkin-btn" onclick="doCheckin()" style="font-size:16px;padding:12px 28px">签到领币</button>
+      </div>
+    </div>
+
     <div class="profile-card">
       <h2>我的账户</h2>
       <div class="balance-row">
