@@ -162,7 +162,10 @@ async function importProduct() {
     const resp = await Store.importAmazon(url);
     if (!resp || !resp.ok) throw new Error((resp && resp.msg) || '导入失败');
     applyDraft(resp.draft, url);
-    toast('已导入，请检查后保存');
+    const msg = resp.draft.priceNote
+      ? '已导入。' + resp.draft.priceNote
+      : '已导入，请检查后保存';
+    toast(msg);
   } catch (e) { toast(e.message || '导入失败'); }
   finally { btn.disabled = false; btn.textContent = '自动导入'; }
 }

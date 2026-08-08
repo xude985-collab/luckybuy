@@ -4,6 +4,7 @@ import pool from '../db.js';
 import { attachUser, requireAdmin, getConfig, genId, withTransaction } from '../lib/helpers.js';
 import { fetchAmazon } from '../lib/amazon.js';
 import { fetchSaleyee } from '../lib/saleyee.js';
+import { fetchDoba } from '../lib/doba.js';
 
 const router = express.Router();
 router.use(attachUser);
@@ -136,10 +137,12 @@ router.post('/import-product', requireAdmin, async (req, res) => {
     let draft;
     if (/saleyee\.com/i.test(url)) {
       draft = await fetchSaleyee(url);
+    } else if (/doba\.com/i.test(url)) {
+      draft = await fetchDoba(url);
     } else if (/amazon\./i.test(url)) {
       draft = await fetchAmazon(url);
     } else {
-      return res.status(400).json({ ok: false, msg: '不支持的链接，目前支持赛盈(saleyee.com)和亚马逊' });
+      return res.status(400).json({ ok: false, msg: '不支持的链接，目前支持赛盈(saleyee.com)、Doba 和亚马逊' });
     }
     res.json({ ok: true, draft });
   } catch (e) {
