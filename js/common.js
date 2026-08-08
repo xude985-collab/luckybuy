@@ -19,10 +19,8 @@ function renderTopbar(active) {
 
   const right = u ? `
     <div class="wallet">
-      <span class="wallet-label">💰</span><b>${u.paidCoins||0}</b>
-      <span class="wallet-label"> 🪙</span><b>${u.freeCoins||0}</b>
+      充值金币：<b>${u.paidCoins||0}</b> 免费金币：<b>${u.freeCoins||0}</b>
       &nbsp;·&nbsp; <a href="#" id="recharge">充值</a>
-      ${Store.canCheckin() ? '&nbsp;·&nbsp; <a href="#" id="checkin" class="checkin-link">签到</a>' : ''}
     </div>
     <div class="wallet wallet-user">👤 ${u.name}
       &nbsp;·&nbsp; <a href="#" id="logout">退出</a></div>`
@@ -43,11 +41,6 @@ function renderTopbar(active) {
 
   const rc = document.getElementById('recharge');
   if (rc) rc.onclick = (e) => { e.preventDefault(); openRecharge(active); };
-  const ci = document.getElementById('checkin');
-  if (ci) ci.onclick = async (e) => {
-    e.preventDefault();
-    const r = await Store.checkin(); toast(r.msg); renderTopbar(active);
-  };
   const lo = document.getElementById('logout');
   if (lo) lo.onclick = async (e) => {
     e.preventDefault(); await Store.logout(); toast('已退出'); location.href = 'index.html';
