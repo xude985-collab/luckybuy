@@ -40,7 +40,7 @@ img { max-width: 100%; }
   background: rgba(255, 255, 255, .2); padding: 6px 14px;
   border-radius: 20px; font-size: 14px;
 }
-.topbar .wallet b { color: var(--gold); font-weight: 700; }
+.topbar .wallet b { color: #fff; font-weight: 700; }
 .topbar .wallet-user-m {
   display: none; color: #fff; font-size: 13px; text-decoration: none;
   background: rgba(255,255,255,.18); border-radius: 14px; padding: 4px 12px;
