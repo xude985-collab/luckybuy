@@ -645,7 +645,26 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
 .win-form input:focus, .win-form textarea:focus { outline: none; border-color: var(--brand); }
 .win-form textarea { resize: none; }
 .win-later {
-  display: inline-block; margin-top: 12px; font-size: 13px; color: var(--muted);
+  display: inline-block; font-size: 13px; color: var(--muted);
+}
+.win-later-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 12px; gap: 12px;
+}
+.win-dismiss-label {
+  font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 4px; cursor: pointer;
+}
+.win-dismiss-label input { margin: 0; }
+
+/* 飘落粒子动画 */
+.win-particle {
+  position: fixed; top: -40px; z-index: 10001;
+  pointer-events: none; animation: win-fall linear forwards;
+}
+@keyframes win-fall {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
 }
 @media (max-width:720px) {
   .win-celebrate { padding: 24px 20px; max-height: 90vh; overflow-y: auto; width: 92vw; max-width: 400px; }

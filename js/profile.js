@@ -86,17 +86,48 @@ async function loadMyShowcases() {
 async function submitSC() {
   const productId = document.getElementById('sc-product').value;
   const mediaType = document.getElementById('sc-type').value;
-  const mediaUrl = document.getElementById('sc-url').value.trim();
+  const fileInput = document.getElementById('sc-file');
   const caption = document.getElementById('sc-caption').value.trim();
   if (!productId) { toast('请选择幸运商品'); return; }
-  if (!mediaUrl) { toast('请填写图片或视频链接'); return; }
+  if (!fileInput.files.length) { toast('请选择图片或视频文件'); return; }
 
-  const r = await Store.submitShowcase({ productId, mediaType, mediaUrl, caption });
-  toast(r.msg || (r.ok ? '提交成功' : '提交失败'));
-  if (r.ok) {
-    document.getElementById('sc-url').value = '';
-    document.getElementById('sc-caption').value = '';
-    loadMyShowcases();
+  const file = fileInput.files[0];
+  if (file.size > 50 * 1024 * 1024) { toast('文件不能超过50MB'); return; }
+
+  const fd = new FormData();
+  fd.append('media', file);
+  fd.append('productId', productId);
+  fd.append('mediaType', mediaType);
+  fd.append('caption', caption);
+
+  try {
+    const resp = await fetch('/api/showcase/submit', { method: 'POST', body: fd, credentials: 'include' });
+    const r = await resp.json();
+    toast(r.msg || (r.ok ? '提交成功' : '提交失败'));
+    if (r.ok) {
+      fileInput.value = '';
+      document.getElementById('sc-preview').innerHTML = '';
+      document.getElementById('sc-caption').value = '';
+      loadMyShowcases();
+    }
+  } catch (e) { toast('网络错误'); }
+}
+
+function previewSCFile(input) {
+  const preview = document.getElementById('sc-preview');
+  preview.innerHTML = '';
+  if (!input.files.length) return;
+  const file = input.files[0];
+  if (file.type.startsWith('image/')) {
+    const img = document.createElement('img');
+    img.src = URL.createObjectURL(file);
+    preview.appendChild(img);
+  } else if (file.type.startsWith('video/')) {
+    const vid = document.createElement('video');
+    vid.src = URL.createObjectURL(file);
+    vid.controls = true;
+    vid.muted = true;
+    preview.appendChild(vid);
   }
 }
 

@@ -1,7 +1,31 @@
 /* 晒单 API：提交 / 查看 / 管理员审核 */
 import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
 import pool from '../db.js';
 import { attachUser, requireAdmin, genId } from '../lib/helpers.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const uploadsDir = path.join(__dirname, '..', 'uploads');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: uploadsDir,
+  filename(req, file, cb) {
+    const ext = path.extname(file.originalname).toLowerCase() || '.bin';
+    cb(null, `sc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`);
+  }
+});
+const upload = multer({
+  storage,
+  limits: { fileSize: 50 * 1024 * 1024 },
+  fileFilter(req, file, cb) {
+    if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) cb(null, true);
+    else cb(new Error('只支持图片或视频文件'));
+  }
+});
 
 const router = express.Router();
 router.use(attachUser);
@@ -22,11 +46,12 @@ router.get('/approved', async (req, res, next) => {
 });
 
 // 用户：提交晒单
-router.post('/submit', async (req, res, next) => {
+router.post('/submit', upload.single('media'), async (req, res, next) => {
   try {
     if (!req.user) return res.status(401).json({ ok: false, msg: '请先登录' });
-    const { productId, mediaType, mediaUrl, caption } = req.body || {};
-    if (!productId || !mediaUrl) return res.status(400).json({ ok: false, msg: '缺少商品或媒体链接' });
+    const { productId, mediaType, caption } = req.body || {};
+    const mediaUrl = req.file ? `/uploads/${req.file.filename}` : (req.body.mediaUrl || '');
+    if (!productId || !mediaUrl) return res.status(400).json({ ok: false, msg: '缺少商品或媒体文件' });
     if (!['image', 'video'].includes(mediaType)) return res.status(400).json({ ok: false, msg: '媒体类型无效' });
 
     const { rows: wins } = await pool.query(

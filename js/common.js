@@ -113,10 +113,25 @@ function checkUnclaimedWins() {
   if (!me) return;
   const unclaimed = Store.listProducts().filter(
     p => p.status === 'revealed' && p.winnerUserId === me.id && !p.hasAddress
+      && !localStorage.getItem('win_dismiss_' + p.id)
   );
   if (!unclaimed.length) return;
   const p = unclaimed[0];
   showWinCelebration(p);
+}
+
+function spawnParticles(container) {
+  const emojis = ['💰','🪙','💵','🌸','🎉','💎','🧧'];
+  for (let i = 0; i < 25; i++) {
+    const el = document.createElement('span');
+    el.className = 'win-particle';
+    el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+    el.style.left = Math.random() * 100 + '%';
+    el.style.animationDelay = (Math.random() * 2) + 's';
+    el.style.animationDuration = (2.5 + Math.random() * 2) + 's';
+    el.style.fontSize = (16 + Math.random() * 14) + 'px';
+    container.appendChild(el);
+  }
 }
 
 function showWinCelebration(p) {
@@ -137,12 +152,22 @@ function showWinCelebration(p) {
         <textarea id="wf-address" placeholder="详细收货地址" rows="2"></textarea>
       </div>
       <button class="btn" id="wf-submit" style="width:100%;margin-top:12px">提交收货地址</button>
-      <a href="#" class="win-later" id="wf-later">稍后填写</a>
+      <div class="win-later-row">
+        <label class="win-dismiss-label"><input type="checkbox" id="wf-dismiss"> 不再提醒此商品</label>
+        <a href="#" class="win-later" id="wf-later">稍后填写</a>
+      </div>
     </div>`;
   document.body.appendChild(mask);
+  spawnParticles(mask);
   setTimeout(() => mask.classList.add('show'), 50);
 
-  mask.querySelector('#wf-later').onclick = (e) => { e.preventDefault(); mask.remove(); };
+  mask.querySelector('#wf-later').onclick = (e) => {
+    e.preventDefault();
+    if (mask.querySelector('#wf-dismiss').checked) {
+      localStorage.setItem('win_dismiss_' + p.id, '1');
+    }
+    mask.remove();
+  };
   mask.querySelector('#wf-submit').onclick = async () => {
     const name = mask.querySelector('#wf-name').value.trim();
     const phone = mask.querySelector('#wf-phone').value.trim();
