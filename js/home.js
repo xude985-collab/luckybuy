@@ -118,6 +118,7 @@ function selectCat(key) {
 function renderGrid() {
   let list = Store.listProducts().filter(p => p.status !== 'revealed');
   if (activeCat !== 'all') list = list.filter(p => (p.category || 'other') === activeCat);
+  list.sort((a, b) => (b.soldShares / b.totalShares) - (a.soldShares / a.totalShares));
   const grid = document.getElementById('grid');
   const total = list.length;
   const totalPages = Math.ceil(total / PAGE_SIZE) || 1;
