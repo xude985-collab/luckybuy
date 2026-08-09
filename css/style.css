@@ -123,22 +123,23 @@ img { max-width: 100%; }
 .marquee {
   background: linear-gradient(90deg, #fff3e0, #ffe0b2);
   border-bottom: 1px solid #ffe0b2; overflow: hidden; white-space: nowrap;
-  display: flex; align-items: center; height: 40px;
+  display: flex; align-items: center; height: 40px; position: relative;
 }
 .marquee .label {
   flex: none; background: var(--brand); color: #fff; height: 100%;
   display: flex; align-items: center; padding: 0 14px; font-size: 13px;
-  font-weight: 700; z-index: 2;
+  font-weight: 700; z-index: 2; position: relative;
 }
 .marquee .track {
+  position: absolute; left: 0; top: 0; height: 100%;
   display: inline-flex; align-items: center; gap: 40px;
-  padding-left: 100%; animation: scroll-left 30s linear infinite;
+  animation: scroll-left 30s linear infinite; white-space: nowrap;
 }
 .marquee:hover .track { animation-play-state: paused; }
 .marquee .item { font-size: 14px; color: #7a4a00; }
 .marquee .item b { color: var(--brand-dark); }
 @keyframes scroll-left {
-  from { transform: translateX(0); }
+  from { transform: translateX(100vw); }
   to { transform: translateX(-100%); }
 }
 
