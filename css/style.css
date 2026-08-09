@@ -771,7 +771,7 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   .marquee .item { font-size: 12px; }
 
   /* 容器 */
-  .container { padding: 12px; overflow-x: hidden; }
+  .container { padding: 12px; }
   .page-title { font-size: 17px; margin: 4px 0 10px; }
 
   /* 首页布局：隐藏抢购动态和晒单 */
