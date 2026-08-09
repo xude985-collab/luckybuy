@@ -133,6 +133,53 @@ router.delete('/products/:id', requireAdmin, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// ---- 调试：dump Doba productDetail 原始 JSON（部署后删除） ----
+router.post('/debug-doba', requireAdmin, async (req, res) => {
+  const url = (req.body?.url || '').trim();
+  if (!url) return res.status(400).json({ ok: false, msg: '请填写 Doba 链接' });
+  try {
+    const { parseDobaUrl } = await import('../lib/doba.js');
+    const parsed = parseDobaUrl(url);
+    if (!parsed) return res.status(400).json({ ok: false, msg: '无效 Doba 链接' });
+
+    const { rows } = await pool.query(`SELECT v FROM config WHERE k='doba_cookie'`);
+    const cookie = rows[0]?.v || '';
+
+    const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36';
+    const resp = await fetch(url, {
+      headers: { 'User-Agent': UA, 'Accept': 'text/html', 'Cookie': cookie },
+      signal: AbortSignal.timeout(15000),
+    });
+    const html = await resp.text();
+    const m = html.match(/__NEXT_DATA__[^>]*>([\s\S]*?)<\/script/);
+    if (!m) return res.status(502).json({ ok: false, msg: '未找到 __NEXT_DATA__' });
+    const data = JSON.parse(m[1]);
+    const pd = data?.props?.pageProps?.productDetail;
+    if (!pd) return res.status(502).json({ ok: false, msg: 'productDetail 为空', raw: data?.props?.pageProps });
+
+    // 返回所有含 price/sale/discount 的字段
+    const priceFields = {};
+    for (const [k, v] of Object.entries(pd)) {
+      if (/price|sale|discount|cost|profit|promotion|flash/i.test(k)) {
+        priceFields[k] = v;
+      }
+    }
+    // 也看 selectedSku
+    const skuFields = {};
+    if (pd.selectedSku) {
+      for (const [k, v] of Object.entries(pd.selectedSku)) {
+        if (/price|sale|discount|cost|profit|promotion|flash/i.test(k)) {
+          skuFields[k] = v;
+        }
+      }
+    }
+
+    res.json({ ok: true, priceFields, skuFields, allTopKeys: Object.keys(pd) });
+  } catch (e) {
+    res.status(502).json({ ok: false, msg: e.message });
+  }
+});
+
 // ---- 商品链接导入（赛盈 / 亚马逊） ----
 router.post('/import-product', requireAdmin, async (req, res) => {
   const url = (req.body?.url || '').trim();
