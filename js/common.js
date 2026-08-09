@@ -20,7 +20,7 @@ function renderTopbar(active) {
   const right = u ? `
     <div class="wallet">
       充值：<b>${u.paidCoins||0}</b> 免费：<b>${u.freeCoins||0}</b>
-      &nbsp;·&nbsp; <a href="#" id="recharge">充值</a>
+      <span class="recharge-wrap">&nbsp;·&nbsp; <a href="#" id="recharge">充值</a></span>
     </div>
     <div class="wallet wallet-user">👤 ${u.name}
       &nbsp;·&nbsp; <a href="#" id="logout">退出</a></div>

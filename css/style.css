@@ -368,6 +368,7 @@ tr:last-child td { border-bottom: none; }
   body { padding-bottom: 70px; }
   .topbar .wallet { font-size: 12px; padding: 4px 10px; }
   .topbar .wallet b { font-size: 13px; color: #fff; }
+  .topbar .wallet .recharge-wrap { display: none; }
   .trust-banner { font-size: 12px; padding: 6px 14px; flex-wrap: wrap; gap: 6px; }
   .trust-banner .trust-link { margin-left: 0; font-size: 11px; }
 }
