@@ -13,10 +13,11 @@
   --shadow: 0 2px 10px rgba(0, 0, 0, .06);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
+html { overflow-x: hidden; }
 body {
   font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
   background: var(--bg); color: var(--text); line-height: 1.5;
-  padding-bottom: 40px; overflow-x: hidden;
+  padding-bottom: 40px; overflow-x: hidden; width: 100%;
 }
 a { color: inherit; text-decoration: none; }
 img { max-width: 100%; }
@@ -781,8 +782,8 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   .cat-tab { padding: 5px 12px; font-size: 12px; white-space: nowrap; flex: none; }
 
   /* 商品网格：单列 */
-  .grid { grid-template-columns: 1fr; gap: 12px; }
-  .card { display: flex; flex-direction: row; align-items: stretch; overflow: hidden; max-width: 100%; }
+  .grid { grid-template-columns: 1fr; gap: 12px; max-width: 100%; overflow: hidden; }
+  .card { display: flex; flex-direction: row; align-items: stretch; overflow: hidden; max-width: 100%; width: 100%; }
   .card:hover { transform: none; }
   .card .thumb { width: 110px; min-width: 110px; max-width: 110px; height: auto; min-height: 110px; font-size: 40px; border-radius: var(--radius) 0 0 var(--radius); flex-shrink: 0; }
   .card .body { padding: 10px 12px; flex: 1; min-width: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; }
