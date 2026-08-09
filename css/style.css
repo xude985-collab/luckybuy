@@ -748,8 +748,8 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   .topbar .wallet-user { display: none; }
 
   /* 信任横幅：单行紧凑 */
-  .trust-banner { font-size: 11px; padding: 5px 12px; flex-wrap: nowrap; gap: 6px; overflow: hidden; }
-  .trust-banner > span:not(.trust-icon) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .trust-banner { font-size: 11px; padding: 5px 12px; flex-wrap: nowrap; gap: 6px; overflow: visible; }
+  .trust-banner > span:not(.trust-icon) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
   .trust-banner .trust-link { font-size: 10px; flex: none; white-space: nowrap; }
 
   /* 快捷导航卡片 */
