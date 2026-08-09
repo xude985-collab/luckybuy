@@ -249,6 +249,21 @@ router.delete('/categories/:key', requireAdmin, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+router.put('/categories/:key', requireAdmin, async (req, res, next) => {
+  try {
+    const key = req.params.key;
+    const name = (req.body?.name || '').trim();
+    const icon = (req.body?.icon || '').trim();
+    if (!name) return res.status(400).json({ ok: false, msg: '名称不能为空' });
+    const sets = ['name=$1'];
+    const vals = [name];
+    if (icon) { sets.push(`icon=$${sets.length + 1}`); vals.push(icon); }
+    vals.push(key);
+    await pool.query(`UPDATE categories SET ${sets.join(',')} WHERE key=$${vals.length}`, vals);
+    res.json({ ok: true, msg: '已更新类别' });
+  } catch (e) { next(e); }
+});
+
 // ---- 重置所有购买数据 ----
 router.post('/reset-orders', requireAdmin, async (req, res, next) => {
   try {

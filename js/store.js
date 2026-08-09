@@ -37,6 +37,7 @@ const Store = (() => {
   }
   const get = (p) => http('GET', p);
   const post = (p, b) => http('POST', p, b);
+  const put = (p, b) => http('PUT', p, b);
   const del = (p) => http('DELETE', p);
 
   // ---- 归一化：后端结构 → 页面已用的形状 ----
@@ -340,6 +341,11 @@ const Store = (() => {
     if (r.ok) await refreshCategories();
     return r;
   }
+  async function renameCategory(key, name, icon) {
+    const r = await put('/admin/categories/' + encodeURIComponent(key), { name, icon });
+    if (r.ok) await refreshCategories();
+    return r;
+  }
   async function importAmazon(url) {
     const r = await post('/admin/import-product', { url });
     return r;
@@ -439,7 +445,7 @@ const Store = (() => {
     buyShares, saveAddress,
     // 后台
     upsertProduct, removeProduct, saveConfig,
-    addCategory, removeCategory, importAmazon,
+    addCategory, removeCategory, renameCategory, importAmazon,
     // 晒单
     getApprovedShowcases, submitShowcase, getMyShowcases,
     getPendingShowcases, reviewShowcase,

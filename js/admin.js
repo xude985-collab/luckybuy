@@ -327,8 +327,17 @@ function renderCats() {
   const box = document.getElementById('cat-list');
   const cats = Store.listCategories();
   box.innerHTML = cats.map(c => {
-    return `<div class="cat-item"><span>${c.icon} ${c.name} <small style="color:#888">${c.prefix}</small></span><span class="del" onclick="delCat('${c.key}')">删除</span></div>`;
+    return `<div class="cat-item"><span>${c.icon} ${c.name} <small style="color:#888">${c.prefix}</small></span><span><span class="edit" onclick="renameCat('${c.key}','${c.name.replace(/'/g,"\\'")}','${c.icon}')">重命名</span> <span class="del" onclick="delCat('${c.key}')">删除</span></span></div>`;
   }).join('');
+}
+
+async function renameCat(key, oldName, oldIcon) {
+  const name = prompt('新类目名称：', oldName);
+  if (!name || name === oldName) return;
+  const icon = prompt('图标（可留空不改）：', oldIcon) || oldIcon;
+  const r = await Store.renameCategory(key, name, icon);
+  toast(r.msg || (r.ok ? '已更新' : '更新失败'));
+  if (r.ok) { renderCats(); fillCategoryOptions(); }
 }
 
 async function addCat() {
