@@ -329,7 +329,7 @@ function renderCats() {
   box.innerHTML = cats.map((c, i) => {
     const upBtn = i > 0 ? `<span class="edit" onclick="moveCat(${i},-1)">↑</span>` : `<span class="edit" style="visibility:hidden">↑</span>`;
     const downBtn = i < cats.length - 1 ? `<span class="edit" onclick="moveCat(${i},1)">↓</span>` : `<span class="edit" style="visibility:hidden">↓</span>`;
-    return `<div class="cat-item"><span>${upBtn} ${downBtn} ${c.icon} ${c.name} <small style="color:#888">${c.prefix}</small></span><span><span class="edit" onclick="renameCat('${c.key}','${c.name.replace(/'/g,"\\'")}','${c.icon}')">重命名</span> <span class="del" onclick="delCat('${c.key}')">删除</span></span></div>`;
+    return `<div class="cat-item"><span>${upBtn} ${downBtn} ${c.icon} ${c.name} <small style="color:#888">${c.prefix}</small></span><span><span class="edit" onclick="renameCat('${c.key}','${encodeURIComponent(c.name)}','${encodeURIComponent(c.icon)}')">重命名</span> <span class="del" onclick="delCat('${c.key}')">删除</span></span></div>`;
   }).join('');
 }
 
@@ -345,6 +345,8 @@ async function moveCat(index, dir) {
 }
 
 async function renameCat(key, oldName, oldIcon) {
+  oldName = decodeURIComponent(oldName);
+  oldIcon = decodeURIComponent(oldIcon);
   const name = prompt('新类目名称：', oldName);
   if (!name) return;
   const icon = prompt('图标（可留空不改）：', oldIcon) || oldIcon;
