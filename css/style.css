@@ -766,7 +766,7 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   .quick-nav-label { white-space: nowrap; }
 
   /* 跑马灯：手机隐藏 */
-  .marquee { display: none; }
+  .marquee { display: none !important; }
 
   /* 容器 */
   .container { padding: 12px; }
