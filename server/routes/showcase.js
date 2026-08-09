@@ -71,6 +71,18 @@ router.get('/mine', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// 用户：删除自己的晒单
+router.delete('/:id', async (req, res, next) => {
+  try {
+    if (!req.user) return res.status(401).json({ ok: false, msg: '请先登录' });
+    const { rows } = await pool.query(`SELECT * FROM showcases WHERE id=$1`, [req.params.id]);
+    if (!rows.length) return res.status(404).json({ ok: false, msg: '晒单不存在' });
+    if (rows[0].user_id !== req.user.id) return res.status(403).json({ ok: false, msg: '无权删除' });
+    await pool.query(`DELETE FROM showcases WHERE id=$1`, [req.params.id]);
+    res.json({ ok: true, msg: '已删除' });
+  } catch (e) { next(e); }
+});
+
 // 管理员：待审核列表
 router.get('/pending', requireAdmin, async (req, res, next) => {
   try {

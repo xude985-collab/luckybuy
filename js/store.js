@@ -375,6 +375,9 @@ const Store = (() => {
   async function reviewShowcase(id, action) {
     return await post('/showcase/review/' + id, { action });
   }
+  async function deleteShowcase(id) {
+    return await del('/showcase/' + id);
+  }
 
   // ---- 开奖验证 / 续开 ----
   async function verifyProof(pid) {
@@ -453,7 +456,7 @@ const Store = (() => {
     addCategory, removeCategory, renameCategory, reorderCategories, importAmazon,
     // 晒单
     getApprovedShowcases, submitShowcase, getMyShowcases,
-    getPendingShowcases, reviewShowcase,
+    getPendingShowcases, reviewShowcase, deleteShowcase,
     // 开奖
     verifyProof, resumeDraws,
     // 内部（调试用）

@@ -79,8 +79,16 @@ async function loadMyShowcases() {
         <div style="font-size:12px;color:#888;margin-top:4px">${esc(s.caption || '')}</div>
       </div>
       <span class="sc-status ${s.status}">${statusMap[s.status] || s.status}</span>
+      <button onclick="deleteSC('${s.id}')" style="margin-left:8px;padding:4px 10px;font-size:12px;background:#ff4d4f;color:#fff;border:none;border-radius:6px;cursor:pointer">删除</button>
     </div>`;
   }).join('');
+}
+
+async function deleteSC(id) {
+  if (!confirm('确定删除这条晒单？')) return;
+  const r = await Store.deleteShowcase(id);
+  if (r.ok) { toast('已删除'); loadMyShowcases(); }
+  else toast(r.msg || '删除失败');
 }
 
 async function submitSC() {
