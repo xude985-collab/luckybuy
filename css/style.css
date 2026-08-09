@@ -765,10 +765,8 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   .quick-nav-icon { font-size: 18px; }
   .quick-nav-label { white-space: nowrap; }
 
-  /* 跑马灯 */
-  .marquee { height: 34px; position: relative; clip-path: inset(0); }
-  .marquee .label { font-size: 11px; padding: 0 10px; }
-  .marquee .item { font-size: 12px; }
+  /* 跑马灯：手机隐藏 */
+  .marquee { display: none; }
 
   /* 容器 */
   .container { padding: 12px; }
@@ -783,8 +781,8 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   .cat-tab { padding: 5px 12px; font-size: 12px; white-space: nowrap; flex: none; }
 
   /* 商品网格：单列 */
-  .grid { grid-template-columns: 1fr; gap: 12px; }
-  .card { display: grid; grid-template-columns: 110px 1fr; overflow: hidden; }
+  .grid { grid-template-columns: 1fr; gap: 12px; max-width: calc(100vw - 24px); }
+  .card { display: grid; grid-template-columns: 110px 1fr; overflow: hidden; max-width: calc(100vw - 24px); }
   .card:hover { transform: none; }
   .card .thumb { width: 110px; height: auto; min-height: 110px; font-size: 40px; border-radius: var(--radius) 0 0 var(--radius); }
   .card .body { padding: 10px 12px; min-width: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; }
