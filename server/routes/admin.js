@@ -68,6 +68,11 @@ router.post('/config', requireAdmin, async (req, res, next) => {
         `INSERT INTO config (k,v) VALUES ($1,$2) ON CONFLICT(k) DO UPDATE SET v=EXCLUDED.v`,
         ['recharge_packages', JSON.stringify(req.body.recharge_packages)]);
     }
+    if (req.body.doba_cookie != null) {
+      await pool.query(
+        `INSERT INTO config (k,v) VALUES ($1,$2) ON CONFLICT(k) DO UPDATE SET v=EXCLUDED.v`,
+        ['doba_cookie', String(req.body.doba_cookie).trim()]);
+    }
     res.json({ ok: true, config: await getConfig() });
   } catch (e) { next(e); }
 });

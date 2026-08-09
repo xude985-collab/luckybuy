@@ -133,6 +133,12 @@
         <button class="btn" style="margin-top:12px" onclick="saveRules()">保存规则</button>
       </div>
       <div class="settings-section">
+        <h3>Doba Cookie</h3>
+        <p style="font-size:13px;color:#666;margin-bottom:8px">从浏览器登录 Doba 后，复制 Cookie 粘贴到这里，导入商品时自动使用。</p>
+        <textarea id="doba-cookie" rows="3" placeholder="粘贴 Doba 的 Cookie（浏览器 F12 → Network → 任意请求 → Request Headers → Cookie）" style="width:100%;font-size:12px"></textarea>
+        <button class="btn sm" style="margin-top:8px" onclick="saveDobaCookie()">保存 Cookie</button>
+      </div>
+      <div class="settings-section">
         <h3>充值套餐</h3>
         <div id="pkg-list"></div>
         <div class="pkg-add">

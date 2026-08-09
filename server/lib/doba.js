@@ -17,15 +17,14 @@ export function parseDobaUrl(url) {
   return { skuId: m[1], slug: m[2] };
 }
 
-async function fetchHtml(url) {
-  const resp = await fetch(url, {
-    headers: {
-      'User-Agent': UA,
-      'Accept': 'text/html,application/xhtml+xml',
-      'Accept-Language': 'en-US,en;q=0.9',
-    },
-    signal: AbortSignal.timeout(15000),
-  });
+async function fetchHtml(url, cookie) {
+  const headers = {
+    'User-Agent': UA,
+    'Accept': 'text/html,application/xhtml+xml',
+    'Accept-Language': 'en-US,en;q=0.9',
+  };
+  if (cookie) headers['Cookie'] = cookie;
+  const resp = await fetch(url, { headers, signal: AbortSignal.timeout(15000) });
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
   return resp.text();
 }
@@ -52,16 +51,19 @@ export async function fetchDoba(url) {
   const parsed = parseDobaUrl(url);
   if (!parsed) throw new Error('无效的 Doba 商品链接');
 
+  // 从数据库读取 Doba Cookie
+  const { default: pool } = await import('../db.js');
+  const { rows } = await pool.query(`SELECT v FROM config WHERE k='doba_cookie'`);
+  const cookie = rows[0]?.v || '';
+
   let html;
   let data;
 
-  // 先直接请求
   try {
-    html = await fetchHtml(url);
+    html = await fetchHtml(url, cookie);
     data = parseNextData(html);
   } catch { /* 直接请求失败，尝试 Jina */ }
 
-  // 直接请求拿不到数据时用 Jina Reader 代理
   if (!data) {
     try {
       html = await fetchViaJina(url);
@@ -75,7 +77,7 @@ export async function fetchDoba(url) {
   if (!pp) throw new Error('Doba 数据结构异常');
 
   const pd = pp.productDetail;
-  if (!pd) throw new Error('商品不存在或已下架');
+  if (!pd || pd.errorPage) throw new Error('Doba Cookie 未设置或已过期，请在后台系统设置中更新 Doba Cookie');
 
   return buildDraft(pd, url);
 }

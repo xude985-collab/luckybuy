@@ -284,6 +284,23 @@ async function delUser(uid, account) {
   if (d.ok) loadUsers();
 }
 
+// ========== Settings: Doba Cookie ==========
+async function loadDobaCookie() {
+  try {
+    const r = await fetch('/api/admin/config');
+    const d = await r.json();
+    if (d.ok && d.config && d.config.doba_cookie) {
+      document.getElementById('doba-cookie').value = d.config.doba_cookie;
+    }
+  } catch (e) { console.error(e); }
+}
+
+async function saveDobaCookie() {
+  const cookie = document.getElementById('doba-cookie').value.trim();
+  const r = await Store.saveConfig({ doba_cookie: cookie });
+  toast(r.ok ? 'Doba Cookie 已保存' : (r.msg || '保存失败'));
+}
+
 // ========== Settings: Rules ==========
 function loadRules() {
   const c = Store.getConfig();
@@ -485,6 +502,7 @@ onReady(() => {
   // Wins
   loadWins();
   // Settings
+  loadDobaCookie();
   loadRules();
   renderCats();
   loadPkgs();
