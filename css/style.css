@@ -773,16 +773,37 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   .quick-nav-icon { font-size: 18px; }
   .quick-nav-label { white-space: nowrap; }
 
-  /* 跑马灯：手机隐藏 */
-  .marquee { display: none !important; }
+  /* 跑马灯：手机端缩小显示 */
+  .marquee { height: 32px; font-size: 12px; }
 
   /* 容器 */
   .container { padding: 12px; max-width: 100vw; box-sizing: border-box; }
   .page-title { font-size: 17px; margin: 4px 0 10px; }
 
-  /* 首页布局：隐藏抢购动态和晒单 */
+  /* 首页布局：抢购动态和晒单放商品下方 */
   .home-layout { flex-direction: column; }
-  .left-col { display: none; }
+  .left-col {
+    display: block; width: 100%; order: 2;
+    padding: 0 12px; margin-top: 12px;
+  }
+  .home-layout .container { order: 1; }
+  .live-feed { max-height: 180px; border-radius: var(--radius); }
+  .live-feed-header { font-size: 13px; padding: 10px 12px; }
+  .live-feed-item { padding: 8px 12px; font-size: 12px; }
+
+  /* 晒单：横向滑动 */
+  .showcase-section { padding: 12px; margin-top: 12px; }
+  .showcase-grid {
+    display: flex; gap: 10px; overflow-x: auto;
+    scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
+    padding-bottom: 6px;
+  }
+  .showcase-grid::-webkit-scrollbar { display: none; }
+  .showcase-item {
+    flex: none; width: 160px; scroll-snap-align: start;
+  }
+  .showcase-item .media { height: 100px; font-size: 36px; }
+  .showcase-item .cap { padding: 8px 10px; font-size: 12px; }
 
   /* 分类标签 */
   .cat-tabs { gap: 6px; margin-bottom: 12px; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 6px; }
