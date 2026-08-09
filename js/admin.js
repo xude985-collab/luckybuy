@@ -168,114 +168,11 @@ async function importProduct() {
       : '已导入，请检查后保存';
     toast(msg);
   } catch (e) {
-    if (/doba\.com/i.test(url)) {
-      showDobaFallback(url);
-    } else {
-      toast(e.message || '导入失败');
-    }
+    toast(e.message || '导入失败');
   }
   finally { btn.disabled = false; btn.textContent = '自动导入'; }
 }
 
-function showDobaFallback(url) {
-  const mask = document.createElement('div');
-  mask.className = 'coin-choice-mask';
-  mask.innerHTML = `
-    <div class="coin-choice-modal" style="max-width:600px;width:90%">
-      <div class="coin-choice-title">Doba 导入</div>
-      <div style="font-size:13px;color:#666;margin:8px 0;line-height:1.8">
-        Doba 需要登录后才能获取商品信息。请按步骤操作：<br>
-        1. <a href="${url}" target="_blank" style="color:#ff5722">点击打开商品页</a>（确保已登录）<br>
-        2. 按 <b>F12</b> 打开开发者工具 → 切到 <b>Console</b> 标签<br>
-        3. 粘贴以下代码并回车：<br>
-        <code style="display:block;background:#f5f5f5;padding:6px 10px;border-radius:6px;margin:4px 0;font-size:12px;user-select:all;word-break:break-all">copy(document.getElementById('__NEXT_DATA__').textContent)</code>
-        4. 提示"复制成功"后，粘贴到下方输入框<br>
-        <small style="color:#999">（也可以用 Ctrl+U 查看源代码，全选复制粘贴）</small>
-      </div>
-      <textarea id="doba-html-input" rows="6" style="width:100%;font-size:12px;font-family:monospace;border:1px solid #ddd;border-radius:8px;padding:8px;resize:vertical" placeholder="粘贴这里..."></textarea>
-      <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
-        <button class="btn ghost" onclick="this.closest('.coin-choice-mask').remove()">取消</button>
-        <button class="btn" onclick="parseDobaHtml()">解析导入</button>
-      </div>
-    </div>`;
-  document.body.appendChild(mask);
-}
-
-function parseDobaHtml() {
-  const raw = document.getElementById('doba-html-input').value.trim();
-  if (!raw || raw.length < 50) { toast('请粘贴产品数据'); return; }
-
-  let pp;
-  try {
-    // 尝试直接解析为 JSON（控制台 copy() 的结果）
-    const json = JSON.parse(raw);
-    pp = json.props?.pageProps || json;
-  } catch {
-    // 从完整 HTML 中提取 __NEXT_DATA__
-    const m = raw.match(/__NEXT_DATA__[^>]*>([\s\S]*?)<\/script/);
-    if (!m) { toast('无法解析，请确认粘贴的内容正确'); return; }
-    try { pp = JSON.parse(m[1]).props.pageProps; } catch { toast('JSON 解析失败'); return; }
-  }
-
-  if (pp.abnormalType === 'UN_LOGIN' || (pp.productDetail && pp.productDetail.errorPage)) {
-    toast('页面未登录，请先登录 Doba 后重新操作');
-    return;
-  }
-
-  const pd = pp.productDetail || pp;
-  if (!pd || (!pd.goodsName && !pd.title && !pd.name)) {
-    toast('未找到商品信息，请确认页面正确');
-    return;
-  }
-
-  const draft = { name: '', gallery: [], specs: [], desc: '', sourceUrl: v('f-source') || '' };
-  draft.name = pd.goodsName || pd.title || pd.name || '';
-
-  // 图片
-  const imgSource = pd.goodsImg || pd.imgList || pd.images || [];
-  draft.gallery = imgSource.map(img => {
-    const u = typeof img === 'string' ? img : (img.imgBigUrl || img.imgUrl || img.url || '');
-    return u ? { type: 'image', url: u.startsWith('//') ? 'https:' + u : u } : null;
-  }).filter(Boolean);
-
-  // 价格
-  if (pd.maxPriceProfitDiff && pd.maxPriceProfitDiffRate) {
-    draft.refPrice = Math.round(pd.maxPriceProfitDiff / (pd.maxPriceProfitDiffRate / 100) * 100) / 100;
-  } else if (pd.price) {
-    draft.refPrice = parseFloat(pd.price);
-  } else if (pd.retailPrice) {
-    draft.refPrice = parseFloat(pd.retailPrice);
-  }
-
-  // 描述
-  const bullets = [];
-  if (Array.isArray(pd.highlights)) bullets.push(...pd.highlights.filter(Boolean));
-  if (pd.productDetail && typeof pd.productDetail === 'string') {
-    bullets.push(pd.productDetail.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 1500));
-  }
-  draft.desc = bullets.join('\n');
-  draft.bullets = bullets;
-
-  // 规格
-  if (pd.goodsSize) {
-    const s = pd.goodsSize;
-    if (s.length) draft.specs.push({ k: '长', v: s.length + ' ' + (s.dimUnit || 'in.') });
-    if (s.width) draft.specs.push({ k: '宽', v: s.width + ' ' + (s.dimUnit || 'in.') });
-    if (s.height) draft.specs.push({ k: '高', v: s.height + ' ' + (s.dimUnit || 'in.') });
-    if (s.weight) draft.specs.push({ k: '重量', v: s.weight + ' ' + (s.weightUnit || 'lbs') });
-  }
-  if (pd.categoryName) draft.specs.push({ k: '分类', v: pd.categoryName });
-  if (pd.selectedSku?.itemNo) draft.specs.push({ k: 'ItemNo', v: pd.selectedSku.itemNo });
-  if (pd.selectedSku?.selfPickUpLocation) draft.specs.push({ k: '发货地', v: pd.selectedSku.selfPickUpLocation });
-  if (Array.isArray(pd.attributes)) {
-    pd.attributes.forEach(a => draft.specs.push({ k: a.name || a.key, v: a.value }));
-  }
-
-  draft.priceNote = draft.refPrice ? `参考价 $${draft.refPrice}` : '';
-  applyDraft(draft, draft.sourceUrl);
-  document.querySelector('.coin-choice-mask')?.remove();
-  toast(draft.refPrice ? `已导入，参考价 $${draft.refPrice}` : '已导入，请检查后保存');
-}
 
 function applyDraft(d, url) {
   if (d.name) document.getElementById('f-name').value = d.name;

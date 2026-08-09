@@ -1,10 +1,11 @@
 /*
  * Doba.com 商品页解析。
  *
- * Doba 是 Next.js 应用，产品页需要登录查看。
- * 服务器 IP 被 WAF 拦截，通过 Jina Reader 代理绕过。
- * 如果产品需要登录（大部分情况），前端会 fallback 到让管理员粘贴页面源码。
+ * Doba 是 Next.js 应用，商品页数据在 __NEXT_DATA__ script 标签内。
+ * 先直接请求，如果被 WAF 拦截则通过 Jina Reader 代理获取。
  */
+
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36';
 
 function stripTags(s) {
   return (s || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -16,30 +17,62 @@ export function parseDobaUrl(url) {
   return { skuId: m[1], slug: m[2] };
 }
 
+async function fetchHtml(url) {
+  const resp = await fetch(url, {
+    headers: {
+      'User-Agent': UA,
+      'Accept': 'text/html,application/xhtml+xml',
+      'Accept-Language': 'en-US,en;q=0.9',
+    },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return resp.text();
+}
+
+async function fetchViaJina(url) {
+  const resp = await fetch(`https://r.jina.ai/${url}`, {
+    headers: {
+      'Accept': 'text/html',
+      'X-Return-Format': 'html',
+    },
+    signal: AbortSignal.timeout(20000),
+  });
+  if (!resp.ok) throw new Error(`Jina HTTP ${resp.status}`);
+  return resp.text();
+}
+
+function parseNextData(html) {
+  const m = html.match(/__NEXT_DATA__[^>]*>([\s\S]*?)<\/script/);
+  if (!m) return null;
+  try { return JSON.parse(m[1]); } catch { return null; }
+}
+
 export async function fetchDoba(url) {
   const parsed = parseDobaUrl(url);
   if (!parsed) throw new Error('无效的 Doba 商品链接');
 
-  // 通过 Jina Reader 获取页面 HTML（绕过 WAF）
-  const jinaUrl = 'https://r.jina.ai/' + url;
-  const resp = await fetch(jinaUrl, {
-    headers: { 'X-Respond-With': 'html' },
-    signal: AbortSignal.timeout(20000),
-  });
+  let html;
+  let data;
 
-  if (!resp.ok) throw new Error(`Doba 页面获取失败 (${resp.status})`);
+  // 先直接请求
+  try {
+    html = await fetchHtml(url);
+    data = parseNextData(html);
+  } catch { /* 直接请求失败，尝试 Jina */ }
 
-  const html = await resp.text();
-  const m = html.match(/__NEXT_DATA__[^>]*>([\s\S]*?)<\/script/);
-  if (!m) throw new Error('Doba 页面解析失败');
+  // 直接请求拿不到数据时用 Jina Reader 代理
+  if (!data) {
+    try {
+      html = await fetchViaJina(url);
+      data = parseNextData(html);
+    } catch { /* Jina 也失败 */ }
+  }
 
-  const data = JSON.parse(m[1]);
+  if (!data) throw new Error('Doba 页面获取失败，请稍后重试');
+
   const pp = data.props?.pageProps;
   if (!pp) throw new Error('Doba 数据结构异常');
-
-  if (pp.abnormalType === 'UN_LOGIN' || (pp.productDetail && pp.productDetail.errorPage)) {
-    throw new Error('Doba 需要登录，请在弹窗中粘贴页面源码');
-  }
 
   const pd = pp.productDetail;
   if (!pd) throw new Error('商品不存在或已下架');

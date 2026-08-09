@@ -31,12 +31,12 @@ window.SEED_PRODUCTS = [
     id: 'p5', sku: 'FD-00001', category: 'food', name: '星巴克 $100 电子券', period: '第 002 期',
     price: 1, totalShares: 99, soldShares: 30, freeQuota: 20,
     img: '☕', status: 'ongoing',
-    desc: '小额尝鲜款，快速开奖，人人有机会。',
+    desc: '小额尝鲜款，快速揭晓，人人有机会。',
   },
   {
     id: 'p6', sku: '3C-00004', category: 'digital', name: 'AirPods Pro 2', period: '第 001 期',
     price: 10, totalShares: 39, soldShares: 25, freeQuota: 5,
     img: '🎧', status: 'ongoing',
-    desc: '主动降噪，USB-C 充电盒。$10 一份，份数少更快开奖。',
+    desc: '主动降噪，USB-C 充电盒。$10 一份，份数少更快揭晓。',
   },
 ];
