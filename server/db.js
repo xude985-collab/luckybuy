@@ -155,13 +155,13 @@ CREATE TABLE IF NOT EXISTS showcases (
 `;
 
 const DEFAULT_CATEGORIES = [
-  { key: 'appliance', name: '家用电器', prefix: 'AP', icon: '🔌' },
-  { key: 'beauty',    name: '美妆护肤', prefix: 'BT', icon: '💄' },
-  { key: 'digital',   name: '3C 数码', prefix: '3C', icon: '📱' },
-  { key: 'home',      name: '家居生活', prefix: 'HM', icon: '🛋️' },
-  { key: 'baby',      name: '母婴亲子', prefix: 'BB', icon: '🍼' },
-  { key: 'food',      name: '食品酒饮', prefix: 'FD', icon: '🍫' },
-  { key: 'other',     name: '其他',     prefix: 'OT', icon: '🎁' },
+  { key: 'cleaning',  name: '清洁和环境电器', prefix: 'CL', icon: '🧹' },
+  { key: 'kitchen',   name: '智能厨房电器', prefix: 'KT', icon: '🍳' },
+  { key: 'outdoor',   name: '庭院与户外工具', prefix: 'OD', icon: '🌿' },
+  { key: 'personal',  name: '个护美容设备', prefix: 'PC', icon: '💆' },
+  { key: 'fitness',   name: '运动健身器材', prefix: 'FT', icon: '🏋️' },
+  { key: 'baby',      name: '高端母婴用品', prefix: 'BB', icon: '👶' },
+  { key: 'pet',       name: '宠物智能用品', prefix: 'PT', icon: '🐾' },
 ];
 const DEFAULT_CONFIG = {
   grantRegister: 10, grantCheckin: 2, grantShowcase: 20,
