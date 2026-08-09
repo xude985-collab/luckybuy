@@ -40,7 +40,7 @@ img { max-width: 100%; }
   background: rgba(255, 255, 255, .2); padding: 6px 14px;
   border-radius: 20px; font-size: 14px;
 }
-.topbar .wallet b { color: var(--gold); }
+.topbar .wallet b { color: #fff; font-weight: 700; }
 .topbar .wallet-user-m {
   display: none; color: #fff; font-size: 13px; text-decoration: none;
   background: rgba(255,255,255,.18); border-radius: 14px; padding: 4px 12px;
@@ -741,7 +741,9 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   .topbar .logo small { display: none; }
   .topbar nav { display: none; }
   .topbar .spacer { display: none; }
-  .topbar .wallet { font-size: 11px; padding: 3px 8px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .topbar .wallet { font-size: 11px; padding: 3px 8px; flex: none; white-space: nowrap; }
+  .topbar .wallet a#recharge { display: inline; font-weight: 700; color: #fff; background: var(--brand); padding: 2px 6px; border-radius: 4px; margin-left: 4px; }
+  .topbar a.wallet { font-size: 13px; padding: 5px 14px; border-radius: 6px; background: var(--brand); color: #fff; text-decoration: none; font-weight: 600; }
   .topbar .wallet-user { display: none; }
 
   /* 信任横幅：单行紧凑 */
@@ -762,6 +764,11 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
     border: 1px solid #ffe0c0;
   }
   .quick-nav-card:active { transform: scale(.97); }
+  .quick-nav-recharge {
+    background: linear-gradient(135deg, var(--brand), #ff6b00);
+    border-color: var(--brand);
+    color: #fff;
+  }
   .quick-nav-icon { font-size: 18px; }
   .quick-nav-label { white-space: nowrap; }
 
@@ -794,7 +801,9 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   }
   .card .period { font-size: 11px; margin: 2px 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .card-buy-section { margin-top: 6px; overflow: hidden; }
-  .card-buy-section .card-qty { display: none; }
+  .card-buy-section .card-qty { display: flex; gap: 6px; margin-bottom: 6px; justify-content: center; }
+  .card-buy-section .card-qty button { font-size: 14px; width: 28px; height: 28px; border: 1px solid #ddd; background: #fff; border-radius: 6px; }
+  .card-buy-section .card-qty input { width: 50px; text-align: center; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; }
   .card-buy-section .card-quick-pick { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
   .card-buy-section .card-quick-pick button { font-size: 11px; padding: 3px 8px; }
   .card-buy-btn { font-size: 12px; padding: 7px 0; margin-top: 0; border-radius: 16px; width: 100%; text-align: center; }
