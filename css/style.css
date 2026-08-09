@@ -720,6 +720,9 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   padding: 3px 10px; background: rgba(46,125,50,.1); border-radius: 12px;
 }
 
+/* 移动端快捷导航（桌面隐藏） */
+.mobile-quick-nav { display: none; }
+
 /* ===== 手机适配 ===== */
 @media (max-width: 600px) {
   /* 顶栏精简 */
@@ -731,9 +734,26 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   .topbar .wallet { font-size: 12px; padding: 4px 10px; flex: none; white-space: nowrap; }
   .topbar .wallet-user { display: none; }
 
-  /* 信任横幅 */
-  .trust-banner { font-size: 11px; padding: 6px 12px; flex-wrap: wrap; gap: 6px; }
-  .trust-banner .trust-link { margin-left: 0; }
+  /* 信任横幅：单行紧凑 */
+  .trust-banner { font-size: 11px; padding: 5px 12px; flex-wrap: nowrap; gap: 6px; overflow: hidden; }
+  .trust-banner > span:not(.trust-icon) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .trust-banner .trust-link { display: none; }
+
+  /* 快捷导航卡片 */
+  .mobile-quick-nav {
+    display: flex; gap: 10px; padding: 10px 12px;
+    background: #fff; border-bottom: 1px solid #f0f0f0;
+  }
+  .quick-nav-card {
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 10px 0; border-radius: 10px; font-size: 13px; font-weight: 600;
+    color: #333; text-decoration: none;
+    background: linear-gradient(135deg, #fff8f0, #fff3e6);
+    border: 1px solid #ffe0c0;
+  }
+  .quick-nav-card:active { transform: scale(.97); }
+  .quick-nav-icon { font-size: 18px; }
+  .quick-nav-label { white-space: nowrap; }
 
   /* 跑马灯 */
   .marquee { height: 34px; }
