@@ -24,7 +24,7 @@ function renderTopbar(active) {
     </div>
     <div class="wallet wallet-user">👤 ${u.name}
       &nbsp;·&nbsp; <a href="#" id="logout">退出</a></div>
-    <a href="profile.html" class="wallet-user-m">👤</a>`
+    <div class="wallet-user-m"><a href="profile.html" class="wum-name">👤 ${u.name}</a> · <span class="wum-logout" id="logout-m">退出</span></div>`
     : `<a href="login.html" class="wallet">登录 / 注册</a>`;
 
   const isAdmin = u && u.isAdmin;
@@ -45,6 +45,10 @@ function renderTopbar(active) {
   const lo = document.getElementById('logout');
   if (lo) lo.onclick = async (e) => {
     e.preventDefault(); await Store.logout(); toast('已退出'); location.href = 'index.html';
+  };
+  const loM = document.getElementById('logout-m');
+  if (loM) loM.onclick = async (e) => {
+    e.preventDefault(); e.stopPropagation(); await Store.logout(); toast('已退出'); location.href = 'index.html';
   };
 
   renderMobNav(active, u);
