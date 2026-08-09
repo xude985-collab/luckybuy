@@ -4,6 +4,25 @@ function esc(s) { const d = document.createElement('div'); d.textContent = s; re
 async function loadProfile() {
   const u = Store.currentUser();
   if (!u) { location.href = 'index.html'; return; }
+
+  // 用户信息头
+  const wrap = document.querySelector('.profile-wrap');
+  const header = document.createElement('div');
+  header.className = 'profile-card profile-header';
+  header.innerHTML = `
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <div class="profile-avatar">👤</div>
+      <div style="flex:1;min-width:0">
+        <div class="profile-name">${esc(u.name || '用户')}</div>
+        <div class="profile-account">${esc(u.account || '')}</div>
+      </div>
+      <button class="btn ghost" id="profile-logout" style="flex:none">退出登录</button>
+    </div>`;
+  wrap.insertBefore(header, wrap.firstChild);
+  document.getElementById('profile-logout').onclick = async () => {
+    await Store.logout(); toast('已退出'); location.href = 'index.html';
+  };
+
   document.getElementById('p-coins').textContent = (u.paidBalance || 0) + (u.freeBalance || 0);
 
   // 幸运记录
