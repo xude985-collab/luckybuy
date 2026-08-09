@@ -951,7 +951,7 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
 
   /* 信任横幅超简 */
   .trust-banner { font-size: 10px; padding: 5px 10px; }
-  .trust-banner .trust-link { display: none; }
+  .trust-banner .trust-link { font-size: 9px; }
 
   /* 个人中心签到卡 */
   .checkin-card h2 { font-size: 16px !important; }
