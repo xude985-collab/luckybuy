@@ -23,7 +23,8 @@ function renderTopbar(active) {
       &nbsp;·&nbsp; <a href="#" id="recharge">充值</a>
     </div>
     <div class="wallet wallet-user">👤 ${u.name}
-      &nbsp;·&nbsp; <a href="#" id="logout">退出</a></div>`
+      &nbsp;·&nbsp; <a href="#" id="logout">退出</a></div>
+    <a href="profile.html" class="wallet-user-m">👤</a>`
     : `<a href="login.html" class="wallet">登录 / 注册</a>`;
 
   const isAdmin = u && u.isAdmin;

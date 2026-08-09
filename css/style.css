@@ -40,6 +40,11 @@ img { max-width: 100%; }
   border-radius: 20px; font-size: 14px;
 }
 .topbar .wallet b { color: var(--gold); }
+.topbar .wallet-user-m {
+  display: none; color: #fff; font-size: 20px; text-decoration: none;
+  background: rgba(255,255,255,.2); border-radius: 50%; width: 32px; height: 32px;
+  align-items: center; justify-content: center; flex-shrink: 0;
+}
 
 /* 容器 */
 .container { max-width: 1080px; margin: 0 auto; padding: 20px; }
@@ -348,6 +353,7 @@ tr:last-child td { border-bottom: none; }
   .detail .big-thumb { height: 200px; font-size: 96px; }
   .topbar nav { display: none; }
   .topbar .wallet-user { display: none; }
+  .topbar .wallet-user-m { display: flex; }
   .mob-nav { display: flex; }
   body { padding-bottom: 70px; }
   .topbar .wallet { font-size: 12px; padding: 4px 10px; }
@@ -737,11 +743,19 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
 
   /* 商品网格：两列 */
   .grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-  .card .thumb { height: 110px; font-size: 48px; }
+  .card .thumb { height: 120px; font-size: 48px; }
   .card .body { padding: 10px; }
-  .card .name { font-size: 13px; height: 36px; }
-  .card .period { font-size: 11px; margin: 2px 0 6px; }
-  .card-buy-btn { font-size: 12px; padding: 6px 10px; margin-top: 8px; }
+  .card .sku-line { display: none; }
+  .card .name {
+    font-size: 13px; height: auto; max-height: 36px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; text-overflow: ellipsis; line-height: 1.4;
+  }
+  .card .period { font-size: 11px; margin: 2px 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-buy-section { margin-top: 6px; }
+  .card-buy-section .card-qty { display: none; }
+  .card-buy-section .card-quick-pick { display: none; }
+  .card-buy-btn { font-size: 12px; padding: 8px 0; margin-top: 0; border-radius: 16px; width: 100%; text-align: center; }
   .progress { height: 5px; }
   .progress-meta { font-size: 11px; margin-top: 4px; }
 
