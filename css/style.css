@@ -741,7 +741,7 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   .topbar .logo small { display: none; }
   .topbar nav { display: none; }
   .topbar .spacer { display: none; }
-  .topbar .wallet { font-size: 12px; padding: 4px 10px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .topbar .wallet { font-size: 11px; padding: 3px 8px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .topbar .wallet-user { display: none; }
 
   /* 信任横幅：单行紧凑 */
@@ -769,7 +769,7 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   .marquee { display: none !important; }
 
   /* 容器 */
-  .container { padding: 12px; }
+  .container { padding: 12px; max-width: 100vw; box-sizing: border-box; }
   .page-title { font-size: 17px; margin: 4px 0 10px; }
 
   /* 首页布局：隐藏抢购动态和晒单 */
