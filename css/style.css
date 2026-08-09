@@ -783,10 +783,10 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
 
   /* 商品网格：单列 */
   .grid { grid-template-columns: 1fr; gap: 12px; max-width: 100%; overflow: hidden; }
-  .card { display: flex; flex-direction: row; align-items: stretch; overflow: hidden; max-width: 100%; width: 100%; }
+  .card { display: grid; grid-template-columns: 110px 1fr; overflow: hidden; max-width: 100%; width: 100%; }
   .card:hover { transform: none; }
-  .card .thumb { width: 110px; min-width: 110px; max-width: 110px; height: auto; min-height: 110px; font-size: 40px; border-radius: var(--radius) 0 0 var(--radius); flex-shrink: 0; }
-  .card .body { padding: 10px 12px; flex: 1; min-width: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; }
+  .card .thumb { width: 110px; height: auto; min-height: 110px; font-size: 40px; border-radius: var(--radius) 0 0 var(--radius); }
+  .card .body { padding: 10px 12px; min-width: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; }
   .card .sku-line { display: none; }
   .card .name {
     font-size: 14px; height: auto; max-height: none;
