@@ -736,7 +736,7 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
 /* ===== 手机适配 ===== */
 @media (max-width: 600px) {
   /* 顶栏精简 */
-  .topbar { padding: 10px 12px; gap: 8px; flex-wrap: nowrap; }
+  .topbar { padding: 10px 12px; gap: 8px; flex-wrap: nowrap; max-width: 100vw; overflow: hidden; }
   .topbar .logo { font-size: 17px; flex: none; }
   .topbar .logo small { display: none; }
   .topbar nav { display: none; }
@@ -783,8 +783,8 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   .cat-tab { padding: 5px 12px; font-size: 12px; white-space: nowrap; flex: none; }
 
   /* 商品网格：单列 */
-  .grid { grid-template-columns: 1fr; gap: 12px; max-width: 100%; overflow: hidden; }
-  .card { display: grid; grid-template-columns: 110px 1fr; overflow: hidden; max-width: 100%; width: 100%; }
+  .grid { grid-template-columns: 1fr; gap: 12px; max-width: calc(100vw - 24px); overflow: hidden; }
+  .card { display: grid; grid-template-columns: 110px 1fr; overflow: hidden; max-width: calc(100vw - 24px); }
   .card:hover { transform: none; }
   .card .thumb { width: 110px; height: auto; min-height: 110px; font-size: 40px; border-radius: var(--radius) 0 0 var(--radius); }
   .card .body { padding: 10px 12px; min-width: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; }
