@@ -795,7 +795,8 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   .card .period { font-size: 11px; margin: 2px 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .card-buy-section { margin-top: 6px; overflow: hidden; }
   .card-buy-section .card-qty { display: none; }
-  .card-buy-section .card-quick-pick { display: none; }
+  .card-buy-section .card-quick-pick { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+  .card-buy-section .card-quick-pick button { font-size: 11px; padding: 3px 8px; }
   .card-buy-btn { font-size: 12px; padding: 7px 0; margin-top: 0; border-radius: 16px; width: 100%; text-align: center; }
   .progress { height: 5px; }
   .progress-meta { font-size: 11px; margin-top: 4px; }

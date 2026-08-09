@@ -19,7 +19,7 @@ function renderTopbar(active) {
 
   const right = u ? `
     <div class="wallet">
-      充值金币：<b>${u.paidCoins||0}</b> 免费金币：<b>${u.freeCoins||0}</b>
+      充值：<b>${u.paidCoins||0}</b> 免费：<b>${u.freeCoins||0}</b>
       &nbsp;·&nbsp; <a href="#" id="recharge">充值</a>
     </div>
     <div class="wallet wallet-user">👤 ${u.name}
