@@ -110,16 +110,24 @@ function buildDraft(pd, url) {
   if (detailText) bullets.push(detailText);
 
   let refPrice = 0;
-  if (pd.price) {
-    refPrice = parseFloat(pd.price);
-  } else if (pd.retailPrice) {
-    refPrice = parseFloat(pd.retailPrice);
-  } else {
+  if (pd.salePrice) {
+    refPrice = parseFloat(pd.salePrice);
+  } else if (pd.promotionPrice) {
+    refPrice = parseFloat(pd.promotionPrice);
+  } else if (pd.selectedSku?.salePrice) {
+    refPrice = parseFloat(pd.selectedSku.salePrice);
+  } else if (pd.selectedSku?.price) {
+    refPrice = parseFloat(pd.selectedSku.price);
+  }
+  if (!refPrice) {
     const profitDiff = parseFloat(pd.maxPriceProfitDiff) || 0;
     const profitRate = parseFloat(pd.maxPriceProfitDiffRate) || 0;
     if (profitDiff > 0 && profitRate > 0) {
       refPrice = Math.round((profitDiff / (profitRate / 100)) * 100) / 100;
     }
+  }
+  if (!refPrice && pd.price) {
+    refPrice = parseFloat(pd.price);
   }
 
   return {
