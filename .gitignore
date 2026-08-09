@@ -5,3 +5,7 @@ node_modules/
 *.db-wal
 server.out
 debug_*
+
+cookies.txt
+cookies2.txt
+tmp_cookies.txt
