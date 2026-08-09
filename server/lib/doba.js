@@ -108,14 +108,16 @@ function buildDraft(pd, url) {
   if (detailText) bullets.push(detailText);
 
   let refPrice = 0;
-  const profitDiff = parseFloat(pd.maxPriceProfitDiff) || 0;
-  const profitRate = parseFloat(pd.maxPriceProfitDiffRate) || 0;
-  if (profitDiff > 0 && profitRate > 0) {
-    refPrice = Math.round((profitDiff / (profitRate / 100)) * 100) / 100;
-  } else if (pd.price) {
+  if (pd.price) {
     refPrice = parseFloat(pd.price);
   } else if (pd.retailPrice) {
     refPrice = parseFloat(pd.retailPrice);
+  } else {
+    const profitDiff = parseFloat(pd.maxPriceProfitDiff) || 0;
+    const profitRate = parseFloat(pd.maxPriceProfitDiffRate) || 0;
+    if (profitDiff > 0 && profitRate > 0) {
+      refPrice = Math.round((profitDiff / (profitRate / 100)) * 100) / 100;
+    }
   }
 
   return {
@@ -129,7 +131,7 @@ function buildDraft(pd, url) {
     desc: bullets.join('\n\n'),
     bullets,
     priceNote: refPrice > 0
-      ? `参考价 $${refPrice}（根据利润率估算，请核实实际价格）`
+      ? `参考价 $${refPrice}`
       : '价格需登录 Doba 查看，请手动填写',
   };
 }
