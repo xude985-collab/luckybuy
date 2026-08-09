@@ -38,7 +38,7 @@ function formatProduct(p) {
 // 类别列表
 router.get('/categories', async (req, res, next) => {
   try {
-    const { rows } = await pool.query(`SELECT key,name,prefix,icon FROM categories ORDER BY sort`);
+    const { rows } = await pool.query(`SELECT key,name,prefix,icon,sort FROM categories ORDER BY sort`);
     res.json({ ok: true, categories: rows });
   } catch (e) { next(e); }
 });

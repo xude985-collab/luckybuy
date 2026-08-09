@@ -264,6 +264,27 @@ router.put('/categories/:key', requireAdmin, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+router.post('/categories/reorder', requireAdmin, async (req, res, next) => {
+  try {
+    const keys = req.body?.keys;
+    if (!Array.isArray(keys) || !keys.length) return res.status(400).json({ ok: false, msg: '缺少排序数据' });
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      for (let i = 0; i < keys.length; i++) {
+        await client.query(`UPDATE categories SET sort=$1 WHERE key=$2`, [i, keys[i]]);
+      }
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
+    res.json({ ok: true, msg: '排序已保存' });
+  } catch (e) { next(e); }
+});
+
 // ---- 重置所有购买数据 ----
 router.post('/reset-orders', requireAdmin, async (req, res, next) => {
   try {

@@ -151,7 +151,7 @@ const Store = (() => {
   async function refreshCategories() {
     const r = await get('/shop/categories');
     cache.categories = (r.categories || []).map(c => ({
-      key: c.key, name: c.name, prefix: c.prefix, icon: c.icon || '🏷️',
+      key: c.key, name: c.name, prefix: c.prefix, icon: c.icon || '🏷️', sort: c.sort ?? 0,
     }));
   }
   async function refreshOrders() {
@@ -346,6 +346,11 @@ const Store = (() => {
     if (r.ok) await refreshCategories();
     return r;
   }
+  async function reorderCategories(orderedKeys) {
+    const r = await post('/admin/categories/reorder', { keys: orderedKeys });
+    if (r.ok) await refreshCategories();
+    return r;
+  }
   async function importAmazon(url) {
     const r = await post('/admin/import-product', { url });
     return r;
@@ -445,7 +450,7 @@ const Store = (() => {
     buyShares, saveAddress,
     // 后台
     upsertProduct, removeProduct, saveConfig,
-    addCategory, removeCategory, renameCategory, importAmazon,
+    addCategory, removeCategory, renameCategory, reorderCategories, importAmazon,
     // 晒单
     getApprovedShowcases, submitShowcase, getMyShowcases,
     getPendingShowcases, reviewShowcase,
