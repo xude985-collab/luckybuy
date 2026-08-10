@@ -13,7 +13,7 @@ async function loadProfile() {
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
       <div class="profile-avatar">👤</div>
       <div style="flex:1;min-width:0">
-        <div class="profile-name">${esc(u.name || '用户')}</div>
+        <div class="profile-name" id="profile-name-display">${esc(u.name || '用户')} <span id="edit-name-btn" style="font-size:12px;color:#ff5722;cursor:pointer;margin-left:6px">✏️ 修改</span></div>
         <div class="profile-account">${esc(u.account || '')}</div>
       </div>
       <button class="btn ghost" id="profile-logout" style="flex:none">退出登录</button>
@@ -21,6 +21,13 @@ async function loadProfile() {
   wrap.insertBefore(header, wrap.firstChild);
   document.getElementById('profile-logout').onclick = async () => {
     await Store.logout(); toast('已退出'); location.href = 'index.html';
+  };
+  document.getElementById('edit-name-btn').onclick = async () => {
+    const newName = prompt('输入新昵称（1~20字）', u.name || '');
+    if (!newName || !newName.trim()) return;
+    const r = await Store.updateName(newName.trim());
+    if (r.ok) { toast('昵称已修改'); location.reload(); }
+    else toast(r.msg || '修改失败');
   };
 
   document.getElementById('p-coins').textContent = (u.paidBalance || 0) + (u.freeBalance || 0);

@@ -140,6 +140,16 @@ router.get('/me', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// 修改昵称
+router.post('/update-name', attachUser, requireAuth, async (req, res, next) => {
+  try {
+    const name = (req.body?.name || '').trim();
+    if (!name || name.length > 20) return res.status(400).json({ ok: false, msg: '昵称 1~20 字' });
+    await pool.query(`UPDATE users SET name=$1 WHERE id=$2`, [name, req.user.id]);
+    res.json({ ok: true, name });
+  } catch (e) { next(e); }
+});
+
 async function publicUser(id) {
   const { rows } = await pool.query(
     `SELECT id,account,account_type,name,role,invite_code,paid_balance,

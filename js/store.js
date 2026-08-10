@@ -222,6 +222,11 @@ const Store = (() => {
     cache.orders = [];
     cache.wallet = { paidBalance: 0, tx: [] };
   }
+  async function updateName(name) {
+    const r = await post('/auth/update-name', { name });
+    if (r.ok && cache.user) cache.user.name = r.name;
+    return r;
+  }
   async function recharge(amount, method) {
     const r = await post('/wallet/recharge', { amount, method: method || 'stripe' });
     if (r.ok && r.url) { location.href = r.url; return r; }
@@ -443,7 +448,7 @@ const Store = (() => {
     get ready() { return _ready || init(); },
     // 会话/用户
     currentUser, isLoggedIn, totalCoins, canCheckin, refreshMe,
-    sendCode, register, login, logout, recharge, checkin, getPackages,
+    sendCode, register, login, logout, updateName, recharge, checkin, getPackages,
     // 商品/类别
     listProducts, getProduct, listCategories, categoryOf,
     productFreeUsed, winnersFeed, recentBuys, getConfig, myOrders,
