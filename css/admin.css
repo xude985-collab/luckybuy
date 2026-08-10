@@ -130,6 +130,8 @@
   border-bottom: 1px solid #eee; font-size: 14px;
 }
 .pkg-item .del { color: #c00; cursor: pointer; font-size: 12px; }
+.pkg-item .edit { color: #07c; cursor: pointer; font-size: 12px; }
+.pkg-item .pkg-actions { margin-left: auto; display: flex; gap: 12px; }
 
 .muted { color: #888; font-size: 13px; }
 .empty { color: #aaa; text-align: center; padding: 24px; }

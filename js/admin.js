@@ -387,7 +387,17 @@ async function loadPkgs() {
 function renderPkgs() {
   const box = document.getElementById('pkg-list');
   if (!pkgList.length) { box.innerHTML = '<div class="empty">暂无套餐</div>'; return; }
-  box.innerHTML = pkgList.map((p, i) => `<div class="pkg-item"><span>$${p.amount} → 充值${p.amount}金币${p.bonus ? ' + 送'+p.bonus+'免费金币' : ''}</span><span class="del" onclick="removePkg(${i})">删除</span></div>`).join('');
+  box.innerHTML = pkgList.map((p, i) => `<div class="pkg-item"><span>$${p.amount} → 充值${p.amount}金币${p.bonus ? ' + 送'+p.bonus+'免费金币' : ''}</span><span class="pkg-actions"><span class="edit" onclick="editPkg(${i})">编辑</span><span class="del" onclick="removePkg(${i})">删除</span></span></div>`).join('');
+}
+
+function editPkg(i) {
+  const p = pkgList[i];
+  const newBonus = prompt('修改赠送免费金币数量（当前：' + (p.bonus||0) + '）', p.bonus||0);
+  if (newBonus === null) return;
+  const val = parseInt(newBonus);
+  if (isNaN(val) || val < 0) { toast('请输入有效数字'); return; }
+  pkgList[i].bonus = val;
+  renderPkgs();
 }
 
 function addPkg() {

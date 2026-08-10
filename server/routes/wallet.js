@@ -222,11 +222,12 @@ router.post('/recharge', requireAuth, async (req, res, next) => {
 
     if ((method === 'stripe' && !hasStripe) || (method === 'paypal' && !hasPaypal)) {
       if (!hasStripe && !hasPaypal) {
-        const total = amount + bonus;
         await withTransaction(async (client) => {
-          await walletTx(req.user.id, 'recharge', total, `模拟充值 $${amount}${bonus ? ' +赠送' + bonus : ''}`, client);
+          await walletTx(req.user.id, 'recharge', amount, `模拟充值 $${amount}`, client);
+          if (bonus > 0) await walletTx(req.user.id, 'grant', bonus, `充值赠送 $${bonus}`, client);
           await client.query(`UPDATE recharges SET status='paid',paid_at=$1 WHERE id=$2`, [Date.now(), rid]);
         });
+        const total = amount + bonus;
         return res.json({ ok: true, simulated: true, msg: `已模拟到账 $${total}（含赠送 $${bonus}）`, rechargeId: rid });
       }
       return res.status(400).json({ ok: false, msg: `${method === 'stripe' ? 'Stripe' : 'PayPal'} 支付暂未开通` });
@@ -283,9 +284,9 @@ router.get('/paypal-return', requireAuth, async (req, res) => {
     const paypal = await import('../lib/paypal.js');
     const capture = await paypal.captureOrder(token);
     if (capture.status === 'COMPLETED') {
-      const total = rc.amount + (rc.bonus || 0);
       await withTransaction(async (client) => {
-        await walletTx(rc.user_id, 'recharge', total, `PayPal 充值 $${rc.amount}${rc.bonus ? ' +赠送' + rc.bonus : ''}`, client);
+        await walletTx(rc.user_id, 'recharge', rc.amount, `PayPal 充值 $${rc.amount}`, client);
+        if (rc.bonus > 0) await walletTx(rc.user_id, 'grant', rc.bonus, `充值赠送 $${rc.bonus}`, client);
         await client.query(`UPDATE recharges SET status='paid',paid_at=$1 WHERE id=$2`, [Date.now(), rc.id]);
       });
     }

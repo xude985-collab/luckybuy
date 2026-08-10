@@ -39,10 +39,9 @@ export default async function stripeWebhook(req, res) {
       const { rows } = await pool.query(`SELECT * FROM recharges WHERE id=$1`, [rid]);
       const rc = rows[0];
       if (rc && rc.status === 'pending') {
-        const total = rc.amount + (rc.bonus || 0);
         await withTransaction(async (client) => {
-          await walletTx(rc.user_id, 'recharge', total,
-            `Stripe 充值 $${rc.amount}${rc.bonus ? ' +赠送' + rc.bonus : ''}`, client);
+          await walletTx(rc.user_id, 'recharge', rc.amount, `Stripe 充值 $${rc.amount}`, client);
+          if (rc.bonus > 0) await walletTx(rc.user_id, 'grant', rc.bonus, `充值赠送 $${rc.bonus}`, client);
           await client.query(`UPDATE recharges SET status='paid',paid_at=$1 WHERE id=$2`, [Date.now(), rid]);
         });
       }
