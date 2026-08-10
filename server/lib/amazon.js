@@ -8,8 +8,7 @@
  */
 
 const UA =
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
-  '(KHTML, like Gecko) Chrome/124.0 Safari/537.36';
+  'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)';
 
 // 从 URL 提取 ASIN（/dp/ASIN 或 /gp/product/ASIN）
 export function extractAsin(url) {
@@ -93,8 +92,7 @@ export async function fetchAmazon(url) {
       signal: ctrl.signal,
       headers: {
         'User-Agent': UA,
-        'Accept': 'text/html,application/xhtml+xml',
-        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept': 'text/html',
       },
     });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
