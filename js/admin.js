@@ -387,19 +387,18 @@ async function loadPkgs() {
 function renderPkgs() {
   const box = document.getElementById('pkg-list');
   if (!pkgList.length) { box.innerHTML = '<div class="empty">暂无套餐</div>'; return; }
-  box.innerHTML = pkgList.map((p, i) => `<div class="pkg-item"><span>$${p.amount} → ${p.amount + (p.bonus||0)} 金币${p.bonus ? ' (送'+p.bonus+')' : ''}</span><span class="del" onclick="removePkg(${i})">删除</span></div>`).join('');
+  box.innerHTML = pkgList.map((p, i) => `<div class="pkg-item"><span>$${p.amount} → 充值${p.amount}金币${p.bonus ? ' + 送'+p.bonus+'免费金币' : ''}</span><span class="del" onclick="removePkg(${i})">删除</span></div>`).join('');
 }
 
 function addPkg() {
   const pay = parseInt(v('pkg-pay')) || 0;
-  const coins = parseInt(v('pkg-coins')) || 0;
-  if (pay < 1 || coins < 1) { toast('请填写有效的付款金额和到账金币'); return; }
+  const bonus = parseInt(v('pkg-bonus')) || 0;
+  if (pay < 1) { toast('请填写有效的充值金额'); return; }
   if (pkgList.some(p => p.amount === pay)) { toast('该金额已存在'); return; }
-  const bonus = coins > pay ? coins - pay : 0;
   pkgList.push({ amount: pay, bonus });
   pkgList.sort((a, b) => a.amount - b.amount);
   document.getElementById('pkg-pay').value = '';
-  document.getElementById('pkg-coins').value = '';
+  document.getElementById('pkg-bonus').value = '0';
   renderPkgs();
 }
 
