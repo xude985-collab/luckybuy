@@ -45,7 +45,7 @@ function renderMarquee() {
   const items = feed.concat(feed).map(w =>
     `<span class="item">🎉 <b>${w.winnerName}</b> 用 <b>$${w.price}</b> 夺得 <b>${w.productName}</b>（幸运号 ${w.winNumber}）</span>`
   ).join('');
-  el.innerHTML = `<div class="label">🔥 Just won. Refresh &mdash; someone else will be here in a minute.</div><div class="track">${items}</div>`;
+  el.innerHTML = `<div class="label">🏆 幸运榜</div><div class="track">${items}</div>`;
 }
 
 /* ---- 商品网格 ---- */
@@ -76,8 +76,7 @@ function cardHtml(p) {
           <span onclick="cardSet('${p.id}',10)">10 份</span>
           <span onclick="cardSet('${p.id}',${remain})">全包 (${remain})</span>
         </div>
-        <div class="card-tagline">One share. No catch.</div>
-        <button class="card-buy-btn" id="cbtn-${p.id}" onclick="cardBuy('${p.id}')">Enter Now · $${p.price}/share</button>
+        <button class="card-buy-btn" id="cbtn-${p.id}" onclick="cardBuy('${p.id}')">立即夺宝 ($${p.price}/份)</button>
       </div>`;
   }
   return `
