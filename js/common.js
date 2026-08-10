@@ -34,6 +34,7 @@ function renderTopbar(active) {
       <a href="index.html" class="${active === 'home' ? 'active' : ''}">全部商品</a>
       <a href="winners.html" class="${active === 'winners' ? 'active' : ''}">幸运区</a>
       <a href="orders.html" class="${active === 'orders' ? 'active' : ''}">我的记录</a>
+      <a href="rules.html" class="${active === 'rules' ? 'active' : ''}">规则</a>
       ${u ? `<a href="profile.html" class="${active === 'profile' ? 'active' : ''}">个人中心</a>` : ''}
       ${isAdmin ? `<a href="admin.html" class="${active === 'admin' ? 'active' : ''}">后台</a>` : ''}
     </nav>
