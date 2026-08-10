@@ -82,7 +82,7 @@ function render() {
 
     <div class="recharge-summary">
       ${selectedAmount > 0
-        ? `<span>充值 <b>$${selectedAmount}</b>${selectedBonus > 0 ? ` + 赠送 <b>$${selectedBonus}</b>` : ''} = 到账 <b>$${selectedAmount + selectedBonus}</b> 金币</span>`
+        ? `<span>充值 <b>$${selectedAmount}</b> 到账充值金币${selectedBonus > 0 ? `，另赠 <b>$${selectedBonus}</b> 免费金币` : ''}</span>`
         : '<span style="color:var(--muted)">请选择套餐或输入金额</span>'}
     </div>
 
