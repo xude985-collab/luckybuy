@@ -66,6 +66,12 @@ app.get('/api/health', (req, res) => res.json({ ok: true, time: Date.now() }));
 
 // 静态前端（放在 API 之后，避免拦截 /api）
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use((req, res, next) => {
+  if (/\.(js|css)$/i.test(req.path)) {
+    res.set('Cache-Control', 'no-store, must-revalidate');
+  }
+  next();
+});
 app.use(express.static(SITE_DIR, { extensions: ['html'], maxAge: 0, etag: false }));
 
 // 统一错误处理
