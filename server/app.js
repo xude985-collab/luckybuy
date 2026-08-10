@@ -23,8 +23,22 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SITE_DIR = path.join(__dirname, '..'); // 前端根目录
 const PORT = process.env.PORT || 3000;
 
-// 初始化数据库（建表 + 播种）
-await initDB();
+// 初始化数据库（建表 + 播种），带重试
+async function boot() {
+  const MAX_RETRIES = 5;
+  for (let i = 1; i <= MAX_RETRIES; i++) {
+    try {
+      await initDB();
+      console.log('[db] 连接成功');
+      return;
+    } catch (err) {
+      console.error(`[db] 第 ${i}/${MAX_RETRIES} 次连接失败:`, err.message);
+      if (i === MAX_RETRIES) throw err;
+      await new Promise(r => setTimeout(r, i * 2000));
+    }
+  }
+}
+await boot();
 
 const app = express();
 // Stripe webhook 需原始 body 验签，必须在 express.json 之前
