@@ -7,7 +7,10 @@
  * 若将来要稳定量产，换成 Rainforest/Canopy 这类付费 API，只需替换本文件的 fetchAmazon。
  */
 
-const UA =
+const UA_CHROME =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+  '(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
+const UA_BOT =
   'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)';
 
 // 从 URL 提取 ASIN（/dp/ASIN 或 /gp/product/ASIN）
@@ -83,28 +86,41 @@ function parseHtml(html, url, asin) {
   };
 }
 
-export async function fetchAmazon(url) {
+export async function fetchAmazon(rawUrl) {
+  let url = rawUrl.trim();
+  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
   const asin = extractAsin(url);
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 12000);
-  try {
-    const resp = await fetch(url, {
-      signal: ctrl.signal,
-      headers: {
-        'User-Agent': UA,
-        'Accept': 'text/html',
-      },
-    });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const html = await resp.text();
-    // 命中验证码/机器人墙
-    if (/api-services-support@amazon|Enter the characters you see below|To discuss automated access/i.test(html))
-      throw new Error('被亚马逊反爬拦截（验证码墙）');
-    const draft = parseHtml(html, url, asin);
-    if (!draft.name || draft.gallery.length === 0)
-      throw new Error('页面结构未识别，可能被拦截');
-    return draft;
-  } finally {
-    clearTimeout(timer);
+
+  const UAs = [UA_CHROME, UA_BOT];
+  let lastErr;
+  for (const ua of UAs) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 12000);
+    try {
+      const resp = await fetch(url, {
+        signal: ctrl.signal,
+        headers: {
+          'User-Agent': ua,
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9',
+        },
+      });
+      clearTimeout(timer);
+      if (!resp.ok) { lastErr = new Error(`HTTP ${resp.status}`); continue; }
+      const html = await resp.text();
+      if (html.length < 5000) { lastErr = new Error('页面过短，可能被拦截'); continue; }
+      if (/api-services-support@amazon|Enter the characters you see below|To discuss automated access/i.test(html)) {
+        lastErr = new Error('被亚马逊反爬拦截（验证码墙）'); continue;
+      }
+      const draft = parseHtml(html, url, asin);
+      if (!draft.name || draft.gallery.length === 0) {
+        lastErr = new Error('页面结构未识别'); continue;
+      }
+      return draft;
+    } catch (e) {
+      clearTimeout(timer);
+      lastErr = e;
+    }
   }
+  throw lastErr || new Error('抓取失败');
 }
