@@ -59,7 +59,7 @@ function cardHtml(p) {
     : '<span class="badge">进行中</span>';
   // 封面:优先用真实商品图(gallery第一张),否则显示emoji
   const cover = (p.gallery && p.gallery.length && p.gallery[0].url)
-    ? `<img src="${p.gallery[0].url}" alt="${p.name}" style="width:100%;height:100%;object-fit:contain;background:#fff;padding:6px">`
+    ? `<img src="${p.gallery[0].url}" alt="${p.name}" style="width:100%;height:100%;object-fit:contain;background:#fff">`
     : (p.img || '🎁');
   let buySection = '';
   if (!done && !drawing) {
