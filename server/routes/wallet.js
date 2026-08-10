@@ -3,7 +3,7 @@ import express from 'express';
 import pool from '../db.js';
 import {
   attachUser, requireAuth, totalCoins, walletTx,
-  genId, withTransaction, now,
+  genId, withTransaction, now, getConfig,
 } from '../lib/helpers.js';
 import { futureRound, roundTime } from '../lib/drand.js';
 
@@ -148,7 +148,9 @@ router.post('/checkin', requireAuth, async (req, res) => {
       [uid, yesterdayMs, todayMs]);
     const streak = (yest.length > 0 ? yest[0].streak : 0) + 1;
 
-    const reward = Math.min(streak, 7) * 100;
+    const cfg = await getConfig();
+    const base = cfg.grantCheckin || 2;
+    const reward = Math.min(streak, 7) * base;
 
     await pool.query(
       `INSERT INTO checkins (id, user_id, reward, streak, created_at) VALUES ($1,$2,$3,$4,$5)`,
