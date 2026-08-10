@@ -30,7 +30,7 @@ img { max-width: 100%; }
   display: flex; align-items: center; gap: 16px;
   box-shadow: var(--shadow);
 }
-.topbar .logo { font-size: 22px; font-weight: 800; letter-spacing: 1px; }
+.topbar .logo { font-size: 22px; font-weight: 800; letter-spacing: 1px; color: inherit; text-decoration: none; }
 .topbar .logo small { font-weight: 400; opacity: .85; font-size: 13px; }
 .topbar nav { display: flex; gap: 18px; margin-left: 12px; }
 .topbar nav a { opacity: .9; font-size: 15px; }

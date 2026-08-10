@@ -186,12 +186,15 @@ export async function initDB() {
     await client.query(`ALTER TABLE draws ADD COLUMN IF NOT EXISTS ship_status TEXT NOT NULL DEFAULT 'pending'`).catch(() => {});
     await client.query(`ALTER TABLE draws ADD COLUMN IF NOT EXISTS ship_note TEXT`).catch(() => {});
 
-    // seed categories
-    for (let i = 0; i < DEFAULT_CATEGORIES.length; i++) {
-      const c = DEFAULT_CATEGORIES[i];
-      await client.query(
-        `INSERT INTO categories (key,name,prefix,icon,sort) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`,
-        [c.key, c.name, c.prefix, c.icon, i]);
+    // seed categories only when table is empty
+    const { rows: catRows } = await client.query(`SELECT COUNT(*)::int AS cnt FROM categories`);
+    if (catRows[0].cnt === 0) {
+      for (let i = 0; i < DEFAULT_CATEGORIES.length; i++) {
+        const c = DEFAULT_CATEGORIES[i];
+        await client.query(
+          `INSERT INTO categories (key,name,prefix,icon,sort) VALUES ($1,$2,$3,$4,$5)`,
+          [c.key, c.name, c.prefix, c.icon, i]);
+      }
     }
 
     // seed config

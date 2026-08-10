@@ -29,7 +29,7 @@ function renderTopbar(active) {
 
   const isAdmin = u && u.isAdmin;
   el.innerHTML = `
-    <div class="logo">Lucky&nbsp;Buy <small>幸运购</small></div>
+    <a href="index.html" class="logo">Lucky&nbsp;Buy <small>幸运购</small></a>
     <nav>
       <a href="index.html" class="${active === 'home' ? 'active' : ''}">全部商品</a>
       <a href="winners.html" class="${active === 'winners' ? 'active' : ''}">幸运区</a>

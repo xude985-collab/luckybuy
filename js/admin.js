@@ -322,6 +322,23 @@ async function saveRules() {
   toast('规则已保存');
 }
 
+// ========== Settings: Display Hours ==========
+function loadDisplayHours() {
+  const c = Store.getConfig();
+  document.getElementById('r-recentBuysHours').value = c.recentBuysHours || 0;
+  document.getElementById('r-winnersHours').value = c.winnersHours || 0;
+  document.getElementById('r-showcaseHours').value = c.showcaseHours || 0;
+}
+
+async function saveDisplayHours() {
+  await Store.saveConfig({
+    recentBuysHours: Math.max(0, parseInt(v('r-recentBuysHours')) || 0),
+    winnersHours: Math.max(0, parseInt(v('r-winnersHours')) || 0),
+    showcaseHours: Math.max(0, parseInt(v('r-showcaseHours')) || 0),
+  });
+  toast('展示时间已保存');
+}
+
 // ========== Settings: Categories ==========
 function renderCats() {
   const box = document.getElementById('cat-list');
@@ -528,6 +545,7 @@ onReady(() => {
   // Settings
   loadDobaCookie();
   loadRules();
+  loadDisplayHours();
   renderCats();
   loadPkgs();
 });
