@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>活动规则 · 幸运购</title>
+  <link rel="stylesheet" href="css/style.css?v=23">
+  <style>
+    .rules-page { max-width: 720px; margin: 0 auto; padding: 20px 16px; }
+    .rules-page h1 { font-size: 22px; font-weight: 700; margin-bottom: 20px; text-align: center; }
+    .rules-section { background: var(--card); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; box-shadow: var(--shadow); }
+    .rules-section h2 { font-size: 17px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .rules-section h2 .icon { font-size: 20px; }
+    .rules-section p { font-size: 14px; color: #444; margin-bottom: 10px; line-height: 1.7; }
+    .rules-section ul { padding-left: 20px; margin-bottom: 10px; }
+    .rules-section li { font-size: 14px; color: #444; margin-bottom: 8px; line-height: 1.7; }
+    .rules-section li b { color: var(--brand); }
+    .rules-highlight { background: #fff8f5; border-left: 3px solid var(--brand); padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 12px 0; }
+    .rules-highlight p { margin: 0; font-size: 13px; color: #555; }
+    .rules-table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+    .rules-table th { background: #f8f9fa; padding: 10px 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #eee; }
+    .rules-table td { padding: 10px 12px; border-bottom: 1px solid #eee; }
+    .rules-table td b { color: var(--brand); }
+    .rules-footer { text-align: center; font-size: 13px; color: var(--muted); margin-top: 24px; padding: 16px; }
+    .drand-badge { display: inline-flex; align-items: center; gap: 6px; background: #f0f7ff; border: 1px solid #d0e3ff; border-radius: 8px; padding: 8px 14px; font-size: 13px; color: #1a5cb0; margin-top: 8px; }
+    .drand-badge a { color: #1a5cb0; text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <header id="topbar" class="topbar"></header>
+  <div class="rules-page">
+    <h1>活动规则</h1>
+
+    <div class="rules-section">
+      <h2><span class="icon">🎯</span> 夺宝玩法</h2>
+      <p>每件商品被分为若干份（例如 100 份），每份对应一个<b>幸运号码</b>。您购买的每一份都会获得一个专属号码。</p>
+      <ul>
+        <li>买 <b>1 份</b> = 获得 <b>1 个</b>幸运号码</li>
+        <li>买 <b>5 份</b> = 获得 <b>5 个</b>幸运号码</li>
+        <li>买得越多，号码越多，<b>中奖概率越高</b></li>
+      </ul>
+      <p>当商品的所有份数售完，系统<b>立即</b>进入开奖流程，随机抽出一个幸运号码，持有该号码的用户即为<b>幸运者</b>，免费获得该商品！</p>
+      <div class="rules-highlight">
+        <p>每位用户可以同时参与多件商品的活动，不受限制。想中奖？多参与、多购买，概率自然更高。</p>
+      </div>
+    </div>
+
+    <div class="rules-section">
+      <h2><span class="icon">🔒</span> 公平公正 · drand 随机信标</h2>
+      <p>开奖结果由国际知名第三方随机数平台 <b>drand</b> 生成，<b>任何人无法预测或操控</b>。</p>
+      <ul>
+        <li>drand 是由全球多个独立节点共同运行的<b>分布式随机信标</b></li>
+        <li>每轮随机数公开可查，任何人均可验证</li>
+        <li>平台不参与、不干预随机数生成过程</li>
+        <li>开奖时间由 drand 轮次决定，售完后自动锁定未来轮次</li>
+      </ul>
+      <div class="drand-badge">🌐 验证地址：<a href="https://drand.love" target="_blank" rel="noopener">drand.love</a></div>
+    </div>
+
+    <div class="rules-section">
+      <h2><span class="icon">🏆</span> 中奖与发货</h2>
+      <ul>
+        <li>商品售完 → drand 生成随机数 → 计算幸运号码 → 确定幸运者</li>
+        <li>幸运者在「我的订单」中填写<b>收货地址</b></li>
+        <li>我们确认地址后<b>尽快安排发货</b>，全球可寄</li>
+        <li>全程公开透明：随机数、幸运号码、中奖用户均可查询</li>
+      </ul>
+    </div>
+
+    <div class="rules-section">
+      <h2><span class="icon">💰</span> 金币与钱包</h2>
+      <p>平台有两种金币，均可用于参与夺宝活动：</p>
+      <table class="rules-table">
+        <tr><th>类型</th><th>来源</th><th>说明</th></tr>
+        <tr><td><b>充值金币</b></td><td>付费充值</td><td>充值多少到账多少，无限制使用</td></tr>
+        <tr><td><b>免费金币</b></td><td>平台赠送</td><td>签到、注册、邀请、晒单等获得</td></tr>
+      </table>
+      <div class="rules-highlight">
+        <p>免费金币同样可以参与夺宝，获得号码，和充值金币享有同等中奖资格。每个账号每件商品最多可使用 <b>1 个免费金币</b>参与。</p>
+      </div>
+    </div>
+
+    <div class="rules-section">
+      <h2><span class="icon">🎁</span> 免费金币获取方式</h2>
+      <table class="rules-table">
+        <tr><th>途径</th><th>奖励</th><th>说明</th></tr>
+        <tr><td>新用户注册</td><td><b>10</b> 免费金币</td><td>注册即送，立即可用</td></tr>
+        <tr><td>每日签到</td><td><b>2+</b> 免费金币</td><td>连续签到天数越多奖励越多（最高 7 倍）</td></tr>
+        <tr><td>邀请好友注册</td><td>双方各 <b>5</b> 免费金币</td><td>好友通过您的邀请链接注册，双方都有奖励</td></tr>
+        <tr><td>中奖晒单</td><td><b>20</b> 免费金币</td><td>收到商品后晒图分享，审核通过即得</td></tr>
+      </table>
+      <div class="rules-highlight">
+        <p>所有免费金币均可正常用于夺宝活动，用免费金币购买的份数同样获得幸运号码、参与开奖。</p>
+      </div>
+    </div>
+
+    <div class="rules-section">
+      <h2><span class="icon">📋</span> 基本规则汇总</h2>
+      <ul>
+        <li>每件商品有固定总份数，售完即开奖</li>
+        <li>每份对应一个幸运号码，买多份 = 多号码 = 高概率</li>
+        <li>每个账号每件商品<b>最多使用 1 个免费金币</b></li>
+        <li>同一用户可同时参与多件商品，不限数量</li>
+        <li>开奖采用 drand 第三方随机数，公开可验证</li>
+        <li>幸运者提交地址后我们安排发货</li>
+        <li>充值金币和免费金币均可参与活动</li>
+      </ul>
+    </div>
+
+    <div class="rules-footer">
+      <p>如有疑问请联系客服 · 幸运购保留最终解释权</p>
+    </div>
+  </div>
+  <script src="js/common.js?v=23"></script>
+  <script src="js/store.js?v=23"></script>
+  <script>onReady(() => renderTopbar('home'));</script>
+</body>
+</html>
