@@ -835,7 +835,7 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   .grid { grid-template-columns: 1fr; gap: 12px; max-width: calc(100vw - 24px); }
   .card { display: grid; grid-template-columns: 110px 1fr; overflow: hidden; max-width: calc(100vw - 24px); }
   .card:hover { transform: none; }
-  .card .thumb { width: 110px; height: auto; min-height: 110px; font-size: 40px; border-radius: var(--radius) 0 0 var(--radius); }
+  .card .thumb { width: 110px; height: auto; min-height: 110px; aspect-ratio: 1; font-size: 40px; border-radius: var(--radius) 0 0 var(--radius); align-self: center; }
   .card .body { padding: 10px 12px; min-width: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; }
   .card .sku-line { display: none; }
   .card .name {
