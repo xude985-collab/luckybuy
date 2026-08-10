@@ -1,6 +1,9 @@
 {
   "name": "luckybuy",
   "version": "1.0.0",
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "build": "npm install --prefix server",
     "start": "node server/app.js"
