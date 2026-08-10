@@ -188,7 +188,7 @@ router.get('/packages', async (req, res, next) => {
   try {
     const { rows } = await pool.query(`SELECT v FROM config WHERE k='recharge_packages'`);
     const packages = rows[0] ? JSON.parse(rows[0].v) : [
-      { amount: 10, bonus: 0 }, { amount: 50, bonus: 5 },
+      { amount: 10, bonus: 1 }, { amount: 50, bonus: 5 },
       { amount: 100, bonus: 15 }, { amount: 200, bonus: 40 },
     ];
     res.json({ ok: true, packages });

@@ -181,7 +181,7 @@ const DEFAULT_CONFIG = {
   grantInvitee: 5, grantInviter: 5,
 };
 const DEFAULT_PACKAGES = JSON.stringify([
-  { amount: 10, bonus: 0 },
+  { amount: 10, bonus: 1 },
   { amount: 50, bonus: 5 },
   { amount: 100, bonus: 15 },
   { amount: 200, bonus: 40 },
