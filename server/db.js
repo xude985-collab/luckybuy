@@ -153,18 +153,6 @@ CREATE TABLE IF NOT EXISTS showcases (
   created_at  BIGINT NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
-CREATE INDEX IF NOT EXISTS idx_orders_product_id ON orders(product_id);
-CREATE INDEX IF NOT EXISTS idx_draws_drawn_at ON draws(drawn_at DESC);
-CREATE INDEX IF NOT EXISTS idx_products_status ON products(status);
-CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
-CREATE INDEX IF NOT EXISTS idx_showcases_status ON showcases(status);
-CREATE INDEX IF NOT EXISTS idx_showcases_user_id ON showcases(user_id);
-CREATE INDEX IF NOT EXISTS idx_wallet_tx_user_id ON wallet_tx(user_id);
-CREATE INDEX IF NOT EXISTS idx_recharges_user_id ON recharges(user_id);
-CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
-CREATE INDEX IF NOT EXISTS idx_checkins_user_id ON checkins(user_id, created_at DESC);
 `;
 
 const DEFAULT_CATEGORIES = [
@@ -192,12 +180,43 @@ export async function initDB() {
   try {
     await client.query(SCHEMA);
 
-    // add missing columns for existing databases
-    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS free_balance BIGINT NOT NULL DEFAULT 0`).catch(() => {});
-    await client.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS free_used INTEGER NOT NULL DEFAULT 0`).catch(() => {});
-    await client.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS free_quota INTEGER NOT NULL DEFAULT 0`).catch(() => {});
-    await client.query(`ALTER TABLE draws ADD COLUMN IF NOT EXISTS ship_status TEXT NOT NULL DEFAULT 'pending'`).catch(() => {});
-    await client.query(`ALTER TABLE draws ADD COLUMN IF NOT EXISTS ship_note TEXT`).catch(() => {});
+    // add missing columns for shared databases
+    const migrations = [
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS free_balance BIGINT NOT NULL DEFAULT 0`,
+      `ALTER TABLE products ADD COLUMN IF NOT EXISTS sku TEXT NOT NULL DEFAULT ''`,
+      `ALTER TABLE products ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT ''`,
+      `ALTER TABLE products ADD COLUMN IF NOT EXISTS emoji TEXT`,
+      `ALTER TABLE products ADD COLUMN IF NOT EXISTS price_per_share INTEGER NOT NULL DEFAULT 1`,
+      `ALTER TABLE products ADD COLUMN IF NOT EXISTS total_shares INTEGER NOT NULL DEFAULT 1`,
+      `ALTER TABLE products ADD COLUMN IF NOT EXISTS free_quota INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE products ADD COLUMN IF NOT EXISTS free_used INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE products ADD COLUMN IF NOT EXISTS "desc" TEXT`,
+      `ALTER TABLE products ADD COLUMN IF NOT EXISTS gallery TEXT`,
+      `ALTER TABLE products ADD COLUMN IF NOT EXISTS specs TEXT`,
+      `ALTER TABLE products ADD COLUMN IF NOT EXISTS source_url TEXT`,
+      `ALTER TABLE products ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active'`,
+      `ALTER TABLE products ADD COLUMN IF NOT EXISTS created_at BIGINT NOT NULL DEFAULT 0`,
+      `ALTER TABLE draws ADD COLUMN IF NOT EXISTS ship_status TEXT NOT NULL DEFAULT 'pending'`,
+      `ALTER TABLE draws ADD COLUMN IF NOT EXISTS ship_note TEXT`,
+    ];
+    for (const sql of migrations) await client.query(sql).catch(() => {});
+
+    // indexes (after columns guaranteed to exist)
+    const indexes = [
+      `CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at DESC)`,
+      `CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_orders_product_id ON orders(product_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_draws_drawn_at ON draws(drawn_at DESC)`,
+      `CREATE INDEX IF NOT EXISTS idx_products_status ON products(status)`,
+      `CREATE INDEX IF NOT EXISTS idx_products_category ON products(category)`,
+      `CREATE INDEX IF NOT EXISTS idx_showcases_status ON showcases(status)`,
+      `CREATE INDEX IF NOT EXISTS idx_showcases_user_id ON showcases(user_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_wallet_tx_user_id ON wallet_tx(user_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_recharges_user_id ON recharges(user_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_checkins_user_id ON checkins(user_id, created_at DESC)`,
+    ];
+    for (const sql of indexes) await client.query(sql).catch(() => {});
 
     // seed categories only when table is empty
     const { rows: catRows } = await client.query(`SELECT COUNT(*)::int AS cnt FROM categories`);
