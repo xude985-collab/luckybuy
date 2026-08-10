@@ -219,6 +219,17 @@ export async function initDB() {
       `INSERT INTO config (k,v) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
       ['recharge_packages', DEFAULT_PACKAGES]);
 
+    // migrate: ensure $10 package has bonus=1
+    const { rows: pkgRow } = await client.query(`SELECT v FROM config WHERE k='recharge_packages'`);
+    if (pkgRow[0]) {
+      const pkgs = JSON.parse(pkgRow[0].v);
+      const ten = pkgs.find(p => p.amount === 10);
+      if (ten && !ten.bonus) {
+        ten.bonus = 1;
+        await client.query(`UPDATE config SET v=$1 WHERE k='recharge_packages'`, [JSON.stringify(pkgs)]);
+      }
+    }
+
     // seed admin
     const email = process.env.ADMIN_EMAIL || 'admin@luckybuy.local';
     const pass = process.env.ADMIN_PASSWORD || 'admin888';
