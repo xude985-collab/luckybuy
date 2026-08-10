@@ -180,10 +180,22 @@ export async function initDB() {
   try {
     await client.query(SCHEMA);
 
-    // add missing columns for shared databases
+    // add missing columns for shared databases (other project may have created tables with fewer columns)
     const migrations = [
+      // users
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS account TEXT`,
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS account_type TEXT NOT NULL DEFAULT 'email'`,
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS name TEXT`,
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS pass_hash TEXT NOT NULL DEFAULT ''`,
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user'`,
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS invite_code TEXT`,
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS invited_by TEXT`,
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS paid_balance BIGINT NOT NULL DEFAULT 0`,
       `ALTER TABLE users ADD COLUMN IF NOT EXISTS free_balance BIGINT NOT NULL DEFAULT 0`,
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at BIGINT NOT NULL DEFAULT 0`,
+      // products
       `ALTER TABLE products ADD COLUMN IF NOT EXISTS sku TEXT NOT NULL DEFAULT ''`,
+      `ALTER TABLE products ADD COLUMN IF NOT EXISTS name TEXT`,
       `ALTER TABLE products ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT ''`,
       `ALTER TABLE products ADD COLUMN IF NOT EXISTS emoji TEXT`,
       `ALTER TABLE products ADD COLUMN IF NOT EXISTS price_per_share INTEGER NOT NULL DEFAULT 1`,
@@ -196,8 +208,55 @@ export async function initDB() {
       `ALTER TABLE products ADD COLUMN IF NOT EXISTS source_url TEXT`,
       `ALTER TABLE products ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active'`,
       `ALTER TABLE products ADD COLUMN IF NOT EXISTS created_at BIGINT NOT NULL DEFAULT 0`,
+      // draws
+      `ALTER TABLE draws ADD COLUMN IF NOT EXISTS round INTEGER`,
+      `ALTER TABLE draws ADD COLUMN IF NOT EXISTS randomness TEXT`,
+      `ALTER TABLE draws ADD COLUMN IF NOT EXISTS signature TEXT`,
+      `ALTER TABLE draws ADD COLUMN IF NOT EXISTS win_number INTEGER`,
+      `ALTER TABLE draws ADD COLUMN IF NOT EXISTS winner_user_id TEXT`,
+      `ALTER TABLE draws ADD COLUMN IF NOT EXISTS total_shares INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE draws ADD COLUMN IF NOT EXISTS locked_at BIGINT`,
+      `ALTER TABLE draws ADD COLUMN IF NOT EXISTS drawn_at BIGINT`,
+      `ALTER TABLE draws ADD COLUMN IF NOT EXISTS win_address TEXT`,
       `ALTER TABLE draws ADD COLUMN IF NOT EXISTS ship_status TEXT NOT NULL DEFAULT 'pending'`,
       `ALTER TABLE draws ADD COLUMN IF NOT EXISTS ship_note TEXT`,
+      // orders
+      `ALTER TABLE orders ADD COLUMN IF NOT EXISTS user_id TEXT`,
+      `ALTER TABLE orders ADD COLUMN IF NOT EXISTS product_id TEXT`,
+      `ALTER TABLE orders ADD COLUMN IF NOT EXISTS shares INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE orders ADD COLUMN IF NOT EXISTS numbers TEXT NOT NULL DEFAULT '[]'`,
+      `ALTER TABLE orders ADD COLUMN IF NOT EXISTS paid_coins INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE orders ADD COLUMN IF NOT EXISTS free_coins INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE orders ADD COLUMN IF NOT EXISTS created_at BIGINT NOT NULL DEFAULT 0`,
+      // wallet_tx
+      `ALTER TABLE wallet_tx ADD COLUMN IF NOT EXISTS user_id TEXT`,
+      `ALTER TABLE wallet_tx ADD COLUMN IF NOT EXISTS kind TEXT`,
+      `ALTER TABLE wallet_tx ADD COLUMN IF NOT EXISTS amount BIGINT NOT NULL DEFAULT 0`,
+      `ALTER TABLE wallet_tx ADD COLUMN IF NOT EXISTS balance BIGINT NOT NULL DEFAULT 0`,
+      `ALTER TABLE wallet_tx ADD COLUMN IF NOT EXISTS ref TEXT`,
+      `ALTER TABLE wallet_tx ADD COLUMN IF NOT EXISTS created_at BIGINT NOT NULL DEFAULT 0`,
+      // sessions
+      `ALTER TABLE sessions ADD COLUMN IF NOT EXISTS user_id TEXT`,
+      `ALTER TABLE sessions ADD COLUMN IF NOT EXISTS created_at BIGINT NOT NULL DEFAULT 0`,
+      `ALTER TABLE sessions ADD COLUMN IF NOT EXISTS expires_at BIGINT NOT NULL DEFAULT 0`,
+      // recharges
+      `ALTER TABLE recharges ADD COLUMN IF NOT EXISTS user_id TEXT`,
+      `ALTER TABLE recharges ADD COLUMN IF NOT EXISTS amount INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE recharges ADD COLUMN IF NOT EXISTS bonus INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE recharges ADD COLUMN IF NOT EXISTS method TEXT NOT NULL DEFAULT 'stripe'`,
+      `ALTER TABLE recharges ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending'`,
+      `ALTER TABLE recharges ADD COLUMN IF NOT EXISTS stripe_session TEXT`,
+      `ALTER TABLE recharges ADD COLUMN IF NOT EXISTS created_at BIGINT NOT NULL DEFAULT 0`,
+      `ALTER TABLE recharges ADD COLUMN IF NOT EXISTS paid_at BIGINT`,
+      // showcases
+      `ALTER TABLE showcases ADD COLUMN IF NOT EXISTS user_id TEXT`,
+      `ALTER TABLE showcases ADD COLUMN IF NOT EXISTS product_id TEXT`,
+      `ALTER TABLE showcases ADD COLUMN IF NOT EXISTS media_type TEXT NOT NULL DEFAULT 'image'`,
+      `ALTER TABLE showcases ADD COLUMN IF NOT EXISTS media_url TEXT NOT NULL DEFAULT ''`,
+      `ALTER TABLE showcases ADD COLUMN IF NOT EXISTS caption TEXT`,
+      `ALTER TABLE showcases ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending'`,
+      `ALTER TABLE showcases ADD COLUMN IF NOT EXISTS reviewed_at BIGINT`,
+      `ALTER TABLE showcases ADD COLUMN IF NOT EXISTS created_at BIGINT NOT NULL DEFAULT 0`,
     ];
     for (const sql of migrations) await client.query(sql).catch(() => {});
 
@@ -249,17 +308,21 @@ export async function initDB() {
       }
     }
 
-    // seed admin
-    const email = process.env.ADMIN_EMAIL || 'admin@luckybuy.local';
-    const pass = process.env.ADMIN_PASSWORD || 'admin888';
-    const { rows } = await client.query(`SELECT id FROM users WHERE account=$1`, [email]);
-    if (rows.length === 0) {
-      const now = Date.now();
-      await client.query(
-        `INSERT INTO users (id,account,account_type,name,pass_hash,role,invite_code,paid_balance,created_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-        ['u_admin', email, 'email', '管理员', bcrypt.hashSync(pass, 10), 'admin', 'ADMIN0', 0, now]);
-      console.log(`[db] 已创建管理员账号: ${email}`);
+    // seed admin (wrapped in try-catch — shared DB may have incompatible users table temporarily)
+    try {
+      const email = process.env.ADMIN_EMAIL || 'admin@luckybuy.local';
+      const pass = process.env.ADMIN_PASSWORD || 'admin888';
+      const { rows } = await client.query(`SELECT id FROM users WHERE account=$1`, [email]);
+      if (rows.length === 0) {
+        const now = Date.now();
+        await client.query(
+          `INSERT INTO users (id,account,account_type,name,pass_hash,role,invite_code,paid_balance,created_at)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+          ['u_admin', email, 'email', '管理员', bcrypt.hashSync(pass, 10), 'admin', 'ADMIN0', 0, now]);
+        console.log(`[db] 已创建管理员账号: ${email}`);
+      }
+    } catch (e) {
+      console.warn('[db] admin seed skipped:', e.message);
     }
   } finally {
     client.release();
