@@ -82,12 +82,12 @@
 
     <div class="rules-section">
       <h2><span class="icon">🎁</span> 免费金币获取方式</h2>
-      <table class="rules-table">
+      <table class="rules-table" id="grant-table">
         <tr><th>途径</th><th>奖励</th><th>说明</th></tr>
-        <tr><td>新用户注册</td><td><b>10</b> 免费金币</td><td>注册即送，立即可用</td></tr>
-        <tr><td>每日签到</td><td><b>2+</b> 免费金币</td><td>连续签到天数越多奖励越多（最高 7 倍）</td></tr>
-        <tr><td>邀请好友注册</td><td>双方各 <b>5</b> 免费金币</td><td>好友通过您的邀请链接注册，双方都有奖励</td></tr>
-        <tr><td>中奖晒单</td><td><b>20</b> 免费金币</td><td>收到商品后晒图分享，审核通过即得</td></tr>
+        <tr><td>新用户注册</td><td><b id="g-register">--</b> 免费金币</td><td>注册即送，立即可用</td></tr>
+        <tr><td>每日签到</td><td><b id="g-checkin">--</b> 免费金币</td><td>连续签到天数越多奖励越多（最高 7 倍）</td></tr>
+        <tr><td>邀请好友注册</td><td>双方各 <b id="g-invite">--</b> 免费金币</td><td>好友通过您的邀请链接注册，双方都有奖励</td></tr>
+        <tr><td>中奖晒单</td><td><b id="g-showcase">--</b> 免费金币</td><td>收到商品后晒图分享，审核通过即得</td></tr>
       </table>
       <div class="rules-highlight">
         <p>所有免费金币均可正常用于夺宝活动，用免费金币购买的份数同样获得幸运号码、参与开奖。</p>
@@ -113,6 +113,14 @@
   </div>
   <script src="js/common.js?v=23"></script>
   <script src="js/store.js?v=23"></script>
-  <script>onReady(() => renderTopbar('home'));</script>
+  <script>onReady(() => {
+    renderTopbar('rules');
+    const c = Store.getConfig();
+    const el = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+    el('g-register', c.grantRegister || 10);
+    el('g-checkin', (c.grantCheckin || 2) + '+');
+    el('g-invite', c.grantInvitee || 5);
+    el('g-showcase', c.grantShowcase || 20);
+  });</script>
 </body>
 </html>
