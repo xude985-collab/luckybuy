@@ -203,6 +203,10 @@ img { max-width: 100%; }
   background: var(--brand); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer;
   transition: background .15s;
 }
+.card-tagline {
+  text-align: center; font-size: 11px; color: #888;
+  margin: 4px 0; font-style: italic;
+}
 .card-buy-btn:hover { background: var(--brand-dark); }
 .card-buy-btn:disabled { opacity: .6; cursor: not-allowed; }
 .card-buy-section { margin-top: 10px; }
@@ -370,6 +374,8 @@ tr:last-child td { border-bottom: none; }
   .topbar .wallet { font-size: 12px; padding: 4px 10px; }
   .topbar .wallet b { font-size: 13px; color: #fff; }
   .topbar .wallet .recharge-wrap { display: none; }
+  .hero-banner { padding: 10px 14px; }
+  .hero-line { font-size: 15px; }
   .trust-banner { font-size: 12px; padding: 6px 14px; flex-wrap: wrap; gap: 6px; }
   .trust-banner .trust-link { margin-left: 0; font-size: 11px; }
 }
@@ -736,6 +742,21 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   background: #f5f5f5; color: #666; font-size: 14px; text-align: center;
 }
 
+/* Hero 广告语横幅 */
+.hero-banner {
+  background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+  padding: 14px 20px;
+  text-align: center;
+}
+.hero-line {
+  color: #f5f5f5;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.hero-line::before { content: "💸 "; }
+.hero-line::after { content: " 💸"; }
+
 /* drand 信任横幅 */
 .trust-banner {
   background: linear-gradient(90deg, #e8f5e9, #f1f8e9);
@@ -971,6 +992,7 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   .topbar .checkin-link { display: none; }
 
   /* 信任横幅超简 */
+  .hero-line { font-size: 14px; }
   .trust-banner { font-size: 10px; padding: 5px 10px; }
   .trust-banner .trust-link { display: none; }
 
