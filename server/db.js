@@ -11,6 +11,13 @@ const pool = new pg.Pool({
   ssl: process.env.DATABASE_URL?.includes('render.com')
     ? { rejectUnauthorized: false }
     : false,
+  max: 5,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
+});
+
+pool.on('error', (err) => {
+  console.error('[pool] 后台连接异常（不崩溃）:', err.message);
 });
 
 const SCHEMA = `

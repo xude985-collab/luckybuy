@@ -19,6 +19,14 @@ import adminRoutes from './routes/admin.js';
 import showcaseRoutes from './routes/showcase.js';
 import stripeWebhook from './routes/stripe-webhook.js';
 
+process.on('uncaughtException', (err) => {
+  console.error('[FATAL] uncaughtException:', err.message);
+  console.error(err.stack);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[FATAL] unhandledRejection:', reason);
+});
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SITE_DIR = path.join(__dirname, '..'); // 前端根目录
 const PORT = process.env.PORT || 3000;
