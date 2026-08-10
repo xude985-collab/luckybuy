@@ -152,6 +152,19 @@ CREATE TABLE IF NOT EXISTS showcases (
   reviewed_at BIGINT,
   created_at  BIGINT NOT NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
+CREATE INDEX IF NOT EXISTS idx_orders_product_id ON orders(product_id);
+CREATE INDEX IF NOT EXISTS idx_draws_drawn_at ON draws(drawn_at DESC);
+CREATE INDEX IF NOT EXISTS idx_products_status ON products(status);
+CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
+CREATE INDEX IF NOT EXISTS idx_showcases_status ON showcases(status);
+CREATE INDEX IF NOT EXISTS idx_showcases_user_id ON showcases(user_id);
+CREATE INDEX IF NOT EXISTS idx_wallet_tx_user_id ON wallet_tx(user_id);
+CREATE INDEX IF NOT EXISTS idx_recharges_user_id ON recharges(user_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_checkins_user_id ON checkins(user_id, created_at DESC);
 `;
 
 const DEFAULT_CATEGORIES = [
