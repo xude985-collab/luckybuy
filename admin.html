@@ -143,6 +143,14 @@
         <button class="btn" style="margin-top:12px" onclick="saveDisplayHours()">保存展示时间</button>
       </div>
       <div class="settings-section">
+        <h3>开奖倒计时</h3>
+        <p style="font-size:13px;color:#666;margin-bottom:8px">商品售罄后等待多少分钟再开奖（默认 10 分钟）</p>
+        <div class="rules-grid">
+          <label>开奖延迟（分钟）</label><input id="r-drawDelay" type="number" min="1" max="60" placeholder="10">
+        </div>
+        <button class="btn" style="margin-top:12px" onclick="saveDrawDelay()">保存</button>
+      </div>
+      <div class="settings-section">
         <h3>充值套餐</h3>
         <div id="pkg-list"></div>
         <div class="pkg-add">

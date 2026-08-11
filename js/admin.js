@@ -323,6 +323,18 @@ async function saveDisplayHours() {
   toast('展示时间已保存');
 }
 
+// ========== Settings: Draw Delay ==========
+function loadDrawDelay() {
+  const c = Store.getConfig();
+  document.getElementById('r-drawDelay').value = c.drawDelay || 10;
+}
+
+async function saveDrawDelay() {
+  const val = Math.max(1, Math.min(60, parseInt(v('r-drawDelay')) || 10));
+  await Store.saveConfig({ drawDelay: val });
+  toast('开奖延迟已保存：' + val + ' 分钟');
+}
+
 // ========== Settings: Categories ==========
 function renderCats() {
   const box = document.getElementById('cat-list');
@@ -538,6 +550,7 @@ onReady(() => {
   // Settings
   loadRules();
   loadDisplayHours();
+  loadDrawDelay();
   renderCats();
   loadPkgs();
 });
