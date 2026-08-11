@@ -110,7 +110,9 @@ router.post('/buy', requireAuth, async (req, res, next) => {
       const newSold = sold2 + shares;
       let locked = null;
       if (newSold >= p.total_shares) {
-        const round = futureRound(Date.now(), 30);
+        const cfg = await getConfig(client);
+        const delayMin = Number(cfg.drawDelay) || 10;
+        const round = futureRound(Date.now(), delayMin * 60);
         await client.query(
           `INSERT INTO draws (product_id,round,total_shares,locked_at) VALUES ($1,$2,$3,$4)`,
           [productId, round, p.total_shares, Date.now()]);

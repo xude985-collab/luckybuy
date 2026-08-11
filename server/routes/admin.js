@@ -56,7 +56,7 @@ router.get('/config', requireAdmin, async (req, res, next) => {
 router.post('/config', requireAdmin, async (req, res, next) => {
   try {
     const allowed = ['grantRegister', 'grantCheckin', 'grantShowcase', 'grantInvitee', 'grantInviter',
-                     'recentBuysHours', 'winnersHours', 'showcaseHours'];
+                     'recentBuysHours', 'winnersHours', 'showcaseHours', 'drawDelay'];
     for (const k of allowed) {
       if (req.body[k] != null) {
         await pool.query(
