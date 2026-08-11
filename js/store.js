@@ -395,9 +395,9 @@ const Store = (() => {
       const keyData = hexToBytes(p.proof.randomness);
       const key = await crypto.subtle.importKey('raw', keyData,
         { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-      const mac = await crypto.subtle.sign('HMAC', key, enc.encode(String(p.proof.round)));
+      const mac = await crypto.subtle.sign('HMAC', key, enc.encode(String(pid)));
       const bytes = new Uint8Array(mac);
-      let n = 0n; for (const b of bytes) n = (n << 8n) | BigInt(b);
+      let n = 0n; for (let i = 0; i < 8; i++) n = (n << 8n) | BigInt(bytes[i]);
       const recomputed = Number(n % BigInt(p.totalShares)) + 1;
       return {
         ok: recomputed === p.winNumber,

@@ -82,7 +82,7 @@ function render() {
         <div class="proof-title">🔒 幸运凭据（可独立验证）</div>
         <div class="proof-row">随机源：drand 公共信标 · 第 <b>${p.proof.round}</b> 轮</div>
         <div class="proof-row">randomness：<code>${p.proof.randomness}</code></div>
-        <div class="proof-row">公式：winNumber = int(HMAC-SHA256(randomness, "${p.period}")) mod ${p.totalShares} + 1</div>
+        <div class="proof-row">公式：winNumber = int(HMAC-SHA256(randomness, "${p.id}")) mod ${p.totalShares} + 1</div>
         <button class="btn ghost" style="margin-top:8px" onclick="verifyDraw('${p.id}')">验证幸运结果</button>
         <div id="verifyResult" class="proof-row" style="margin-top:6px"></div>
       </div>` : '';
