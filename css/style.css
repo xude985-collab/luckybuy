@@ -1038,8 +1038,21 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
 }
 .order-card-result { font-size: 13px; }
 
-/* 倒计时橙色徽章 */
-.badge.countdown { background: #fff3e0; color: #e65100; font-weight: 600; }
+/* 卡片大倒计时块 */
+.card-countdown {
+  background: linear-gradient(135deg, #fff3e0, #ffe0b2);
+  border-radius: 8px; padding: 12px; margin-top: 10px;
+  text-align: center; font-size: 15px; font-weight: 600; color: #e65100;
+}
+.card-countdown-time {
+  font-size: 22px; font-weight: 900; font-family: Consolas, "Courier New", monospace;
+  letter-spacing: 2px;
+}
+.card-countdown-now {
+  background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+  color: #1565c0; animation: pulse-draw 1.5s infinite;
+}
+@keyframes pulse-draw { 0%,100% { opacity: 1; } 50% { opacity: .7; } }
 
 /* 详情页大倒计时 */
 .draw-countdown {

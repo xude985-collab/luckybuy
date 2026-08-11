@@ -61,12 +61,17 @@ let _countdownTimer = null;
 function startCountdownTimer() {
   if (_countdownTimer) return;
   _countdownTimer = setInterval(() => {
-    const badges = document.querySelectorAll('.badge.countdown[data-draw-time]');
-    if (!badges.length) { clearInterval(_countdownTimer); _countdownTimer = null; return; }
-    badges.forEach(el => {
+    const blocks = document.querySelectorAll('.card-countdown[data-draw-time]');
+    if (!blocks.length) { clearInterval(_countdownTimer); _countdownTimer = null; return; }
+    blocks.forEach(el => {
       const t = fmtCountdown(Number(el.dataset.drawTime));
-      if (!t) { el.textContent = '揭晓中'; el.classList.remove('countdown'); delete el.dataset.drawTime; }
-      else el.innerHTML = `⏰ ${t} 后开奖`;
+      if (!t) {
+        el.innerHTML = '🎲 正在揭晓...';
+        el.classList.add('card-countdown-now');
+        delete el.dataset.drawTime;
+      } else {
+        el.innerHTML = `⏰ <span class="card-countdown-time">${t}</span> 后开奖`;
+      }
     });
   }, 1000);
 }
@@ -77,16 +82,15 @@ function cardHtml(p) {
   const remain = p.totalShares - p.soldShares;
   const done = p.status === 'revealed';
   const drawing = p.status === 'drawing';
-  let badge;
-  if (done) {
-    badge = '<span class="badge done">已揭晓</span>';
-  } else if (drawing) {
+  const badge = done ? '<span class="badge done">已揭晓</span>'
+    : drawing ? '<span class="badge drawing">揭晓中</span>'
+    : '<span class="badge">进行中</span>';
+  let countdownBlock = '';
+  if (drawing) {
     const t = p.drawTime ? fmtCountdown(p.drawTime) : null;
-    badge = t
-      ? `<span class="badge drawing countdown" data-draw-time="${p.drawTime}">⏰ ${t} 后开奖</span>`
-      : '<span class="badge drawing">揭晓中</span>';
-  } else {
-    badge = '<span class="badge">进行中</span>';
+    countdownBlock = t
+      ? `<div class="card-countdown" data-draw-time="${p.drawTime}">⏰ <span class="card-countdown-time">${t}</span> 后开奖</div>`
+      : '<div class="card-countdown card-countdown-now">🎲 正在揭晓...</div>';
   }
   // 封面:优先用真实商品图(gallery第一张),否则显示emoji
   const cover = (p.gallery && p.gallery.length && p.gallery[0].url)
@@ -124,6 +128,7 @@ function cardHtml(p) {
           ${done ? `<span class="remain">幸运号 <b>${p.winNumber}</b></span>`
                  : `<span class="remain">剩 <b>${remain}</b> 份</span>`}
         </div>
+        ${countdownBlock}
         ${buySection}
       </div>
     </div>`;
