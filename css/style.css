@@ -812,20 +812,16 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   .live-feed-header { font-size: 13px; padding: 10px 12px; }
   .live-feed-item { padding: 8px 12px; font-size: 12px; }
 
-  /* 晒单：横向滑动 */
+  /* 晒单：全宽竖排 */
   .showcase-section { padding: 12px; margin-top: 12px; }
   .showcase-grid {
-    display: flex; gap: 10px; overflow-x: auto;
-    scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
-    padding-bottom: 6px;
+    display: flex; flex-direction: column; gap: 12px;
   }
-  .showcase-grid::-webkit-scrollbar { display: none; }
-  .showcase-item {
-    flex: none; width: 160px; scroll-snap-align: start;
-  }
-  .showcase-item .media { height: 100px; font-size: 36px; }
-  .showcase-item .cap { padding: 8px 10px; font-size: 14px; color: #e67e22; font-style: italic; }
-  .showcase-item .meta { padding: 2px 10px 8px; font-size: 11px; color: #999; }
+  .showcase-item { width: 100%; }
+  .showcase-item .media { height: 200px; font-size: 36px; }
+  .showcase-item .media img { width: 100%; height: 100%; object-fit: cover; }
+  .showcase-item .cap { padding: 10px 14px; font-size: 14px; color: #e67e22; font-style: italic; }
+  .showcase-item .meta { padding: 2px 14px 10px; font-size: 12px; color: #999; }
 
   /* 分类标签 */
   .cat-tabs { gap: 6px; margin-bottom: 12px; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 6px; }
