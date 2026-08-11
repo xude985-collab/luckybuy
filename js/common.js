@@ -7,6 +7,7 @@ function onReady(cb) {
       if (Store.resumeDraws) await Store.resumeDraws().catch(() => {});
     } catch (_) {}
     try { cb(); } catch (e) { console.error(e); }
+    renderDrawNotification();
     checkUnclaimedWins();
   }).catch(e => { console.error(e); toast('加载失败，请刷新重试'); });
 }
@@ -107,6 +108,29 @@ function renderMobNav(active, u) {
       <span class="nav-icon">👤</span>${u ? '我的' : '登录'}</a>
     ${isAdmin ? `<a href="admin.html" class="${active === 'admin' ? 'active' : ''}">
       <span class="nav-icon">⚙️</span>后台</a>` : ''}`;
+}
+
+function renderDrawNotification() {
+  const old = document.getElementById('draw-notify-bar');
+  if (old) old.remove();
+  const me = Store.currentUser();
+  if (!me) return;
+  const myPids = new Set(Store.myOrders().map(o => o.productId));
+  const hits = Store.listProducts().filter(p => p.status === 'drawing' && myPids.has(p.id));
+  if (!hits.length) return;
+  const p = hits[0];
+  let timeText = '正在开奖';
+  if (p.drawTime && p.drawTime > Date.now()) {
+    const min = Math.ceil((p.drawTime - Date.now()) / 60000);
+    timeText = `将在 ${min} 分钟后开奖`;
+  }
+  const bar = document.createElement('div');
+  bar.id = 'draw-notify-bar';
+  bar.className = 'draw-notify-bar';
+  bar.innerHTML = `<span>🔔 你参与的 <b>${p.name}</b> ${timeText}</span><a href="detail.html?id=${p.id}">去看看 →</a>`;
+  const topbar = document.getElementById('topbar');
+  if (topbar) topbar.after(bar);
+  else document.body.prepend(bar);
 }
 
 function checkUnclaimedWins() {

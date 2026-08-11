@@ -37,13 +37,16 @@ function render() {
   const drawing = p.status === 'drawing';
   let action;
   if (drawing) {
+    const _dtLeft = p.drawTime ? p.drawTime - Date.now() : 0;
+    const _hasCountdown = _dtLeft > 0;
     action = `
       <div class="drawing-stage">
-        <div class="drawing-header">🎲 正在揭晓幸运儿</div>
+        <div class="drawing-header">🎲 ${_hasCountdown ? '开奖倒计时' : '正在揭晓幸运儿'}</div>
+        ${_hasCountdown ? `<div class="draw-countdown" id="draw-countdown" data-draw-time="${p.drawTime}"></div>` : ''}
         <div class="drawing-reel-wrap">
           <div class="drawing-reel" id="slot-reel">—</div>
         </div>
-        <div class="drawing-meta">drand 公链第 <b>${p.drandRound || '—'}</b> 轮随机信标 · 约 30 秒揭晓</div>
+        <div class="drawing-meta">drand 公链第 <b>${p.drandRound || '—'}</b> 轮随机信标${_hasCountdown ? '' : ' · 揭晓中'}</div>
       </div>
       ${myNumbersHtml()}`;
   } else if (done) {
@@ -163,9 +166,35 @@ function render() {
       if (!el) { _clearSlot(); return; }
       el.textContent = Math.floor(Math.random() * p.totalShares) + 1;
     }, 80);
+    startDrawCountdown();
   } else {
     _clearSlot();
+    _clearDrawCountdown();
   }
+}
+
+let _drawCountdownTimer = null;
+function _clearDrawCountdown() { if (_drawCountdownTimer) { clearInterval(_drawCountdownTimer); _drawCountdownTimer = null; } }
+function startDrawCountdown() {
+  _clearDrawCountdown();
+  const el = document.getElementById('draw-countdown');
+  if (!el) return;
+  const dt = Number(el.dataset.drawTime);
+  function tick() {
+    const left = dt - Date.now();
+    if (left <= 0) {
+      el.remove();
+      const hdr = document.querySelector('.drawing-header');
+      if (hdr) hdr.textContent = '🎲 正在揭晓幸运儿';
+      _clearDrawCountdown();
+      return;
+    }
+    const min = Math.floor(left / 60000);
+    const sec = Math.floor((left % 60000) / 1000);
+    el.textContent = `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  }
+  tick();
+  _drawCountdownTimer = setInterval(tick, 1000);
 }
 
 // 图册：主图 + 缩略图；无图时退化为原来的 emoji 大图

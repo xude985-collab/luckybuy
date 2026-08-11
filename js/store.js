@@ -67,6 +67,7 @@ const Store = (() => {
     const d = draw || p.draw || null;
     if (d) {
       out.drandRound = d.round;
+      out.drawTime = d.drawTime || null;
       out.winNumber = d.win_number;
       out.winnerUserId = d.winner_user_id;
       out.winnerName = d.winner_name || null;

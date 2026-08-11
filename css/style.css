@@ -1037,3 +1037,31 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   margin-bottom: 8px; font-family: Consolas, monospace;
 }
 .order-card-result { font-size: 13px; }
+
+/* 倒计时橙色徽章 */
+.badge.countdown { background: #fff3e0; color: #e65100; font-weight: 600; }
+
+/* 详情页大倒计时 */
+.draw-countdown {
+  font-size: 48px; font-weight: 900; color: #f5a623;
+  font-family: Consolas, "Courier New", monospace;
+  text-align: center; padding: 10px 0 6px;
+  text-shadow: 0 0 20px rgba(245,166,35,.4);
+  letter-spacing: 4px;
+}
+
+/* 参与者通知条 */
+.draw-notify-bar {
+  background: linear-gradient(90deg, #fff8e1, #fff3e0);
+  border-bottom: 1px solid #ffe0b2;
+  padding: 10px 20px;
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 14px; color: #e65100;
+}
+.draw-notify-bar a {
+  color: var(--brand); font-weight: 600; white-space: nowrap;
+}
+@media (max-width: 600px) {
+  .draw-countdown { font-size: 36px; }
+  .draw-notify-bar { padding: 8px 14px; font-size: 13px; }
+}

@@ -2,6 +2,7 @@
 import express from 'express';
 import pool from '../db.js';
 import { attachUser } from '../lib/helpers.js';
+import { roundTime } from '../lib/drand.js';
 
 const router = express.Router();
 router.use(attachUser);
@@ -24,6 +25,7 @@ function formatProduct(p) {
   if (p.draw_round != null) {
     out.draw = {
       round: p.draw_round,
+      drawTime: roundTime(p.draw_round),
       win_number: p.win_number,
       winner_user_id: p.winner_user_id,
       winner_name: p.winner_name || null,

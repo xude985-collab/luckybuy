@@ -48,15 +48,46 @@ function renderMarquee() {
   el.innerHTML = `<div class="label">🏆 幸运榜</div><div class="track">${items}</div>`;
 }
 
+/* ---- 倒计时工具 ---- */
+function fmtCountdown(drawTime) {
+  const left = drawTime - Date.now();
+  if (left <= 0) return null;
+  const min = Math.floor(left / 60000);
+  const sec = Math.floor((left % 60000) / 1000);
+  return min > 0 ? `${min}:${String(sec).padStart(2, '0')}` : `${sec}秒`;
+}
+
+let _countdownTimer = null;
+function startCountdownTimer() {
+  if (_countdownTimer) return;
+  _countdownTimer = setInterval(() => {
+    const badges = document.querySelectorAll('.badge.countdown[data-draw-time]');
+    if (!badges.length) { clearInterval(_countdownTimer); _countdownTimer = null; return; }
+    badges.forEach(el => {
+      const t = fmtCountdown(Number(el.dataset.drawTime));
+      if (!t) { el.textContent = '揭晓中'; el.classList.remove('countdown'); delete el.dataset.drawTime; }
+      else el.innerHTML = `⏰ ${t} 后开奖`;
+    });
+  }, 1000);
+}
+
 /* ---- 商品网格 ---- */
 function cardHtml(p) {
   const percent = pct(p);
   const remain = p.totalShares - p.soldShares;
   const done = p.status === 'revealed';
   const drawing = p.status === 'drawing';
-  const badge = done ? '<span class="badge done">已揭晓</span>'
-    : drawing ? '<span class="badge drawing">揭晓中</span>'
-    : '<span class="badge">进行中</span>';
+  let badge;
+  if (done) {
+    badge = '<span class="badge done">已揭晓</span>';
+  } else if (drawing) {
+    const t = p.drawTime ? fmtCountdown(p.drawTime) : null;
+    badge = t
+      ? `<span class="badge drawing countdown" data-draw-time="${p.drawTime}">⏰ ${t} 后开奖</span>`
+      : '<span class="badge drawing">揭晓中</span>';
+  } else {
+    badge = '<span class="badge">进行中</span>';
+  }
   // 封面:优先用真实商品图(gallery第一张),否则显示emoji
   const cover = (p.gallery && p.gallery.length && p.gallery[0].url)
     ? `<img src="${p.gallery[0].url}" alt="${p.name}" style="width:100%;height:100%;object-fit:contain;background:#fff">`
@@ -190,6 +221,7 @@ function renderAll() {
   renderLiveFeed();
   renderCatTabs();
   renderGrid();
+  startCountdownTimer();
 }
 
 /* ---- 首页快速购买 ---- */
