@@ -209,10 +209,10 @@ async function renderShowcase() {
     const media = s.media_type === 'video'
       ? `<video class="media" src="${s.media_url}" controls muted></video>`
       : `<div class="media"><img src="${s.media_url}" alt="" style="width:100%;height:100%;object-fit:cover"></div>`;
-    return `<div class="showcase-item">${media}
+    return `<a href="showcase.html?id=${s.id}" class="showcase-item">${media}
       <div class="cap">${esc(s.caption || s.product_name || '')}</div>
       <div class="meta">${s.emoji||'🎁'} ${esc(s.product_name||'')} · ${esc(s.user_name||'幸运用户')}</div>
-    </div>`;
+    </a>`;
   }).join('');
   wrap.innerHTML = `
     <div class="page-title">🎬 幸运晒单</div>

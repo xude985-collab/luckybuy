@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>晒单详情 · 幸运购</title>
+  <link rel="stylesheet" href="css/style.css?v=30">
+  <style>
+    .sc-detail { max-width:1080px; margin:0 auto; padding:20px }
+    .sc-media { width:100%; border-radius:12px; overflow:hidden; background:#000; text-align:center; margin-bottom:20px }
+    .sc-media img { width:100%; max-height:70vh; object-fit:contain }
+    .sc-media video { width:100%; max-height:70vh }
+    .sc-info { background:var(--card); border-radius:var(--radius); padding:20px; box-shadow:var(--shadow); margin-bottom:20px }
+    .sc-product { display:flex; align-items:center; gap:10px; margin-bottom:12px }
+    .sc-product .emoji { font-size:32px }
+    .sc-product .name { font-size:18px; font-weight:700 }
+    .sc-caption { font-size:16px; line-height:1.8; color:#444; margin-bottom:12px; white-space:pre-wrap }
+    .sc-meta { font-size:13px; color:var(--muted) }
+    .comments-section { background:var(--card); border-radius:var(--radius); padding:20px; box-shadow:var(--shadow) }
+    .comments-section h3 { font-size:17px; font-weight:700; margin-bottom:16px }
+    .comment-list { display:flex; flex-direction:column; gap:12px; margin-bottom:16px }
+    .comment-item { padding:12px 16px; background:#f8f9fa; border-radius:10px }
+    .comment-item .comment-user { font-weight:600; font-size:14px }
+    .comment-item .comment-time { font-size:12px; color:var(--muted); margin-left:8px }
+    .comment-item .comment-text { font-size:14px; color:#444; margin-top:6px; line-height:1.6 }
+    .comment-form { display:flex; gap:10px }
+    .comment-form textarea { flex:1; padding:10px 14px; border:1px solid #e0e0e0; border-radius:10px; font-size:14px; resize:none; min-height:44px; font-family:inherit }
+    .comment-form button { flex:none; padding:10px 20px }
+  </style>
+</head>
+<body>
+  <header id="topbar" class="topbar"></header>
+  <div class="sc-detail">
+    <a href="index.html" class="btn ghost" style="margin-bottom:16px">← 返回首页</a>
+    <div id="sc-content"><div class="empty">加载中...</div></div>
+  </div>
+  <script src="js/common.js?v=30"></script>
+  <script src="js/store.js?v=30"></script>
+  <script src="js/showcase.js?v=30"></script>
+</body>
+</html>

@@ -160,6 +160,14 @@ CREATE TABLE IF NOT EXISTS showcases (
   created_at  BIGINT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS showcase_comments (
+  id           TEXT PRIMARY KEY,
+  showcase_id  TEXT NOT NULL,
+  user_id      TEXT NOT NULL,
+  content      TEXT NOT NULL,
+  created_at   BIGINT NOT NULL
+);
+
 `;
 
 const DEFAULT_CATEGORIES = [
@@ -277,6 +285,7 @@ export async function initDB() {
       `CREATE INDEX IF NOT EXISTS idx_products_category ON products(category)`,
       `CREATE INDEX IF NOT EXISTS idx_showcases_status ON showcases(status)`,
       `CREATE INDEX IF NOT EXISTS idx_showcases_user_id ON showcases(user_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_sc_comments_showcase ON showcase_comments(showcase_id)`,
       `CREATE INDEX IF NOT EXISTS idx_wallet_tx_user_id ON wallet_tx(user_id)`,
       `CREATE INDEX IF NOT EXISTS idx_recharges_user_id ON recharges(user_id)`,
       `CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id)`,

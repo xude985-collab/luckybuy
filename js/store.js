@@ -384,6 +384,17 @@ const Store = (() => {
   async function deleteShowcase(id) {
     return await del('/showcase/' + id);
   }
+  async function getShowcase(id) {
+    const r = await get('/showcase/' + id);
+    return r.ok ? r.showcase : null;
+  }
+  async function getShowcaseComments(id) {
+    const r = await get('/showcase/' + id + '/comments');
+    return r.ok ? r.comments : [];
+  }
+  async function postShowcaseComment(id, content) {
+    return await post('/showcase/' + id + '/comments', { content });
+  }
 
   // ---- 开奖验证 / 续开 ----
   async function verifyProof(pid) {
@@ -463,6 +474,7 @@ const Store = (() => {
     // 晒单
     getApprovedShowcases, submitShowcase, getMyShowcases,
     getPendingShowcases, reviewShowcase, deleteShowcase,
+    getShowcase, getShowcaseComments, postShowcaseComment,
     // 开奖
     verifyProof, resumeDraws,
     // 内部（调试用）
