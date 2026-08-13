@@ -24,7 +24,8 @@ router.get('/approved', async (req, res, next) => {
     const timeFilter = hours > 0 ? `AND s.reviewed_at > ${Date.now() - hours * 3600000}` : '';
     const { rows } = await pool.query(
       `SELECT s.id, s.media_type, s.media_url, s.caption, s.created_at,
-              u.name AS user_name, p.name AS product_name, p.emoji
+              u.name AS user_name, p.name AS product_name, p.emoji,
+              (SELECT COUNT(*)::int FROM showcase_likes WHERE showcase_id = s.id) AS likes
        FROM showcases s
        LEFT JOIN users u ON u.id = s.user_id
        LEFT JOIN products p ON p.id = s.product_id
@@ -99,38 +100,39 @@ router.get('/:id', async (req, res, next) => {
        LEFT JOIN products p ON p.id = s.product_id
        WHERE s.id = $1 AND s.status = 'approved'`, [req.params.id]);
     if (!rows.length) return res.status(404).json({ ok: false, msg: '晒单不存在' });
-    res.json({ ok: true, showcase: rows[0] });
+    const s = rows[0];
+    const { rows: cnt } = await pool.query(
+      `SELECT COUNT(*)::int AS likes FROM showcase_likes WHERE showcase_id=$1`, [req.params.id]);
+    s.likes = cnt[0].likes;
+    s.liked = false;
+    if (req.user) {
+      const { rows: lk } = await pool.query(
+        `SELECT 1 FROM showcase_likes WHERE showcase_id=$1 AND user_id=$2`, [req.params.id, req.user.id]);
+      s.liked = lk.length > 0;
+    }
+    res.json({ ok: true, showcase: s });
   } catch (e) { next(e); }
 });
 
-// 公开：获取晒单留言
-router.get('/:id/comments', async (req, res, next) => {
-  try {
-    const { rows } = await pool.query(
-      `SELECT c.id, c.content, c.created_at, u.name AS user_name
-       FROM showcase_comments c
-       LEFT JOIN users u ON u.id = c.user_id
-       WHERE c.showcase_id = $1
-       ORDER BY c.created_at ASC`, [req.params.id]);
-    res.json({ ok: true, comments: rows });
-  } catch (e) { next(e); }
-});
-
-// 用户：发表留言
-router.post('/:id/comments', async (req, res, next) => {
+// 用户：点赞/取消点赞
+router.post('/:id/like', async (req, res, next) => {
   try {
     if (!req.user) return res.status(401).json({ ok: false, msg: '请先登录' });
-    const content = (req.body.content || '').trim();
-    if (!content || content.length > 500) return res.status(400).json({ ok: false, msg: '留言内容 1-500 字' });
+    const scId = req.params.id;
     const { rows: sc } = await pool.query(
-      `SELECT 1 FROM showcases WHERE id=$1 AND status='approved'`, [req.params.id]);
+      `SELECT 1 FROM showcases WHERE id=$1 AND status='approved'`, [scId]);
     if (!sc.length) return res.status(404).json({ ok: false, msg: '晒单不存在' });
-    const id = genId('cmt_');
-    await pool.query(
-      `INSERT INTO showcase_comments (id, showcase_id, user_id, content, created_at)
-       VALUES ($1,$2,$3,$4,$5)`,
-      [id, req.params.id, req.user.id, content, Date.now()]);
-    res.json({ ok: true, comment: { id, content, created_at: Date.now(), user_name: req.user.name } });
+    const { rows: exists } = await pool.query(
+      `SELECT 1 FROM showcase_likes WHERE showcase_id=$1 AND user_id=$2`, [scId, req.user.id]);
+    if (exists.length) {
+      await pool.query(`DELETE FROM showcase_likes WHERE showcase_id=$1 AND user_id=$2`, [scId, req.user.id]);
+    } else {
+      await pool.query(`INSERT INTO showcase_likes (showcase_id, user_id, created_at) VALUES ($1,$2,$3)`,
+        [scId, req.user.id, Date.now()]);
+    }
+    const { rows: cnt } = await pool.query(
+      `SELECT COUNT(*)::int AS likes FROM showcase_likes WHERE showcase_id=$1`, [scId]);
+    res.json({ ok: true, liked: !exists.length, likes: cnt[0].likes });
   } catch (e) { next(e); }
 });
 
