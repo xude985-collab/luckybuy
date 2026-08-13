@@ -17,40 +17,54 @@ function renderTopbar(active) {
   const el = document.getElementById('topbar');
   if (!el) return;
   const u = Store.currentUser();
-
-  const right = u ? `
-    <div class="wallet">
-      充值：<b>${u.paidCoins||0}</b> 免费：<b>${u.freeCoins||0}</b>
-      <span class="recharge-wrap">&nbsp;·&nbsp; <a href="#" id="recharge">充值</a></span>
-    </div>
-    <div class="wallet wallet-user">👤 ${u.name}
-      &nbsp;·&nbsp; <a href="#" id="logout">退出</a></div>
-    <div class="wallet-user-m"><a href="profile.html" class="wum-name">👤 ${u.name}</a> · <span class="wum-logout" id="logout-m">退出</span></div>`
-    : `<a href="login.html" class="wallet">登录 / 注册</a>`;
-
   const isAdmin = u && u.isAdmin;
-  el.innerHTML = `
-    <a href="index.html" class="logo">Lucky&nbsp;Buy</a>
-    <nav>
-      <a href="index.html" class="${active === 'home' ? 'active' : ''}">全部商品</a>
-      <a href="winners.html" class="${active === 'winners' ? 'active' : ''}">幸运区</a>
-      <a href="orders.html" class="${active === 'orders' ? 'active' : ''}">我的记录</a>
-      <a href="rules.html" class="${active === 'rules' ? 'active' : ''}">规则</a>
-      ${u ? `<a href="profile.html" class="${active === 'profile' ? 'active' : ''}">个人中心</a>` : ''}
-      ${isAdmin ? `<a href="admin.html" class="${active === 'admin' ? 'active' : ''}">后台</a>` : ''}
-    </nav>
-    <div class="spacer"></div>
-    ${right}`;
 
+  // 更新导航激活状态
+  const navLinks = el.querySelectorAll('nav a');
+  navLinks.forEach(a => {
+    const href = a.getAttribute('href');
+    if (href === 'index.html') a.className = active === 'home' ? 'active' : '';
+    else if (href === 'winners.html') a.className = active === 'winners' ? 'active' : '';
+    else if (href === 'orders.html') a.className = active === 'orders' ? 'active' : '';
+    else if (href === 'rules.html') a.className = active === 'rules' ? 'active' : '';
+    else if (href === 'profile.html') {
+      a.className = active === 'profile' ? 'active' : '';
+      a.style.display = u ? '' : 'none';
+    }
+    else if (href === 'admin.html') {
+      a.className = active === 'admin' ? 'active' : '';
+      a.style.display = isAdmin ? '' : 'none';
+    }
+  });
+
+  // 更新右侧登录态
+  const walletEl = document.getElementById('topbar-wallet');
+  const userEl = document.getElementById('topbar-user');
+  const loginEl = document.getElementById('topbar-login');
+
+  if (u) {
+    if (walletEl) {
+      walletEl.innerHTML = `充值：<b>${u.paidCoins||0}</b> 免费：<b>${u.freeCoins||0}</b>
+        <span class="recharge-wrap">&nbsp;·&nbsp; <a href="#" id="recharge">充值</a></span>`;
+      walletEl.style.display = '';
+    }
+    if (userEl) {
+      userEl.innerHTML = `👤 ${u.name} &nbsp;·&nbsp; <a href="#" id="logout">退出</a>`;
+      userEl.style.display = '';
+    }
+    if (loginEl) loginEl.style.display = 'none';
+  } else {
+    if (walletEl) walletEl.style.display = 'none';
+    if (userEl) userEl.style.display = 'none';
+    if (loginEl) loginEl.style.display = '';
+  }
+
+  // 绑定事件
   const rc = document.getElementById('recharge');
   if (rc) rc.onclick = (e) => { e.preventDefault(); openRecharge(active); };
   const lo = document.getElementById('logout');
   if (lo) lo.onclick = async (e) => {
     e.preventDefault(); await Store.logout(); toast('已退出'); location.href = 'index.html';
-  };
-  const loM = document.getElementById('logout-m');
-  if (loM) loM.onclick = async (e) => {
-    e.preventDefault(); e.stopPropagation(); await Store.logout(); toast('已退出'); location.href = 'index.html';
   };
 
   renderMobNav(active, u);
