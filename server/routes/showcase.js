@@ -25,11 +25,13 @@ router.get('/approved', async (req, res, next) => {
     const { rows } = await pool.query(
       `SELECT s.id, s.media_type, s.caption, s.created_at,
               u.name AS user_name, p.name AS product_name, p.emoji,
-              (SELECT COUNT(*)::int FROM showcase_likes WHERE showcase_id = s.id) AS likes
+              COALESCE(COUNT(l.user_id), 0)::int AS likes
        FROM showcases s
        LEFT JOIN users u ON u.id = s.user_id
        LEFT JOIN products p ON p.id = s.product_id
+       LEFT JOIN showcase_likes l ON l.showcase_id = s.id
        WHERE s.status = 'approved' ${timeFilter}
+       GROUP BY s.id, u.name, p.name, p.emoji
        ORDER BY s.reviewed_at DESC LIMIT 10`);
     res.json({ ok: true, showcases: rows });
   } catch (e) { next(e); }
@@ -92,24 +94,21 @@ router.get('/pending', requireAdmin, async (req, res, next) => {
 // 公开：单条晒单详情（放在 /mine /pending /approved 之后）
 router.get('/:id', async (req, res, next) => {
   try {
+    const userId = req.user ? req.user.id : null;
     const { rows } = await pool.query(
       `SELECT s.id, s.media_type, s.media_url, s.caption, s.created_at,
-              u.name AS user_name, p.name AS product_name, p.emoji
+              u.name AS user_name, p.name AS product_name, p.emoji,
+              COALESCE(COUNT(l.user_id), 0)::int AS likes,
+              BOOL_OR(l.user_id = $2) AS liked
        FROM showcases s
        LEFT JOIN users u ON u.id = s.user_id
        LEFT JOIN products p ON p.id = s.product_id
-       WHERE s.id = $1 AND s.status = 'approved'`, [req.params.id]);
+       LEFT JOIN showcase_likes l ON l.showcase_id = s.id
+       WHERE s.id = $1 AND s.status = 'approved'
+       GROUP BY s.id, u.name, p.name, p.emoji`, [req.params.id, userId]);
     if (!rows.length) return res.status(404).json({ ok: false, msg: '晒单不存在' });
     const s = rows[0];
-    const { rows: cnt } = await pool.query(
-      `SELECT COUNT(*)::int AS likes FROM showcase_likes WHERE showcase_id=$1`, [req.params.id]);
-    s.likes = cnt[0].likes;
-    s.liked = false;
-    if (req.user) {
-      const { rows: lk } = await pool.query(
-        `SELECT 1 FROM showcase_likes WHERE showcase_id=$1 AND user_id=$2`, [req.params.id, req.user.id]);
-      s.liked = lk.length > 0;
-    }
+    s.liked = s.liked || false;
     res.json({ ok: true, showcase: s });
   } catch (e) { next(e); }
 });
