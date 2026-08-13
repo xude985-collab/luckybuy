@@ -133,7 +133,7 @@ img { max-width: 100%; }
 .marquee .track {
   position: absolute; left: 0; top: 0; height: 100%;
   display: inline-flex; align-items: center; gap: 40px;
-  animation: scroll-left 30s linear infinite; white-space: nowrap;
+  animation: scroll-left 60s linear infinite; white-space: nowrap;
 }
 .marquee:hover .track { animation-play-state: paused; }
 .marquee .item { font-size: 14px; color: #7a4a00; }
@@ -799,8 +799,9 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   .quick-nav-icon { font-size: 18px; }
   .quick-nav-label { white-space: nowrap; }
 
-  /* 跑马灯：手机端缩小显示 */
+  /* 跑马灯：手机端缩小显示，速度放慢 */
   .marquee { height: 32px; font-size: 12px; }
+  .marquee .track { animation-duration: 300s; }
 
   /* 容器 */
   .container { padding: 12px; max-width: 100vw; box-sizing: border-box; }
