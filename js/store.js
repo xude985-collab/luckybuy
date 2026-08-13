@@ -437,20 +437,16 @@ const Store = (() => {
   function init() {
     if (_ready) return _ready;
     _ready = (async () => {
-      // 首屏必需数据：categories + products
       await Promise.all([
         refreshCategories(),
         refreshProducts(),
-      ]);
-      // 其他数据后台加载，不阻塞首屏
-      Promise.all([
         refreshWinners(),
         refreshRecentBuys(),
         refreshConfig(),
-      ]).catch(() => {});
-      refreshMe().catch(() => {});
-      refreshOrders().catch(() => {});
-      refreshCheckinStatus().catch(() => {});
+      ]);
+      await refreshMe().catch(() => {}); // 登录态接口失败不阻塞首屏
+      await refreshOrders().catch(() => {});
+      await refreshCheckinStatus().catch(() => {});
     })();
     return _ready;
   }
