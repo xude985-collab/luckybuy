@@ -166,7 +166,10 @@ img { max-width: 100%; }
   font-size: 56px; background: linear-gradient(135deg, #fff7f2, #ffe9dd);
 }
 .showcase-item .cap { padding: 12px 14px; font-size: 15px; color: #e67e22; font-style: italic; }
-.showcase-item .meta { padding: 4px 14px 10px; font-size: 12px; color: #999; }
+.sc-card-bottom { display: flex; align-items: center; justify-content: space-between; padding: 4px 14px 10px; }
+.sc-card-bottom .meta { padding: 0; font-size: 12px; color: #999; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-card-like { flex: none; font-size: 14px; cursor: pointer; padding: 4px 8px; border-radius: 12px; transition: background .15s; }
+.sc-card-like:hover { background: rgba(0,0,0,.05); }
 
 /* 商品网格 */
 .grid {

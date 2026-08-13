@@ -212,12 +212,29 @@ async function renderShowcase() {
     const likes = Number(s.likes) || 0;
     return `<a href="showcase.html?id=${s.id}" class="showcase-item">${media}
       <div class="cap">${esc(s.caption || s.product_name || '')}</div>
-      <div class="meta">${s.emoji||'🎁'} ${esc(s.product_name||'')} · ${esc(s.user_name||'幸运用户')}${likes ? ` · ❤️ ${likes}` : ''}</div>
+      <div class="sc-card-bottom">
+        <div class="meta">${s.emoji||'🎁'} ${esc(s.product_name||'')} · ${esc(s.user_name||'幸运用户')}</div>
+        <span class="sc-card-like" data-id="${s.id}" onclick="scLike(event,this)">🤍 <span class="sc-like-n">${likes}</span></span>
+      </div>
     </a>`;
   }).join('');
   wrap.innerHTML = `
     <div class="page-title">🎬 幸运晒单</div>
     <div class="showcase-grid">${cards}</div>`;
+}
+
+async function scLike(e, el) {
+  e.preventDefault();
+  e.stopPropagation();
+  if (!Store.isLoggedIn()) { toast('请先登录'); return; }
+  const id = el.dataset.id;
+  el.style.pointerEvents = 'none';
+  const r = await Store.toggleShowcaseLike(id);
+  if (r.ok) {
+    el.querySelector('.sc-like-n').textContent = r.likes;
+    el.childNodes[0].textContent = r.liked ? '❤️ ' : '🤍 ';
+  }
+  el.style.pointerEvents = '';
 }
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
