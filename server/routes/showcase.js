@@ -23,14 +23,14 @@ router.get('/approved', async (req, res, next) => {
     const hours = cfgRows[0] ? Number(cfgRows[0].v) : 0;
     const timeFilter = hours > 0 ? `AND s.reviewed_at > ${Date.now() - hours * 3600000}` : '';
     const { rows } = await pool.query(
-      `SELECT s.id, s.media_type, s.media_url, s.caption, s.created_at,
+      `SELECT s.id, s.media_type, s.caption, s.created_at,
               u.name AS user_name, p.name AS product_name, p.emoji,
               (SELECT COUNT(*)::int FROM showcase_likes WHERE showcase_id = s.id) AS likes
        FROM showcases s
        LEFT JOIN users u ON u.id = s.user_id
        LEFT JOIN products p ON p.id = s.product_id
        WHERE s.status = 'approved' ${timeFilter}
-       ORDER BY s.reviewed_at DESC LIMIT 30`);
+       ORDER BY s.reviewed_at DESC LIMIT 10`);
     res.json({ ok: true, showcases: rows });
   } catch (e) { next(e); }
 });

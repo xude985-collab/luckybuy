@@ -206,11 +206,10 @@ async function renderShowcase() {
     return;
   }
   const cards = items.map(s => {
-    const media = s.media_type === 'video'
-      ? `<video class="media" src="${s.media_url}" controls muted></video>`
-      : `<div class="media"><img src="${s.media_url}" alt="" style="width:100%;height:100%;object-fit:cover"></div>`;
+    const mediaIcon = s.media_type === 'video' ? '🎬' : '📷';
     const likes = Number(s.likes) || 0;
-    return `<a href="showcase.html?id=${s.id}" class="showcase-item">${media}
+    return `<a href="showcase.html?id=${s.id}" class="showcase-item">
+      <div class="media">${mediaIcon}</div>
       <div class="cap">${esc(s.caption || s.product_name || '')}</div>
       <div class="sc-card-bottom">
         <div class="meta">${s.emoji||'🎁'} ${esc(s.product_name||'')} · ${esc(s.user_name||'幸运用户')}</div>
