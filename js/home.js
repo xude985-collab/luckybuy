@@ -323,7 +323,12 @@ function showCardCoinChoice(u, p) {
 onReady(async () => {
   renderTopbar('home');
   await Store.ready;
-  renderAll();
+  // 首屏立即渲染商品列表
+  renderCatTabs();
+  renderGrid();
+  // 后台数据异步加载，不阻塞首屏
+  Store.refreshWinners().then(() => renderMarquee()).catch(() => {});
+  Store.refreshRecentBuys().then(() => renderLiveFeed()).catch(() => {});
   renderShowcase();
 });
 
