@@ -23,7 +23,7 @@ router.get('/approved', async (req, res, next) => {
     const hours = cfgRows[0] ? Number(cfgRows[0].v) : 0;
     const timeFilter = hours > 0 ? `AND s.reviewed_at > ${Date.now() - hours * 3600000}` : '';
     const { rows } = await pool.query(
-      `SELECT s.id, s.media_type, s.caption, s.created_at,
+      `SELECT s.id, s.media_type, s.media_url, s.caption, s.created_at,
               u.name AS user_name, p.name AS product_name, p.emoji,
               COALESCE(COUNT(l.user_id), 0)::int AS likes
        FROM showcases s
