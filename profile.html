@@ -6,19 +6,22 @@
   <title>个人中心 · 幸运购</title>
   <link rel="stylesheet" href="css/style.css?v=26">
   <script>
-    // 防止登录状态闪烁：在 HTML 渲染前从 cookie 读取登录状态
+    // 防止登录状态闪烁：在 HTML 渲染前从 cookie 读取登录状态并立即应用样式
     (function() {
       try {
-        const token = document.cookie.split('; ').find(r => r.startsWith('lb_logged_in='));
-        if (token) {
-          // 已登录，预设显示状态（避免页面加载时闪烁）
+        const loggedIn = document.cookie.split('; ').find(r => r.startsWith('lb_logged_in='));
+        if (loggedIn) {
+          // 立即添加 style 标签，确保样式和类同时生效
+          const style = document.createElement('style');
+          style.textContent = '.nav-profile,.nav-admin{display:inline-block!important}#topbar-wallet,#topbar-user{display:inline-block!important}#topbar-login{display:none!important}';
+          document.head.appendChild(style);
+          // 添加类（配合后续的 CSS 规则）
           document.documentElement.classList.add('user-logged-in');
-          // 标记：已预设状态，renderTopbar() 在获取到真实数据前不要移除
-          window._loginStatePreset = true;
         }
       } catch (e) {}
     })();
   </script>
+
   <style>
     /* 默认状态：未登录 */
     .nav-profile, .nav-admin { display: none; }
