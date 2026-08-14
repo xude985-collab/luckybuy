@@ -10,7 +10,7 @@
     // 防止登录状态闪烁：在 HTML 渲染前从 cookie 读取登录状态
     (function() {
       try {
-        const token = document.cookie.split('; ').find(r => r.startsWith('lb_token='));
+        const token = document.cookie.split('; ').find(r => r.startsWith('lb_logged_in='));
         if (token) {
           // 已登录，预设显示状态（避免页面加载时闪烁）
           document.documentElement.classList.add('user-logged-in');

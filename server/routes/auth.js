@@ -106,6 +106,7 @@ router.post('/register', async (req, res, next) => {
 
     const token = await createSession(id);
     res.cookie('lb_token', token, { httpOnly: true, sameSite: 'lax', maxAge: 30 * 864e5 });
+    res.cookie('lb_logged_in', '1', { httpOnly: false, sameSite: 'lax', maxAge: 30 * 864e5 });
     res.json({ ok: true, msg: '注册成功', user: await publicUser(id) });
   } catch (e) { next(e); }
 });
@@ -122,6 +123,7 @@ router.post('/login', async (req, res, next) => {
     }
     const token = await createSession(u.id);
     res.cookie('lb_token', token, { httpOnly: true, sameSite: 'lax', maxAge: 30 * 864e5 });
+    res.cookie('lb_logged_in', '1', { httpOnly: false, sameSite: 'lax', maxAge: 30 * 864e5 });
     res.json({ ok: true, msg: '登录成功', user: await publicUser(u.id) });
   } catch (e) { next(e); }
 });
@@ -130,6 +132,7 @@ router.post('/logout', async (req, res) => {
   const token = req.cookies?.lb_token;
   if (token) await pool.query(`DELETE FROM sessions WHERE token=$1`, [token]);
   res.clearCookie('lb_token');
+  res.clearCookie('lb_logged_in');
   res.json({ ok: true });
 });
 
