@@ -5,6 +5,7 @@
 import pg from 'pg';
 import bcrypt from 'bcryptjs';
 import 'dotenv/config';
+import logger from './lib/logger.js';
 
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
@@ -17,7 +18,7 @@ const pool = new pg.Pool({
 });
 
 pool.on('error', (err) => {
-  console.error('[pool] 后台连接异常（不崩溃）:', err.message);
+  logger.error({ err }, '数据库连接池后台异常');
 });
 
 const SCHEMA = `
@@ -261,10 +262,10 @@ export async function initDB() {
           `INSERT INTO users (id,account,account_type,name,pass_hash,role,invite_code,paid_balance,created_at)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
           ['u_admin', email, 'email', '管理员', bcrypt.hashSync(pass, 10), 'admin', 'ADMIN0', 0, now]);
-        console.log(`[db] 已创建管理员账号: ${email}`);
+        logger.info({ email }, '已创建管理员账号');
       }
     } catch (e) {
-      console.warn('[db] admin seed skipped:', e.message);
+      logger.warn({ err: e }, '管理员账号播种失败');
     }
   } finally {
     client.release();

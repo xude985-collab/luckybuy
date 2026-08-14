@@ -11,6 +11,7 @@ import { fileURLToPath } from 'url';
 import path from 'path';
 import 'dotenv/config';
 
+import logger from './lib/logger.js';
 import { initDB } from './db.js';
 import { startDrawWorker } from './lib/drawWorker.js';
 import authRoutes from './routes/auth.js';
@@ -21,11 +22,10 @@ import showcaseRoutes from './routes/showcase.js';
 import stripeWebhook from './routes/stripe-webhook.js';
 
 process.on('uncaughtException', (err) => {
-  console.error('[FATAL] uncaughtException:', err.message);
-  console.error(err.stack);
+  logger.fatal({ err }, 'uncaughtException');
 });
 process.on('unhandledRejection', (reason) => {
-  console.error('[FATAL] unhandledRejection:', reason);
+  logger.fatal({ reason }, 'unhandledRejection');
 });
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -38,10 +38,10 @@ async function boot() {
   for (let i = 1; i <= MAX_RETRIES; i++) {
     try {
       await initDB();
-      console.log('[db] 连接成功');
+      logger.info('数据库连接成功');
       return;
     } catch (err) {
-      console.error(`[db] 第 ${i}/${MAX_RETRIES} 次连接失败:`, err.message);
+      logger.error({ err, attempt: i, maxRetries: MAX_RETRIES }, '数据库连接失败');
       if (i === MAX_RETRIES) throw err;
       await new Promise(r => setTimeout(r, i * 2000));
     }
@@ -98,12 +98,11 @@ app.use(express.static(SITE_DIR, { extensions: ['html'], maxAge: 0, etag: false 
 
 // 统一错误处理
 app.use((err, req, res, next) => {
-  console.error('[error]', err);
+  logger.error({ err, path: req.path, method: req.method }, '请求处理错误');
   res.status(err.status || 500).json({ ok: false, msg: err.message || '服务器错误' });
 });
 
 app.listen(PORT, () => {
-  console.log(`\n  Lucky Buy 后端已启动`);
-  console.log(`  → http://localhost:${PORT}\n`);
+  logger.info({ port: PORT }, 'Lucky Buy 后端已启动');
   startDrawWorker();
 });

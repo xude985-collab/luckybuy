@@ -1,13 +1,14 @@
 import pool from '../db.js';
 import { getRound, computeWinner, roundTime } from './drand.js';
 import { withTransaction } from './helpers.js';
+import logger from './logger.js';
 
 const POLL_MS = 15_000;
 let isPolling = false; // 轮询锁，防止重叠执行
 
 async function resolvePendingDraws() {
   if (isPolling) {
-    console.log('[draw] 上次轮询尚未完成，跳过本次');
+    logger.debug('上次轮询尚未完成，跳过本次');
     return;
   }
 
@@ -44,11 +45,15 @@ async function resolvePendingDraws() {
           );
           if (updated.length) {
             await client.query(`UPDATE products SET status='done' WHERE id=$1`, [d.product_id]);
-            console.log(`[draw] ${d.product_id} 揭晓完成 → 幸运号 ${winNumber}，得主 ${winner?.user_id || '无'}`);
+            logger.info({
+              productId: d.product_id,
+              winNumber,
+              winnerId: winner?.user_id || null,
+            }, '商品揭晓完成');
           }
         });
       } catch (e) {
-        console.error(`[draw] ${d.product_id} 揭晓异常:`, e.message);
+        logger.error({ err: e, productId: d.product_id }, '商品揭晓异常');
       }
     }
   } finally {
@@ -57,10 +62,10 @@ async function resolvePendingDraws() {
 }
 
 export function startDrawWorker() {
-  console.log('[draw] 揭晓 worker 已启动（每 15 秒轮询）');
-  resolvePendingDraws().catch(e => console.error('[draw] 初始轮询失败:', e.message));
+  logger.info({ pollInterval: POLL_MS }, '揭晓 worker 已启动');
+  resolvePendingDraws().catch(e => logger.error({ err: e }, '初始轮询失败'));
   setInterval(
-    () => resolvePendingDraws().catch(e => console.error('[draw] 轮询失败:', e.message)),
+    () => resolvePendingDraws().catch(e => logger.error({ err: e }, '轮询失败')),
     POLL_MS
   );
 }
