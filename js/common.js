@@ -19,21 +19,16 @@ function renderTopbar(active) {
   const u = Store.currentUser();
   const isAdmin = u && u.isAdmin;
 
-  // 更新全局登录状态类（配合 <head> 内联脚本预设）
+  // 只在有用户数据时更新登录状态类（不破坏内联脚本的预设）
   if (u) {
-    // 有用户数据，更新状态并清除预设标记
     document.documentElement.classList.add('user-logged-in');
     if (isAdmin) {
       document.documentElement.classList.add('user-is-admin');
     } else {
       document.documentElement.classList.remove('user-is-admin');
     }
-    window._loginStatePreset = false;
-  } else if (!window._loginStatePreset) {
-    // 无用户数据，且没有预设标记，说明确实未登录，移除类
-    document.documentElement.classList.remove('user-logged-in', 'user-is-admin');
   }
-  // 如果有预设标记但没有用户数据，保持预设状态，等下次 API 完成后再更新
+  // 如果没有用户数据，什么都不做，保持内联脚本预设的状态
 
   // 更新导航激活状态
   const navLinks = el.querySelectorAll('nav a');
@@ -47,7 +42,7 @@ function renderTopbar(active) {
     else if (href === 'admin.html') a.className = active === 'admin' ? 'active' : '';
   });
 
-  // 更新右侧登录态
+  // 只在有用户数据时更新右侧登录态内容
   const walletEl = document.getElementById('topbar-wallet');
   const userEl = document.getElementById('topbar-user');
   const loginEl = document.getElementById('topbar-login');
@@ -56,26 +51,20 @@ function renderTopbar(active) {
     if (walletEl) {
       walletEl.innerHTML = `充值：<b>${u.paidCoins||0}</b> 免费：<b>${u.freeCoins||0}</b>
         <span class="recharge-wrap">&nbsp;·&nbsp; <a href="#" id="recharge">充值</a></span>`;
-      walletEl.style.display = '';
     }
     if (userEl) {
       userEl.innerHTML = `👤 ${u.name} &nbsp;·&nbsp; <a href="#" id="logout">退出</a>`;
-      userEl.style.display = '';
     }
-    if (loginEl) loginEl.style.display = 'none';
-  } else {
-    if (walletEl) walletEl.style.display = 'none';
-    if (userEl) userEl.style.display = 'none';
-    if (loginEl) loginEl.style.display = '';
-  }
 
-  // 绑定事件
-  const rc = document.getElementById('recharge');
-  if (rc) rc.onclick = (e) => { e.preventDefault(); openRecharge(active); };
-  const lo = document.getElementById('logout');
-  if (lo) lo.onclick = async (e) => {
-    e.preventDefault(); await Store.logout(); toast('已退出'); location.href = 'index.html';
-  };
+    // 绑定事件
+    const rc = document.getElementById('recharge');
+    if (rc) rc.onclick = (e) => { e.preventDefault(); openRecharge(active); };
+    const lo = document.getElementById('logout');
+    if (lo) lo.onclick = async (e) => {
+      e.preventDefault(); await Store.logout(); toast('已退出'); location.href = 'index.html';
+    };
+  }
+  // 如果没有用户数据，不更新这些元素，保持默认状态
 
   renderMobNav(active, u);
 }
