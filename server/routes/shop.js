@@ -94,15 +94,15 @@ router.get('/recent-buys', async (req, res, next) => {
   try {
     const { rows: cfgRows } = await pool.query(`SELECT v FROM config WHERE k='recentBuysHours'`);
     const hours = cfgRows[0] ? Number(cfgRows[0].v) : 0;
-    const timeFilter = hours > 0 ? `WHERE o.created_at > ${Date.now() - hours * 3600000}` : '';
+    const cutoff = hours > 0 ? Date.now() - hours * 3600000 : 0;
     const { rows } = await pool.query(`
       SELECT o.shares, o.created_at, p.name AS product_name, p.emoji,
              u.name AS buyer_name
       FROM orders o
       JOIN products p ON p.id=o.product_id
       JOIN users u ON u.id=o.user_id
-      ${timeFilter}
-      ORDER BY o.created_at DESC LIMIT 30`);
+      WHERE o.created_at > $1
+      ORDER BY o.created_at DESC LIMIT 30`, [cutoff]);
     res.json({ ok: true, buys: rows });
   } catch (e) { next(e); }
 });
@@ -125,7 +125,7 @@ router.get('/winners', async (req, res, next) => {
   try {
     const { rows: cfgRows } = await pool.query(`SELECT v FROM config WHERE k='winnersHours'`);
     const hours = cfgRows[0] ? Number(cfgRows[0].v) : 0;
-    const timeFilter = hours > 0 ? `AND d.drawn_at > ${Date.now() - hours * 3600000}` : '';
+    const cutoff = hours > 0 ? Date.now() - hours * 3600000 : 0;
     const { rows } = await pool.query(`
       SELECT d.product_id, d.win_number, d.drawn_at, p.name, p.emoji,
              p.price_per_share AS price,
@@ -133,8 +133,8 @@ router.get('/winners', async (req, res, next) => {
       FROM draws d
       JOIN products p ON p.id=d.product_id
       LEFT JOIN users u ON u.id=d.winner_user_id
-      WHERE d.drawn_at IS NOT NULL ${timeFilter}
-      ORDER BY d.drawn_at DESC LIMIT 20`);
+      WHERE d.drawn_at IS NOT NULL AND d.drawn_at > $1
+      ORDER BY d.drawn_at DESC LIMIT 20`, [cutoff]);
     res.json({ ok: true, winners: rows });
   } catch (e) { next(e); }
 });

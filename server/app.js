@@ -6,6 +6,7 @@
  */
 import express from 'express';
 import cookieParser from 'cookie-parser';
+import rateLimit from 'express-rate-limit';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import 'dotenv/config';
@@ -55,7 +56,28 @@ app.post('/api/wallet/stripe-webhook', express.raw({ type: 'application/json' })
 app.use(express.json({ limit: '2mb' }));
 app.use(cookieParser(process.env.SESSION_SECRET || 'dev-secret'));
 
+// API 限流：通用限制（所有 API 接口）
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 分钟
+  max: 60, // 最多 60 个请求
+  message: { ok: false, msg: '请求过于频繁，请稍后再试' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// 严格限流：敏感操作（发验证码、充值等）
+const strictLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 分钟
+  max: 3, // 最多 3 个请求
+  message: { ok: false, msg: '操作过于频繁，请稍后再试' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // API 路由
+app.use('/api/', apiLimiter); // 所有 API 接口通用限流
+app.use('/api/auth/send-code', strictLimiter); // 发送验证码严格限流
+app.use('/api/wallet/recharge', strictLimiter); // 充值严格限流
 app.use('/api/auth', authRoutes);
 app.use('/api/shop', shopRoutes);
 app.use('/api/wallet', walletRoutes);
