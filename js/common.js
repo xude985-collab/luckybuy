@@ -17,17 +17,20 @@ function renderTopbar(active) {
   const el = document.getElementById('topbar');
   if (!el) return;
   const u = Store.currentUser();
-
-  // 如果没有用户数据，完全跳过，保持内联脚本预设的状态
-  if (!u) return;
-
   const isAdmin = u && u.isAdmin;
 
-  // 有用户数据时才更新状态
-  document.documentElement.classList.add('user-logged-in');
-  if (isAdmin) {
-    document.documentElement.classList.add('user-is-admin');
+  // 新逻辑：默认显示登录状态，只在确认未登录时才隐藏
+  if (u) {
+    // 有用户数据，确保显示登录状态
+    document.documentElement.classList.remove('not-logged-in');
+    if (isAdmin) {
+      document.documentElement.classList.add('user-is-admin');
+    } else {
+      document.documentElement.classList.remove('user-is-admin');
+    }
   } else {
+    // 无用户数据，添加未登录类（CSS 会隐藏按钮）
+    document.documentElement.classList.add('not-logged-in');
     document.documentElement.classList.remove('user-is-admin');
   }
 
@@ -46,23 +49,24 @@ function renderTopbar(active) {
   // 更新右侧登录态内容
   const walletEl = document.getElementById('topbar-wallet');
   const userEl = document.getElementById('topbar-user');
-  const loginEl = document.getElementById('topbar-login');
 
-  if (walletEl) {
-    walletEl.innerHTML = `充值：<b>${u.paidCoins||0}</b> 免费：<b>${u.freeCoins||0}</b>
-      <span class="recharge-wrap">&nbsp;·&nbsp; <a href="#" id="recharge">充值</a></span>`;
-  }
-  if (userEl) {
-    userEl.innerHTML = `👤 ${u.name} &nbsp;·&nbsp; <a href="#" id="logout">退出</a>`;
-  }
+  if (u) {
+    if (walletEl) {
+      walletEl.innerHTML = `充值：<b>${u.paidCoins||0}</b> 免费：<b>${u.freeCoins||0}</b>
+        <span class="recharge-wrap">&nbsp;·&nbsp; <a href="#" id="recharge">充值</a></span>`;
+    }
+    if (userEl) {
+      userEl.innerHTML = `👤 ${u.name} &nbsp;·&nbsp; <a href="#" id="logout">退出</a>`;
+    }
 
-  // 绑定事件
-  const rc = document.getElementById('recharge');
-  if (rc) rc.onclick = (e) => { e.preventDefault(); openRecharge(active); };
-  const lo = document.getElementById('logout');
-  if (lo) lo.onclick = async (e) => {
-    e.preventDefault(); await Store.logout(); toast('已退出'); location.href = 'index.html';
-  };
+    // 绑定事件
+    const rc = document.getElementById('recharge');
+    if (rc) rc.onclick = (e) => { e.preventDefault(); openRecharge(active); };
+    const lo = document.getElementById('logout');
+    if (lo) lo.onclick = async (e) => {
+      e.preventDefault(); await Store.logout(); toast('已退出'); location.href = 'index.html';
+    };
+  }
 
   renderMobNav(active, u);
 }

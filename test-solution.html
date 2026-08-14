@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>测试新方案</title>
+  <style>
+    /* 默认状态：已登录 */
+    .nav-profile, .nav-admin { display: inline-block; }
+    #topbar-wallet, #topbar-user { display: inline-block; }
+    #topbar-login { display: none; }
+
+    /* 未登录状态 */
+    html.not-logged-in .nav-profile,
+    html.not-logged-in .nav-admin { display: none; }
+    html.not-logged-in #topbar-wallet,
+    html.not-logged-in #topbar-user { display: none; }
+    html.not-logged-in #topbar-login { display: inline-block; }
+
+    /* 管理员状态 */
+    html.user-is-admin .nav-admin { display: inline-block; }
+
+    body { font-family: sans-serif; padding: 20px; }
+    .topbar { background: #ff6b35; color: white; padding: 10px 20px; margin-bottom: 20px; }
+    .topbar a { color: white; margin-right: 15px; text-decoration: none; }
+    button { margin: 10px 5px; padding: 10px 20px; }
+    .log { background: #f5f5f5; padding: 10px; margin: 10px 0; font-family: monospace; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>测试新方案：默认显示登录状态</h1>
+
+  <div class="topbar">
+    <a href="#" class="nav-profile">个人中心</a>
+    <a href="#" class="nav-admin">后台</a>
+    <span id="topbar-wallet">充值：<b>100</b></span>
+    <span id="topbar-user">👤 测试用户</span>
+    <a href="#" id="topbar-login">登录/注册</a>
+  </div>
+
+  <h2>测试场景</h2>
+  <p><strong>预期：页面加载时应该显示"个人中心"、"后台"、余额和用户名，隐藏"登录/注册"</strong></p>
+
+  <div>
+    <button onclick="simulateLoggedIn()">模拟：有用户数据（已登录）</button>
+    <button onclick="simulateNotLoggedIn()">模拟：无用户数据（未登录）</button>
+    <button onclick="simulateAdmin()">模拟：管理员登录</button>
+    <button onclick="location.reload()">重新加载页面</button>
+  </div>
+
+  <div id="log"></div>
+
+  <script>
+    const Store = {
+      _user: null,
+      currentUser() { return this._user; }
+    };
+
+    function log(msg) {
+      const logEl = document.getElementById('log');
+      const div = document.createElement('div');
+      div.className = 'log';
+      div.textContent = new Date().toLocaleTimeString() + ': ' + msg;
+      logEl.appendChild(div);
+    }
+
+    function renderTopbar(active) {
+      const u = Store.currentUser();
+      const isAdmin = u && u.isAdmin;
+
+      log(`renderTopbar 调用 - 用户数据: ${u ? 'YES' : 'NO'}, 管理员: ${isAdmin ? 'YES' : 'NO'}`);
+
+      if (u) {
+        document.documentElement.classList.remove('not-logged-in');
+        if (isAdmin) {
+          document.documentElement.classList.add('user-is-admin');
+        } else {
+          document.documentElement.classList.remove('user-is-admin');
+        }
+      } else {
+        document.documentElement.classList.add('not-logged-in');
+        document.documentElement.classList.remove('user-is-admin');
+      }
+
+      const walletEl = document.getElementById('topbar-wallet');
+      const userEl = document.getElementById('topbar-user');
+
+      if (u) {
+        if (walletEl) walletEl.innerHTML = `充值：<b>${u.paidCoins||0}</b> 免费：<b>${u.freeCoins||0}</b>`;
+        if (userEl) userEl.innerHTML = `👤 ${u.name}`;
+      }
+
+      log(`结果 - HTML 类: ${document.documentElement.className || '(无)'}`);
+    }
+
+    function simulateLoggedIn() {
+      log('=== 模拟已登录 ===');
+      Store._user = { name: '测试用户', paidCoins: 100, freeCoins: 50, isAdmin: false };
+      renderTopbar('home');
+    }
+
+    function simulateNotLoggedIn() {
+      log('=== 模拟未登录 ===');
+      Store._user = null;
+      renderTopbar('home');
+    }
+
+    function simulateAdmin() {
+      log('=== 模拟管理员 ===');
+      Store._user = { name: '管理员', paidCoins: 999, freeCoins: 888, isAdmin: true };
+      renderTopbar('home');
+    }
+
+    // 页面加载时检查初始状态
+    window.onload = function() {
+      log('=== 页面加载完成 ===');
+      log('初始状态检查（应该显示登录状态）:');
+      log('- 个人中心可见: ' + (getComputedStyle(document.querySelector('.nav-profile')).display !== 'none'));
+      log('- 后台可见: ' + (getComputedStyle(document.querySelector('.nav-admin')).display !== 'none'));
+      log('- 登录按钮可见: ' + (getComputedStyle(document.getElementById('topbar-login')).display !== 'none'));
+
+      // 3秒后模拟 API 返回（已登录）
+      setTimeout(() => {
+        log('=== 3秒后：模拟 API 返回（已登录）===');
+        simulateLoggedIn();
+        log('✓ 按钮应该继续显示，不会闪烁');
+      }, 3000);
+    };
+  </script>
+</body>
+</html>

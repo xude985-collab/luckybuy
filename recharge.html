@@ -5,34 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>充值 · 幸运购</title>
   <link rel="stylesheet" href="css/style.css?v=26">
-  <script>
-    // 防止登录状态闪烁：在 HTML 渲染前从 cookie 读取登录状态并立即应用样式
-    (function() {
-      try {
-        const loggedIn = document.cookie.split('; ').find(r => r.startsWith('lb_logged_in='));
-        if (loggedIn) {
-          // 立即添加 style 标签，确保样式和类同时生效
-          const style = document.createElement('style');
-          style.textContent = '.nav-profile,.nav-admin{display:inline-block!important}#topbar-wallet,#topbar-user{display:inline-block!important}#topbar-login{display:none!important}';
-          document.head.appendChild(style);
-          // 添加类（配合后续的 CSS 规则）
-          document.documentElement.classList.add('user-logged-in');
-        }
-      } catch (e) {}
-    })();
-  </script>
 
   <style>
-    /* 默认状态：未登录 */
-    .nav-profile, .nav-admin { display: none; }
-    #topbar-wallet, #topbar-user { display: none; }
-    #topbar-login { display: inline-block; }
+    /* 默认状态：已登录（假设用户已登录，避免闪烁） */
+    .nav-profile, .nav-admin { display: inline-block; }
+    #topbar-wallet, #topbar-user { display: inline-block; }
+    #topbar-login { display: none; }
 
-    /* 已登录状态：显示个人中心，隐藏登录按钮 */
-    html.user-logged-in .nav-profile { display: inline-block; }
-    html.user-logged-in #topbar-wallet { display: inline-block; }
-    html.user-logged-in #topbar-user { display: inline-block; }
-    html.user-logged-in #topbar-login { display: none; }
+    /* 未登录状态：由 JS 添加 not-logged-in 类来切换 */
+    html.not-logged-in .nav-profile,
+    html.not-logged-in .nav-admin { display: none; }
+    html.not-logged-in #topbar-wallet,
+    html.not-logged-in #topbar-user { display: none; }
+    html.not-logged-in #topbar-login { display: inline-block; }
 
     /* 管理员状态：显示后台按钮 */
     html.user-is-admin .nav-admin { display: inline-block; }
