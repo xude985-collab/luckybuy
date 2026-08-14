@@ -5,7 +5,33 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>晒单详情 · 幸运购</title>
   <link rel="stylesheet" href="css/style.css?v=31">
+  <script>
+    // 防止登录状态闪烁：在 HTML 渲染前从 cookie 读取登录状态
+    (function() {
+      try {
+        const token = document.cookie.split('; ').find(r => r.startsWith('lb_token='));
+        if (token) {
+          // 已登录，预设显示状态（避免页面加载时闪烁）
+          document.documentElement.classList.add('user-logged-in');
+        }
+      } catch (e) {}
+    })();
+  </script>
   <style>
+    /* 默认状态：未登录 */
+    .nav-profile, .nav-admin { display: none; }
+    #topbar-wallet, #topbar-user { display: none; }
+    #topbar-login { display: inline-block; }
+
+    /* 已登录状态：显示个人中心，隐藏登录按钮 */
+    html.user-logged-in .nav-profile { display: inline-block; }
+    html.user-logged-in #topbar-wallet { display: inline-block; }
+    html.user-logged-in #topbar-user { display: inline-block; }
+    html.user-logged-in #topbar-login { display: none; }
+
+    /* 管理员状态：显示后台按钮 */
+    html.user-is-admin .nav-admin { display: inline-block; }
+
     .sc-detail { max-width:1080px; margin:0 auto; padding:20px }
     .sc-media { width:100%; border-radius:12px; overflow:hidden; background:#000; text-align:center; margin-bottom:20px }
     .sc-media img { width:100%; max-height:70vh; object-fit:contain }

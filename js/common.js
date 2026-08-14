@@ -19,6 +19,14 @@ function renderTopbar(active) {
   const u = Store.currentUser();
   const isAdmin = u && u.isAdmin;
 
+  // 更新全局登录状态类（配合 <head> 内联脚本预设）
+  if (u) {
+    document.documentElement.classList.add('user-logged-in');
+    if (isAdmin) document.documentElement.classList.add('user-is-admin');
+  } else {
+    document.documentElement.classList.remove('user-logged-in', 'user-is-admin');
+  }
+
   // 更新导航激活状态
   const navLinks = el.querySelectorAll('nav a');
   navLinks.forEach(a => {
@@ -27,14 +35,8 @@ function renderTopbar(active) {
     else if (href === 'winners.html') a.className = active === 'winners' ? 'active' : '';
     else if (href === 'orders.html') a.className = active === 'orders' ? 'active' : '';
     else if (href === 'rules.html') a.className = active === 'rules' ? 'active' : '';
-    else if (href === 'profile.html') {
-      a.className = active === 'profile' ? 'active' : '';
-      a.style.display = u ? '' : 'none';
-    }
-    else if (href === 'admin.html') {
-      a.className = active === 'admin' ? 'active' : '';
-      a.style.display = isAdmin ? '' : 'none';
-    }
+    else if (href === 'profile.html') a.className = active === 'profile' ? 'active' : '';
+    else if (href === 'admin.html') a.className = active === 'admin' ? 'active' : '';
   });
 
   // 更新右侧登录态
