@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>测试闪烁</title>
+  <script>
+    // 设置 cookie 模拟登录状态
+    document.cookie = 'lb_logged_in=1; path=/';
+
+    // 防止登录状态闪烁：在 HTML 渲染前从 cookie 读取登录状态并立即应用样式
+    (function() {
+      try {
+        const loggedIn = document.cookie.split('; ').find(r => r.startsWith('lb_logged_in='));
+        if (loggedIn) {
+          // 立即添加 style 标签，确保样式和类同时生效
+          const style = document.createElement('style');
+          style.textContent = '.nav-profile,.nav-admin{display:inline-block!important}#topbar-wallet,#topbar-user{display:inline-block!important}#topbar-login{display:none!important}';
+          document.head.appendChild(style);
+          // 添加类（配合后续的 CSS 规则）
+          document.documentElement.classList.add('user-logged-in');
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <style>
+    /* 默认状态：未登录 */
+    .nav-profile, .nav-admin { display: none; }
+    #topbar-wallet, #topbar-user { display: none; }
+    #topbar-login { display: inline-block; }
+
+    /* 已登录状态：显示个人中心，隐藏登录按钮 */
+    html.user-logged-in .nav-profile { display: inline-block; }
+    html.user-logged-in #topbar-wallet { display: inline-block; }
+    html.user-logged-in #topbar-user { display: inline-block; }
+    html.user-logged-in #topbar-login { display: none; }
+
+    /* 管理员状态：显示后台按钮 */
+    html.user-is-admin .nav-admin { display: inline-block; }
+
+    body { font-family: sans-serif; padding: 20px; }
+    .topbar { background: #ff6b35; color: white; padding: 10px 20px; margin-bottom: 20px; }
+    .topbar a { color: white; margin-right: 15px; text-decoration: none; }
+    button { margin: 10px 0; padding: 10px 20px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <a href="#" class="nav-profile">个人中心</a>
+    <a href="#" class="nav-admin">后台</a>
+    <span id="topbar-wallet">充值：<b>100</b></span>
+    <span id="topbar-user">👤 测试用户</span>
+    <a href="#" id="topbar-login">登录/注册</a>
+  </div>
+
+  <h2>测试场景</h2>
+  <p>初始状态应该显示：个人中心、后台、充值信息、用户名，隐藏登录按钮</p>
+
+  <button onclick="testRenderWithoutUser()">测试：模拟 renderTopbar(无用户数据)</button>
+  <button onclick="testRenderWithUser()">测试：模拟 renderTopbar(有用户数据)</button>
+  <button onclick="location.reload()">重新加载页面</button>
+
+  <div id="log" style="margin-top: 20px; padding: 10px; background: #f5f5f5;"></div>
+
+  <script>
+    const Store = {
+      _user: { name: '测试用户', paidCoins: 100, freeCoins: 50, isAdmin: true },
+      currentUser() { return this._user; }
+    };
+
+    function log(msg) {
+      const logEl = document.getElementById('log');
+      logEl.innerHTML += `<div>${new Date().toLocaleTimeString()}: ${msg}</div>`;
+    }
+
+    function renderTopbar(active) {
+      const u = Store.currentUser();
+      log(`renderTopbar 被调用，用户数据: ${u ? 'YES' : 'NO'}`);
+
+      // 如果没有用户数据，完全跳过
+      if (!u) {
+        log('没有用户数据，跳过渲染');
+        return;
+      }
+
+      log('有用户数据，更新 UI');
+      const isAdmin = u && u.isAdmin;
+
+      document.documentElement.classList.add('user-logged-in');
+      if (isAdmin) {
+        document.documentElement.classList.add('user-is-admin');
+      }
+
+      const walletEl = document.getElementById('topbar-wallet');
+      const userEl = document.getElementById('topbar-user');
+      if (walletEl) walletEl.innerHTML = `充值：<b>${u.paidCoins||0}</b> 免费：<b>${u.freeCoins||0}</b>`;
+      if (userEl) userEl.innerHTML = `👤 ${u.name}`;
+    }
+
+    function testRenderWithoutUser() {
+      log('--- 测试开始：无用户数据 ---');
+      Store._user = null;
+      renderTopbar('home');
+      log('结果：按钮应该保持显示（内联脚本预设）');
+    }
+
+    function testRenderWithUser() {
+      log('--- 测试开始：有用户数据 ---');
+      Store._user = { name: '测试用户', paidCoins: 100, freeCoins: 50, isAdmin: true };
+      renderTopbar('home');
+      log('结果：按钮应该显示，内容已更新');
+    }
+
+    // 页面加载完成后自动测试
+    window.onload = function() {
+      log('=== 页面加载完成 ===');
+      log('初始状态检查：');
+      log('- 个人中心按钮显示: ' + (document.querySelector('.nav-profile').style.display !== 'none' ? 'YES' : 'NO'));
+      log('- 后台按钮显示: ' + (document.querySelector('.nav-admin').style.display !== 'none' ? 'YES' : 'NO'));
+      log('- 登录按钮显示: ' + (document.getElementById('topbar-login').style.display !== 'none' ? 'YES' : 'NO'));
+
+      // 模拟页面加载后调用 renderTopbar
+      setTimeout(() => {
+        log('=== 3秒后模拟首次 renderTopbar ===');
+        renderTopbar('home');
+      }, 3000);
+    };
+  </script>
+</body>
+</html>

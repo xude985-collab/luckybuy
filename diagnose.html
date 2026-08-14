@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>诊断闪烁问题</title>
+  <style>
+    body { font-family: monospace; padding: 20px; background: #f5f5f5; }
+    .log { background: white; padding: 15px; margin: 10px 0; border: 1px solid #ddd; }
+    .error { color: red; font-weight: bold; }
+    .success { color: green; font-weight: bold; }
+    .info { color: blue; }
+  </style>
+</head>
+<body>
+  <h1>幸运购闪烁问题诊断</h1>
+  <button onclick="runDiagnose()">开始诊断</button>
+  <button onclick="checkCookies()">检查 Cookies</button>
+  <button onclick="checkJS()">检查 JS 加载</button>
+  <div id="output"></div>
+
+  <script>
+    function log(msg, type = 'info') {
+      const output = document.getElementById('output');
+      const div = document.createElement('div');
+      div.className = 'log ' + type;
+      div.textContent = new Date().toLocaleTimeString() + ': ' + msg;
+      output.appendChild(div);
+    }
+
+    function checkCookies() {
+      log('=== 检查 Cookies ===');
+      const cookies = document.cookie.split('; ');
+      log('所有 cookies: ' + cookies.length + ' 个');
+
+      const lbToken = cookies.find(c => c.startsWith('lb_token='));
+      const lbLoggedIn = cookies.find(c => c.startsWith('lb_logged_in='));
+
+      if (lbToken) {
+        log('✓ lb_token 存在（httpOnly，JS 读不到具体值）', 'success');
+      } else {
+        log('✗ lb_token 不存在', 'error');
+      }
+
+      if (lbLoggedIn) {
+        log('✓ lb_logged_in 存在: ' + lbLoggedIn, 'success');
+      } else {
+        log('✗ lb_logged_in 不存在 - 这是问题根源！', 'error');
+      }
+
+      log('完整 cookies: ' + document.cookie);
+    }
+
+    function checkJS() {
+      log('=== 检查 JS 文件版本 ===');
+
+      fetch('https://luckybuy.vip/js/common.js')
+        .then(r => r.text())
+        .then(code => {
+          if (code.includes('如果没有用户数据，完全跳过')) {
+            log('✓ common.js 已更新到最新版本', 'success');
+          } else if (code.includes('只在有用户数据时更新登录状态类')) {
+            log('⚠ common.js 是旧版本（需要清除缓存）', 'error');
+          } else {
+            log('✗ common.js 版本未知', 'error');
+          }
+
+          if (code.includes('立即添加 style 标签')) {
+            log('检测到 renderTopbar 中的注释内容，但这是错误的位置');
+          }
+        })
+        .catch(e => log('无法加载 common.js: ' + e.message, 'error'));
+
+      fetch('https://luckybuy.vip/rules.html')
+        .then(r => r.text())
+        .then(html => {
+          if (html.includes('立即添加 style 标签')) {
+            log('✓ rules.html 包含内联脚本（动态 style）', 'success');
+          } else {
+            log('✗ rules.html 没有内联脚本', 'error');
+          }
+        })
+        .catch(e => log('无法加载 rules.html: ' + e.message, 'error'));
+    }
+
+    async function runDiagnose() {
+      document.getElementById('output').innerHTML = '';
+      log('=== 开始诊断 ===');
+
+      // 1. 检查是否已登录
+      try {
+        const r = await fetch('https://luckybuy.vip/api/auth/me', { credentials: 'include' });
+        const data = await r.json();
+
+        if (data.user) {
+          log('✓ API 返回：已登录，用户: ' + data.user.name, 'success');
+        } else {
+          log('✗ API 返回：未登录', 'error');
+          log('如果你明明已经登录，说明 cookie 丢失或失效', 'error');
+        }
+      } catch (e) {
+        log('✗ 无法访问 API: ' + e.message, 'error');
+      }
+
+      // 2. 检查 cookies
+      checkCookies();
+
+      // 3. 检查 JS
+      setTimeout(() => checkJS(), 500);
+
+      // 4. 检查 HTML class
+      setTimeout(() => {
+        log('=== 检查 HTML 状态 ===');
+        const hasClass = document.documentElement.classList.contains('user-logged-in');
+        log('HTML 元素是否有 user-logged-in 类: ' + (hasClass ? '是' : '否'), hasClass ? 'success' : 'error');
+      }, 1000);
+    }
+  </script>
+</body>
+</html>
