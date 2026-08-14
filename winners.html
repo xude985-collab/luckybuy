@@ -13,6 +13,8 @@
         if (token) {
           // 已登录，预设显示状态（避免页面加载时闪烁）
           document.documentElement.classList.add('user-logged-in');
+          // 标记：已预设状态，renderTopbar() 在获取到真实数据前不要移除
+          window._loginStatePreset = true;
         }
       } catch (e) {}
     })();

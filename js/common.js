@@ -21,11 +21,19 @@ function renderTopbar(active) {
 
   // 更新全局登录状态类（配合 <head> 内联脚本预设）
   if (u) {
+    // 有用户数据，更新状态并清除预设标记
     document.documentElement.classList.add('user-logged-in');
-    if (isAdmin) document.documentElement.classList.add('user-is-admin');
-  } else {
+    if (isAdmin) {
+      document.documentElement.classList.add('user-is-admin');
+    } else {
+      document.documentElement.classList.remove('user-is-admin');
+    }
+    window._loginStatePreset = false;
+  } else if (!window._loginStatePreset) {
+    // 无用户数据，且没有预设标记，说明确实未登录，移除类
     document.documentElement.classList.remove('user-logged-in', 'user-is-admin');
   }
+  // 如果有预设标记但没有用户数据，保持预设状态，等下次 API 完成后再更新
 
   // 更新导航激活状态
   const navLinks = el.querySelectorAll('nav a');
