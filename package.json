@@ -5,7 +5,8 @@
     "node": "20.x"
   },
   "scripts": {
-    "test": "node --test tests/server.test.mjs",
+    "build:pages": "node scripts/build-pages.mjs",
+    "test": "node --test tests/server.test.mjs tests/pages.test.mjs",
     "test:ui": "playwright test",
     "build": "npm install --prefix server",
     "start": "node server/app.js"

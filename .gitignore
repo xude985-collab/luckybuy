@@ -11,3 +11,4 @@ cookies2.txt
 tmp_cookies.txt
 test-results/
 playwright-report/
+dist/
