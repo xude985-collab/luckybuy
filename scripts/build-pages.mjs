@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const out = path.join(root, 'dist', 'pages');
+await copyFile(path.join(root,'server/node_modules/drand-client/build/esm/index.mjs'),path.join(root,'js/drand-client.js'));
 const pages = ['index', 'detail', 'orders', 'profile', 'recharge', 'rules', 'showcase', 'winners', 'admin', 'login'];
 const files = pages.map(p => p + '.html');
 for (const directory of ['css', 'js']) {

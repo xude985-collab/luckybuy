@@ -3,12 +3,14 @@ let packages = [];
 let selectedAmount = 0;
 let selectedBonus = 0;
 let selectedMethod = 'stripe';
+let paying=false;
+let methods={stripe:false,paypal:false};
 
 function renderResult() {
   const result = param('result');
   if (!result) return false;
   const app = document.getElementById('recharge-app');
-  if (result === 'success') {
+  if (result === 'success' || result === 'pending') {
     app.innerHTML = `
       <div class="recharge-result success">
         <div class="result-icon">✅</div>
@@ -42,7 +44,7 @@ async function confirmRecharge() {
     return;
   }
   for (let attempt = 0; attempt < 5; attempt++) {
-    const r = await Store.getRechargeStatus(id);
+    const r = attempt===0 ? await Store.refreshRecharge(id) : await Store.getRechargeStatus(id);
     if (!r.ok) { title.textContent = '查询失败'; message.textContent = r.msg || '请刷新重试'; return; }
     if (r.recharge.status === 'paid') {
       title.textContent = '充值成功'; message.textContent = '金币已到账。';
@@ -93,15 +95,15 @@ function render() {
 
     <div class="recharge-section">
       <h3>支付方式</h3>
-      <div class="pay-methods">
-        <div class="pay-method ${selectedMethod === 'stripe' ? 'active' : ''}" onclick="selectMethod('stripe')">
+      <p>${!methods.stripe&&!methods.paypal?'支付服务暂未开通，请稍后再来；您的余额不受影响。':''}</p><div class="pay-methods">
+        <div class="pay-method ${selectedMethod === 'stripe' ? 'active' : ''}" role="button" aria-disabled="${!methods.stripe}" onclick="selectMethod('stripe')">
           <span class="pay-icon">💳</span>
-          <span>信用卡 / 借记卡</span>
+          <span>信用卡 / 借记卡${methods.stripe?'':'（未开通）'}</span>
           <span class="pay-via">via Stripe</span>
         </div>
-        <div class="pay-method ${selectedMethod === 'paypal' ? 'active' : ''}" onclick="selectMethod('paypal')">
+        <div class="pay-method ${selectedMethod === 'paypal' ? 'active' : ''}" role="button" aria-disabled="${!methods.paypal}" onclick="selectMethod('paypal')">
           <span class="pay-icon">🅿️</span>
-          <span>PayPal</span>
+          <span>PayPal${methods.paypal?'':'（未开通）'}</span>
           <span class="pay-via">PayPal Checkout</span>
         </div>
       </div>
@@ -113,20 +115,22 @@ function render() {
         : '<span style="color:var(--muted)">请选择套餐或输入金额</span>'}
     </div>
 
-    <button class="btn block recharge-btn" onclick="doPay()" ${selectedAmount < 1 ? 'disabled' : ''}>
+    <button class="btn block recharge-btn" onclick="doPay()" ${selectedAmount < 1 || !methods[selectedMethod] || paying ? 'disabled' : ''}>
       立即支付 ${selectedAmount > 0 ? '$' + selectedAmount : ''}
-    </button>`;
+    </button><section style="margin-top:24px"><h3>充值记录</h3><div id="recharge-history">读取中…</div></section>`;
+  loadRechargeHistory();
 }
 
 function selectPkg(amount, bonus) {
+  if(paying)return;
   selectedAmount = amount;
   selectedBonus = bonus;
   render();
 }
 
 function onCustomInput(val) {
-  const n = Math.floor(Number(val) || 0);
-  if (n >= 1) {
+  const n = Number(val);
+  if (Number.isSafeInteger(n) && n >= 1 && n<=5000) {
     selectedAmount = n;
     const pkg = packages.find(p => p.amount === n);
     selectedBonus = pkg ? (pkg.bonus || 0) : 0;
@@ -138,6 +142,8 @@ function onCustomInput(val) {
 }
 
 function selectMethod(m) {
+  if(paying)return;
+  if(!methods[m]){toast('此支付方式暂未开通');return;}
   selectedMethod = m;
   render();
 }
@@ -149,13 +155,16 @@ function updateSummary() {
     ? `充值 $${selectedAmount}，赠送 ${selectedBonus} 免费金币` : '请选择套餐或输入金额';
   const btn = document.querySelector('.recharge-btn');
   if (btn) {
-    btn.disabled = selectedAmount < 1 || selectedAmount > 5000;
+    btn.disabled = paying || !methods[selectedMethod] || selectedAmount < 1 || selectedAmount > 5000;
     btn.textContent = `立即支付 ${selectedAmount > 0 ? '$' + selectedAmount : ''}`;
   }
 }
 
 async function doPay() {
+  if(paying)return;
+  if(!methods[selectedMethod]){toast('此支付方式暂未开通');return;}
   if (selectedAmount < 1) { toast('请选择金额'); return; }
+  paying=true;
   const btn = document.querySelector('.recharge-btn');
   if (btn) { btn.disabled = true; btn.textContent = '处理中…'; }
   const r = await Store.recharge(selectedAmount, selectedMethod);
@@ -164,16 +173,25 @@ async function doPay() {
     setTimeout(() => location.href = 'recharge.html?result=success&id=' + encodeURIComponent(r.rechargeId), 500);
     return;
   }
-  if (!r.ok) { toast(r.msg || '支付失败'); render(); }
+  if (!r.ok) { paying=false;toast(r.msg || '支付失败'); render(); }
 }
 
 onReady(async () => {
   renderTopbar('home');
   if (param('result')) { render(); return; }
   packages = await Store.getPackages();
+  methods=Store.paymentMethods();
+  selectedMethod=methods.stripe?'stripe':methods.paypal?'paypal':'';
   if (packages.length && !selectedAmount) {
     selectedAmount = packages[0].amount;
     selectedBonus = packages[0].bonus || 0;
   }
   render();
 });
+
+async function loadRechargeHistory(){
+ const box=document.getElementById('recharge-history');if(!box)return;
+ const r=await Store.getRechargeHistory();if(!r.ok){box.textContent=r.msg||'读取失败';return;}
+ const names={pending:'等待确认',paid:'已到账',failed:'未完成'};
+ box.innerHTML=(r.recharges||[]).map(rc=>`<p>${escapeHtml(new Date(Number(rc.created_at)).toLocaleString())} · $${rc.amount} · ${names[rc.status]||escapeHtml(rc.status)} ${rc.status==='pending'?`<a href="recharge.html?result=pending&id=${encodeURIComponent(rc.id)}">查询到账</a>`:''}</p>`).join('')||'暂无充值记录';
+}

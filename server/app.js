@@ -12,7 +12,9 @@ import path from 'path';
 import 'dotenv/config';
 
 import logger from './lib/logger.js';
-import { initDB } from './db.js';
+import crypto from 'node:crypto';
+import {startPaymentWorker} from './lib/reconcilePayments.js';
+import pool, { initDB } from './db.js';
 import { startDrawWorker } from './lib/drawWorker.js';
 import authRoutes from './routes/auth.js';
 import shopRoutes from './routes/shop.js';
@@ -62,7 +64,7 @@ app.use(cookieParser(process.env.SESSION_SECRET || 'dev-secret'));
 // API 限流：通用限制（所有 API 接口）
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 分钟
-  max: 60, // 最多 60 个请求
+  max: 300, // 多页面加载与公开轮询共享额度
   message: { ok: false, msg: '请求过于频繁，请稍后再试' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -79,7 +81,8 @@ const strictLimiter = rateLimit({
 
 // API 路由
 app.use('/api/', apiLimiter); // 所有 API 接口通用限流
-app.use('/api/auth/send-code', strictLimiter); // 发送验证码严格限流
+app.use('/api/auth/send-code', strictLimiter);
+app.use(['/api/auth/login','/api/auth/register'],rateLimit({windowMs:600000,max:30,skipSuccessfulRequests:true,standardHeaders:true,legacyHeaders:false,message:{ok:false,msg:'尝试次数过多，请10分钟后重试'}})); // 发送验证码严格限流
 app.use('/api/wallet/recharge', strictLimiter); // 充值严格限流
 app.use('/api/auth', authRoutes);
 app.use('/api/shop', shopRoutes);
@@ -87,18 +90,23 @@ app.use('/api/wallet', walletRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/showcase', showcaseRoutes);
 
-app.get('/api/health', (req, res) => res.json({ ok: true, time: Date.now() }));
+app.get('/api/ready', async (req,res)=>{try{await pool.query('SELECT 1');res.json({ok:true})}catch{res.status(503).json({ok:false,msg:'数据库暂不可用'})}});
+app.get('/api/health', (req, res) => res.json({ ok: true, time: Date.now(),release:'20261111-full',commit:process.env.RENDER_GIT_COMMIT||null }));
 
 // 仅公开前端页面、资源和上传文件。
 mountStaticSite(app, SITE_DIR, path.join(__dirname, 'uploads'));
 
 // 统一错误处理
 app.use((err, req, res, next) => {
-  logger.error({ err, path: req.path, method: req.method }, '请求处理错误');
-  res.status(err.status || 500).json({ ok: false, msg: err.message || '服务器错误' });
+  const id=crypto.randomUUID();
+  const status=err.code==='LIMIT_FILE_SIZE'?413:(err.status||500);
+  logger.error({errorId:id,err},'请求失败编号');
+  res.status(status).json({ok:false,msg:status===413?'上传文件不能超过5MB':status<500?err.message:'服务暂时不可用，请稍后重试',errorId:id});
 });
 
-app.listen(PORT, () => {
+export {app};
+if(process.env.LUCKYBUY_TEST_MODE!=='1')app.listen(PORT, () => {
   logger.info({ port: PORT }, 'Lucky Buy 后端已启动');
   startDrawWorker();
+  startPaymentWorker();
 });

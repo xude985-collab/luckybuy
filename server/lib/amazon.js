@@ -1,3 +1,4 @@
+import {productUrl,fetchProduct} from './productUrl.js';
 /*
  * 亚马逊商品页抓取 + 解析（自建，无第三方 API）。
  *
@@ -89,6 +90,7 @@ function parseHtml(html, url, asin) {
 export async function fetchAmazon(rawUrl) {
   let url = rawUrl.trim();
   if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+  url=productUrl(url,'amazon').url;
   const asin = extractAsin(url);
 
   const UAs = [UA_CHROME, UA_BOT];
@@ -97,7 +99,7 @@ export async function fetchAmazon(rawUrl) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 12000);
     try {
-      const resp = await fetch(url, {
+      const resp = await fetchProduct(url, {
         signal: ctrl.signal,
         headers: {
           'User-Agent': ua,

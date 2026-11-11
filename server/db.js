@@ -190,7 +190,7 @@ const DEFAULT_PACKAGES = JSON.stringify([
   { amount: 200, bonus: 40 },
 ]);
 
-export async function initDB() {
+export async function initDB({seed=true} = {}) {
   const client = await pool.connect();
   try {
     await client.query(SCHEMA);
@@ -199,8 +199,20 @@ export async function initDB() {
     const migrations = [
       `ALTER TABLE draws ADD COLUMN IF NOT EXISTS ship_status TEXT NOT NULL DEFAULT 'pending'`,
       `ALTER TABLE draws ADD COLUMN IF NOT EXISTS ship_note TEXT`,
+      `ALTER TABLE recharges ADD COLUMN IF NOT EXISTS last_checked_at BIGINT`,
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS disabled BOOLEAN NOT NULL DEFAULT false`,
+      `ALTER TABLE orders ADD COLUMN IF NOT EXISTS request_key TEXT`,
+      `ALTER TABLE orders ADD COLUMN IF NOT EXISTS use_free BOOLEAN`,
+      `CREATE TABLE IF NOT EXISTS purchase_receipts (user_id TEXT NOT NULL, request_key TEXT NOT NULL, product_id TEXT NOT NULL, shares INTEGER NOT NULL, use_free BOOLEAN NOT NULL, response JSONB NOT NULL, created_at BIGINT NOT NULL, PRIMARY KEY(user_id,request_key))`,
+      `ALTER TABLE showcases ADD COLUMN IF NOT EXISTS deleted_at BIGINT`,
+      `CREATE TABLE IF NOT EXISTS showcase_rewards (user_id TEXT NOT NULL, product_id TEXT NOT NULL, created_at BIGINT NOT NULL, PRIMARY KEY(user_id,product_id))`,
+      `INSERT INTO showcase_rewards SELECT user_id,product_id,MIN(created_at) FROM showcases WHERE status='approved' GROUP BY user_id,product_id ON CONFLICT DO NOTHING`,
+      `CREATE TABLE IF NOT EXISTS admin_audit (id TEXT PRIMARY KEY, actor_id TEXT NOT NULL, action TEXT NOT NULL, target_id TEXT, detail JSONB NOT NULL, created_at BIGINT NOT NULL)`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_order_request ON orders(user_id,request_key) WHERE request_key IS NOT NULL`,
+      `CREATE INDEX IF NOT EXISTS idx_users_account_search ON users(account)`,
+      `CREATE INDEX IF NOT EXISTS idx_showcase_product ON showcases(product_id,user_id)`,
     ];
-    for (const sql of migrations) await client.query(sql).catch(() => {});
+    for (const sql of migrations) await client.query(sql);
 
     // indexes (after columns guaranteed to exist)
     const indexes = [
@@ -218,7 +230,9 @@ export async function initDB() {
       `CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id)`,
       `CREATE INDEX IF NOT EXISTS idx_checkins_user_id ON checkins(user_id, created_at DESC)`,
     ];
-    for (const sql of indexes) await client.query(sql).catch(() => {});
+    for (const sql of indexes) await client.query(sql);
+
+    if(!seed)return;
 
     // seed categories only when table is empty
     const { rows: catRows } = await client.query(`SELECT COUNT(*)::int AS cnt FROM categories`);
@@ -240,23 +254,13 @@ export async function initDB() {
       `INSERT INTO config (k,v) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
       ['recharge_packages', DEFAULT_PACKAGES]);
 
-    // migrate: ensure $10 package has bonus=1
-    const { rows: pkgRow } = await client.query(`SELECT v FROM config WHERE k='recharge_packages'`);
-    if (pkgRow[0]) {
-      const pkgs = JSON.parse(pkgRow[0].v);
-      const ten = pkgs.find(p => p.amount === 10);
-      if (ten && !ten.bonus) {
-        ten.bonus = 1;
-        await client.query(`UPDATE config SET v=$1 WHERE k='recharge_packages'`, [JSON.stringify(pkgs)]);
-      }
-    }
-
     // seed admin (wrapped in try-catch — shared DB may have incompatible users table temporarily)
     try {
       const email = process.env.ADMIN_EMAIL || 'admin@luckybuy.local';
-      const pass = process.env.ADMIN_PASSWORD || 'admin888';
+      const pass = process.env.ADMIN_PASSWORD || (process.env.NODE_ENV === 'production' ? '' : 'admin888');
       const { rows } = await client.query(`SELECT id FROM users WHERE account=$1`, [email]);
       if (rows.length === 0) {
+        if (!pass) throw new Error('ADMIN_PASSWORD must be configured to initialize an administrator');
         const now = Date.now();
         await client.query(
           `INSERT INTO users (id,account,account_type,name,pass_hash,role,invite_code,paid_balance,created_at)

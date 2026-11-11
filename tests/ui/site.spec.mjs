@@ -12,7 +12,12 @@ async function mockAPI(page, options = {}) {
       '/wallet': { paidBalance: 100, freeBalance: 10, tx: [] },
       '/wallet/orders': { orders: [order] },
       '/wallet/checkin-status': { checkedIn: false, streak: 0 },
-      '/wallet/packages': { packages: [{ amount: 10, bonus: 1 }, { amount: 50, bonus: 5 }] },
+      '/wallet/packages': { methods:{stripe:true,paypal:true}, packages: [{ amount: 10, bonus: 1 }, { amount: 50, bonus: 5 }] },
+      '/shop/catalog':{products:[options.product||product],total:1,pages:1},
+      '/shop/products/p_test': {product:options.product||product},
+      '/wallet/recharges':{recharges:[]},
+      '/admin/audit':{records:[]},
+      '/admin/system-status':{database:true,payments:{stripe:false,paypal:false},mail:false},
       '/shop/products': { products: [options.product || product] },
       '/shop/categories': { categories: [{ key: 'cleaning', name: '清洁家电', icon: '🧹', prefix: 'CL' }] },
       '/shop/config': { config: {} }, '/shop/winners': { winners: [] }, '/shop/recent-buys': { buys: [] },
@@ -113,7 +118,7 @@ test('订单地址提交使用商品 ID 和正确字段', async ({ page }) => {
 
 test('成功返回参数不能伪造到账结果', async ({ page }) => {
   await mockAPI(page);
-  await page.route('**/api/wallet/recharges/*', route => route.fulfill({ json: { ok: true, recharge: { status: 'failed' } } }));
+  await page.route('**/api/wallet/recharges/**', route => route.fulfill({ json: { ok: true, recharge: { status: 'failed' } } }));
   await page.goto('/recharge.html?result=success&id=rc_test');
   await expect(page.locator('#payment-status-title')).toHaveText('充值未完成');
 });
@@ -121,8 +126,37 @@ test('成功返回参数不能伪造到账结果', async ({ page }) => {
 test('访客通过只读轮询看到开奖结果', async ({ page }) => {
   await mockAPI(page, { guest: true, product: { ...product, status: 'drawing' } });
   let reads = 0;
-  await page.route('**/api/shop/products', route => route.fulfill({ json: { ok: true, products: [{ ...product,
-    status: ++reads === 1 ? 'drawing' : 'done', draw: { win_number: 1, winner_name: '幸运用户' } }] } }));
+  await page.route('**/api/shop/products/p_test', route => route.fulfill({ json: { ok: true, product: { ...product,
+    status: ++reads === 1 ? 'drawing' : 'done', draw: { win_number: 1, winner_name: '幸运用户' } } } }));
   await page.goto('/detail.html?id=p_test');
   await expect(page.locator('.draw-result-number')).toBeVisible();
+});
+
+test('后台规则保存失败显示实际错误而不是成功', async ({ page }) => {
+  await mockAPI(page);await page.goto('/admin.html');
+  await page.locator('[data-tab="settings"]').click();
+  await page.route('**/api/admin/config',route=>route.fulfill({status:503,json:{ok:false,msg:'测试保存失败'}}));
+  await page.evaluate(()=>saveRules());
+  await expect(page.locator('#toast')).toHaveText('测试保存失败');
+});
+test('未开通支付时按钮禁用且不创建充值',async({page})=>{
+  await mockAPI(page);await page.route('**/api/wallet/packages',route=>route.fulfill({json:{ok:true,packages:[{amount:10,bonus:1}],methods:{stripe:false,paypal:false}}}));
+  let writes=0;await page.route('**/api/wallet/recharge',route=>{writes++;return route.fulfill({json:{ok:false}})});
+  await page.goto('/recharge.html');await expect(page.locator('.recharge-btn')).toBeDisabled();
+  await page.evaluate(()=>doPay());expect(writes).toBe(0);
+});
+test('商品读取失败明确显示重试入口',async({page})=>{
+  await mockAPI(page);await page.route('**/api/shop/catalog?**',route=>route.fulfill({status:503,json:{ok:false,msg:'服务暂不可用'}}));
+  await page.goto('/index.html');await expect(page.locator('#grid')).toContainText('商品加载失败');await expect(page.locator('#grid button')).toHaveText('重试');
+});
+test('搜索用户提交到服务端而不是仅搜索当前页',async({page})=>{
+  await mockAPI(page);await page.goto('/admin.html');await page.locator('[data-tab="users"]').click();
+  const request=page.waitForRequest(r=>r.url().includes('/api/admin/users?')&&new URL(r.url()).searchParams.get('q')==='old-user');
+  await page.locator('#user-search').fill('old-user');await request;
+});
+test('购买超时后的重试复用请求编号',async({page})=>{
+  await mockAPI(page);await page.goto('/detail.html?id=p_test');await page.evaluate(()=>Store.ready);
+  const bodies=[];await page.route('**/api/wallet/buy',route=>{bodies.push(route.request().postDataJSON());return route.fulfill({status:503,json:{ok:false,msg:'连接中断'}})});
+  await page.evaluate(()=>Store.buyShares('p_test',1,false));await page.evaluate(()=>Store.buyShares('p_test',1,false));
+  expect(bodies).toHaveLength(2);expect(bodies[0].requestKey).toBe(bodies[1].requestKey);
 });

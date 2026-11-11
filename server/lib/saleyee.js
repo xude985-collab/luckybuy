@@ -1,3 +1,4 @@
+import {productUrl,fetchProduct} from './productUrl.js';
 /*
  * 赛盈分销平台商品页解析。
  *
@@ -20,11 +21,12 @@ function stripTags(s) {
 }
 
 export async function fetchSaleyee(url) {
+  url=productUrl(url,'saleyee').url;
   const sku = extractSku(url);
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 15000);
   try {
-    const resp = await fetch(url, {
+    const resp = await fetchProduct(url, {
       signal: ctrl.signal,
       headers: { 'User-Agent': UA, 'Accept-Language': 'zh-CN,zh;q=0.9' },
     });

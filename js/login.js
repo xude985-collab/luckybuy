@@ -22,8 +22,8 @@ function render() {
         <span class="${isReg ? 'on' : ''}" onclick="switchMode('register')">注册</span>
       </div>
       ${isReg ? `<input id="name" placeholder="昵称（可选）">` : ''}
-      <input id="account" placeholder="邮箱 或 手机号">
-      <input id="password" type="password" placeholder="密码（至少 4 位）">
+      <input id="account" autocomplete="username" aria-label="账号" placeholder="${isReg ? '邮箱（短信注册暂未开通）' : '邮箱或已有手机号'}">
+      <input id="password" type="password" autocomplete="${isReg ? 'new-password' : 'current-password'}" aria-label="密码" placeholder="${isReg ? '新密码至少8位' : '请输入密码'}">
       ${isReg ? `
       <div class="code-row">
         <input id="code" placeholder="验证码" maxlength="6" inputmode="numeric">
@@ -38,6 +38,7 @@ function render() {
         ? '注册即同意夺宝规则。'
         : '还没有账号？点上方“注册”。'}</p>
     </div>`;
+  box.querySelector('#password').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();submit();}});
 }
 
 function switchMode(m) { mode = m; render(); }

@@ -151,17 +151,16 @@ function selectCat(key) {
   renderGrid();
 }
 
-function renderGrid() {
-  let list = Store.listProducts().filter(p => p.status !== 'revealed');
-  if (activeCat !== 'all') list = list.filter(p => (p.category || 'other') === activeCat);
-  list.sort((a, b) => (b.soldShares / b.totalShares) - (a.soldShares / a.totalShares));
-  const grid = document.getElementById('grid');
-  const total = list.length;
-  const totalPages = Math.ceil(total / PAGE_SIZE) || 1;
-  if (currentPage > totalPages) currentPage = totalPages;
-  const start = (currentPage - 1) * PAGE_SIZE;
-  const pageItems = list.slice(start, start + PAGE_SIZE);
-
+let gridRequest=0;
+async function renderGrid() {
+  const seq=++gridRequest;
+  const grid=document.getElementById('grid');
+  if(!grid.children.length)grid.textContent='商品加载中…';
+  const r=await Store.catalog(currentPage,PAGE_SIZE,activeCat);
+  if(seq!==gridRequest)return;
+  if(!r.ok){grid.innerHTML='<div class="empty">商品加载失败。<button class="btn ghost" onclick="renderGrid()">重试</button></div>';return;}
+  const pageItems=r.products,total=r.total??pageItems.length,totalPages=r.pages||Math.ceil(total/PAGE_SIZE)||1;
+  if(currentPage>totalPages){currentPage=totalPages;return renderGrid();}
   if (!total) {
     grid.innerHTML = '<div class="empty">该类别下暂无商品。</div>';
     removePagination();
@@ -260,7 +259,10 @@ function cardSet(pid, v) {
   const el = document.getElementById('cqty-' + pid);
   if (el) el.value = v;
 }
+let cardBuying=false;
 async function cardBuy(pid) {
+  if(cardBuying)return;cardBuying=true;
+  try {
   if (!requireLogin()) return;
   const el = document.getElementById('cqty-' + pid);
   const count = parseInt(el?.value) || 1;
@@ -271,7 +273,7 @@ async function cardBuy(pid) {
   const myUsedFree = Store.myOrders().filter(o => o.productId === pid).reduce((s, o) => s + (o.freeUsed || 0), 0) > 0;
   const quota = p.freeQuota || 0;
   const poolLeft = quota > 0 ? Math.max(0, quota - (p.freeUsed || 0)) : Infinity;
-  const canUseFree = u.freeCoins > 0 && poolLeft > 0 && !myUsedFree;
+  const canUseFree = u.freeCoins >= p.price && poolLeft > 0 && !myUsedFree;
 
   let useFree = false;
   if (canUseFree) {
@@ -297,6 +299,7 @@ async function cardBuy(pid) {
   finally {
     if (btn) { btn.disabled = false; const pp = Store.getProduct(pid); btn.textContent = `立即夺宝 ($${pp?.price||1}/份)`; }
   }
+  } finally {cardBuying=false;}
 }
 
 function showCardCoinChoice(u, p) {

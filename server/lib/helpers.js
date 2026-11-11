@@ -42,7 +42,7 @@ export async function userFromToken(token) {
   if (!token) return null;
   const { rows } = await pool.query(
     `SELECT u.* FROM sessions s JOIN users u ON u.id=s.user_id
-     WHERE s.token=$1 AND s.expires_at>$2`, [token, now()]);
+     WHERE s.token=$1 AND s.expires_at>$2 AND u.disabled=false`, [token, now()]);
   return rows[0] || null;
 }
 

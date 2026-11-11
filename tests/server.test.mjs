@@ -118,7 +118,7 @@ test('购买在锁定商品和用户后才读取已售份数，并返回订单 I
   assert.match(res.body.orderId, /^o_/);
   assert.match(sqls[1], /products.*FOR UPDATE/);
   assert.match(sqls[2], /users.*FOR UPDATE/);
-  assert.match(sqls[3], /SUM\(shares\)/);
+  assert(sqls.findIndex(sql=>sql.includes('SUM(shares)'))>sqls.findIndex(sql=>sql.includes('users WHERE id=$1 FOR UPDATE')));
   assert.equal(sqls.at(-1), 'COMMIT');
 });
 
@@ -174,6 +174,7 @@ test('晒单审核不能重复发奖励', async t => {
       if (claimed) return { rows: [] };
       claimed = true; return { rows: [{ user_id: 'u' }] };
     }
+    if(sql.startsWith('INSERT INTO showcase_rewards'))return {rows:[{user_id:'u'}]};
     if (sql.includes('FROM config')) return { rows: [{ v: '20' }] };
     if (sql.startsWith('UPDATE users')) { grants++; return { rows: [{ balance: 20 }] }; }
     return { rows: [] };

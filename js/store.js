@@ -20,9 +20,12 @@ const Store = (() => {
 
   // ---- HTTP ----
   const pendingGets = new Map();
+  const errors = new Map();
+  function recordError(path,msg){if(msg)errors.set(path,msg);else errors.delete(path);window.dispatchEvent(new Event('store-status'));}
+
   async function http(method, path, body) {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), method === 'GET' ? 15000 : 60000);
+    const timer = setTimeout(() => controller.abort(), 60000);
     const opt = { method, credentials: 'same-origin', headers: {}, signal: controller.signal };
     if (body !== undefined) {
       opt.headers['Content-Type'] = 'application/json';
@@ -33,21 +36,27 @@ const Store = (() => {
       resp = await fetch(API + path, opt);
       const text = await resp.text();
       try { data = JSON.parse(text); } catch (_) {
-        return { ok: false, msg: resp.status === 429
+        if(method==='GET')recordError(path,'服务暂时不可用，请稍后重试');
+        return { ok: false, status:resp.status, uncertain:true, msg: resp.status === 429
           ? '服务请求受限，请稍等一分钟后重试'
           : resp.status >= 500 ? '服务暂时不可用，请稍后重试'
           : '服务器响应异常，请稍后重试' };
       }
       if (!data || typeof data !== 'object' || Array.isArray(data)) {
-        return { ok: false, msg: '服务器响应异常，请稍后重试' };
+        if(method==='GET')recordError(path,'服务器响应异常');
+        return { ok: false, uncertain:true, msg: '服务器响应异常，请稍后重试' };
       }
     } catch (e) {
-      return { ok: false, msg: controller.signal.aborted
+      if(method==='GET')recordError(path,'连接暂时失败，请稍后重试');
+      return { ok: false, uncertain:true, msg: controller.signal.aborted
         ? '请求超时，请刷新确认操作结果' : '网络异常，请稍后重试' };
     } finally {
       clearTimeout(timer);
     }
     if (!resp.ok) data.ok = false;
+    data.status=resp.status;data.uncertain=resp.status>=500||resp.status===429;
+    if(method==='GET')recordError(path,data.ok?null:(data.msg||'加载失败'));
+    if(resp.status===401){cache.user=null;}
     return data;
   }
   const get = (p) => {
@@ -171,6 +180,16 @@ const Store = (() => {
     cache.products = (r.products || []).map(p => normProduct(p));
     indexProducts();
   }
+  async function catalog(page,limit,category='all',status='active'){
+    const r=await get('/shop/catalog?page='+page+'&limit='+limit+'&category='+encodeURIComponent(category)+'&status='+status);
+    if(r.ok){r.products=(r.products||[]).map(p=>normProduct(p));for(const p of r.products){cache.productMap[p.id]=p;const i=cache.products.findIndex(x=>x.id===p.id);if(i>=0)cache.products[i]=p;else cache.products.push(p);}}
+    return r;
+  }
+  async function refreshProduct(id){
+    const r=await get('/shop/products/'+encodeURIComponent(id));
+    if(r.ok&&r.product){const item=normProduct(r.product);cache.productMap[id]=item;const i=cache.products.findIndex(p=>p.id===id);if(i>=0)cache.products[i]=item;else cache.products.push(item);}
+    return r;
+  }
   async function refreshCategories() {
     const r = await get('/shop/categories');
     if (!r.ok || !Array.isArray(r.categories)) return;
@@ -272,8 +291,11 @@ const Store = (() => {
 
   async function getPackages() {
     const r = await get('/wallet/packages');
+    cache.paymentMethods=r.methods||{stripe:false,paypal:false};
     return r.ok ? r.packages : [];
   }
+  const getRechargeHistory = () => get('/wallet/recharges');
+  const refreshRecharge = id => post('/wallet/recharges/'+encodeURIComponent(id)+'/refresh',{});
   const getRechargeStatus = id => get('/wallet/recharges/' + encodeURIComponent(id));
 
   // ---- 商品/类别 ----
@@ -291,9 +313,19 @@ const Store = (() => {
 
   // ---- 购买 ----
   async function buyShares(id, count, useFree) {
-    const body = { productId: id, shares: count };
+    const storageKey='lb-purchase-'+cache.user?.id;
+    let pending;try{pending=JSON.parse(sessionStorage.getItem(storageKey)||'null')}catch{}
+    const signature=JSON.stringify([id,count,useFree!==false]);
+    if(pending && pending.signature!==signature){
+      const check=await get('/wallet/purchases/'+pending.key);
+      if(!check.ok||!check.order)return {ok:false,msg:'上一笔购买尚未确认，请用原商品和份数重试，或先查看参与记录'};
+      sessionStorage.removeItem(storageKey);pending=null;
+    }
+    if(!pending){pending={key:crypto.randomUUID(),signature};sessionStorage.setItem(storageKey,JSON.stringify(pending));}
+    const body = { productId: id, shares: count, requestKey:pending.key };
     if (useFree === false) body.useFree = false;
     const r = await post('/wallet/buy', body);
+    if(r.ok||(!r.uncertain && r.status>=400))sessionStorage.removeItem(storageKey);
     if (!r.ok) {
       if (/余额不足/.test(r.msg || '')) r.needRecharge = true;
       return r;
@@ -425,6 +457,8 @@ const Store = (() => {
     if (!p || !p.proof) return { ok: false, msg: '暂无幸运凭据' };
     // 用 published randomness 在前端独立复算，与后端 draws 记录比对
     try {
+      const {verifyProofData}=await import('./proof.js');
+      await verifyProofData(p.proof);
       const enc = new TextEncoder();
       const keyData = hexToBytes(p.proof.randomness);
       const key = await crypto.subtle.importKey('raw', keyData,
@@ -435,7 +469,7 @@ const Store = (() => {
       const recomputed = Number(n % BigInt(p.totalShares)) + 1;
       return {
         ok: recomputed === p.winNumber,
-        round: p.proof.round, recomputed, stored: p.winNumber,
+        round: p.proof.round, recomputed, stored: p.winNumber,signatureVerified:true,
       };
     } catch (e) {
       return { ok: false, msg: '验证失败：' + (e.message || '随机源格式异常') };
@@ -466,9 +500,11 @@ const Store = (() => {
   function init() {
     if (_ready) return _ready;
     _ready = (async () => {
+      if(/\/login(?:\.html)?$/.test(location.pathname)){await refreshMe();return;}
+      if(/\/detail(?:\.html)?$/.test(location.pathname)){await Promise.all([refreshCategories(),refreshProduct(new URLSearchParams(location.search).get('id')),refreshMe().then(refreshOrders)]);return;}
       await Promise.all([
         refreshCategories(),
-        refreshProducts(),
+        /^\/(?:index(?:\.html)?)?$/.test(location.pathname)?Promise.resolve():refreshProducts(),
         refreshWinners(),
         refreshRecentBuys(),
         refreshConfig(),
@@ -488,7 +524,8 @@ const Store = (() => {
     listProducts, getProduct, listCategories, categoryOf,
     productFreeUsed, winnersFeed, recentBuys, getConfig, myOrders,
     // 刷新
-    refreshProducts, refreshRecentBuys,
+    refreshProducts, refreshRecentBuys, refreshProduct, catalog,
+    errors:()=>Array.from(errors.values()), request:http, paymentMethods:()=>cache.paymentMethods||{}, getRechargeHistory,refreshRecharge,
     // 购买/地址
     buyShares, saveAddress,
     // 后台

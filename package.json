@@ -6,12 +6,14 @@
   },
   "scripts": {
     "build:pages": "node scripts/build-pages.mjs",
-    "test": "node --test tests/server.test.mjs tests/pages.test.mjs",
+    "test": "node --test tests/server.test.mjs tests/pages.test.mjs tests/integration.test.mjs",
     "test:ui": "playwright test",
     "build": "npm install --prefix server",
-    "start": "node server/app.js"
+    "start": "node server/app.js",
+    "backup:db": "node scripts/backup-database.mjs"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.16",
     "@playwright/test": "^1.65.0"
   }
 }

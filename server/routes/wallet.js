@@ -8,6 +8,10 @@ import {
 import { futureRound, roundTime } from '../lib/drand.js';
 import { settleRecharge } from '../lib/recharges.js';
 
+import {resolveDraw} from '../lib/resolveDraw.js';
+import {paymentMethods} from '../lib/paymentStatus.js';
+import {reconcilePayment} from '../lib/reconcilePayments.js';
+import {bad} from '../lib/operations.js';
 const router = express.Router();
 router.use(attachUser);
 
@@ -36,22 +40,42 @@ router.get('/orders', requireAuth, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+router.get('/purchases/:key',requireAuth,async(req,res,next)=>{try{
+ const {rows}=await pool.query('SELECT response FROM purchase_receipts WHERE user_id=$1 AND request_key=$2',[req.user.id,req.params.key]);
+ res.json({ok:true,order:rows[0]?.response||null});
+}catch(e){next(e)}});
+
 // 购买（夺宝）
 router.post('/buy', requireAuth, async (req, res, next) => {
   try {
     const uid = req.user.id;
     const { productId } = req.body || {};
     const shares = Number(req.body?.shares);
-    if (!Number.isSafeInteger(shares) || shares < 1 || shares > 2147483647)
-      return res.status(400).json({ ok: false, msg: '参与份数必须为正整数' });
+    if (!Number.isSafeInteger(shares) || shares < 1 || shares > 10000)
+      return res.status(400).json({ ok: false, msg: '单次参与份数须为1~10000的整数' });
     const useFree = req.body?.useFree !== false;
+    const requestKey=req.body?.requestKey;
+    if(requestKey!==undefined && (typeof requestKey!=='string'||!/^[-A-Za-z0-9_]{16,80}$/.test(requestKey)))throw bad('购买请求编号无效');
 
     const result = await withTransaction(async (client) => {
       // 同一商品的号码分配串行执行；跨商品购买再锁用户，保护免费余额。
       const { rows: lockedProducts } = await client.query(`SELECT * FROM products WHERE id=$1 FOR UPDATE`, [productId]);
       const p = lockedProducts[0];
-      if (!p || p.status !== 'active') throw Object.assign(new Error('该商品已停止参与'), { status: 400 });
+      if(!p)throw bad('商品不存在',404);
       await client.query(`SELECT id FROM users WHERE id=$1 FOR UPDATE`, [uid]);
+      const activeUser=(await client.query('SELECT disabled FROM users WHERE id=$1',[uid])).rows[0];
+      if(activeUser?.disabled)throw bad('账号已停用',403);
+      if(requestKey){
+        const old=(await client.query('SELECT * FROM purchase_receipts WHERE user_id=$1 AND request_key=$2',[uid,requestKey])).rows[0];
+        if(old){
+          if(old.response.cancelled)throw bad('原订单已退款，请重新发起购买',409);
+          if(old.product_id!==productId||Number(old.shares)!==shares||old.use_free!==useFree)throw bad('请求编号已用于其他订单',409);
+          return {...old.response,replayed:true};
+        }
+      }
+      if(!Number.isSafeInteger(Number(p.price_per_share))||Number(p.price_per_share)<1)throw bad('商品价格无效，请联系管理员');
+      if(p.status!=='active')throw bad('该商品已停止参与');
+
       const pricePerShare = Number(p.price_per_share);
       const cost = shares * pricePerShare;
       if (!Number.isSafeInteger(cost) || cost > 2147483647)
@@ -94,8 +118,7 @@ router.post('/buy', requireAuth, async (req, res, next) => {
       const numbers = Array.from({ length: shares }, (_, i) => sold2 + 1 + i);
 
       if (freeUse > 0) {
-        await client.query(
-          `UPDATE users SET free_balance=free_balance-$1 WHERE id=$2`, [freeUse, uid]);
+        await walletTx(uid,'grant',-freeUse,`免费参与 ${p.name} ${shares}份`,client);
         await client.query(
           `UPDATE products SET free_used=free_used+1 WHERE id=$1`, [productId]);
       }
@@ -103,9 +126,9 @@ router.post('/buy', requireAuth, async (req, res, next) => {
 
       const orderId = genId('o_');
       await client.query(
-        `INSERT INTO orders (id,user_id,product_id,shares,numbers,paid_coins,free_coins,created_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-        [orderId, uid, productId, shares, JSON.stringify(numbers), paidUse, freeUse, Date.now()]);
+        `INSERT INTO orders (id,user_id,product_id,shares,numbers,paid_coins,free_coins,created_at,request_key,use_free)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+        [orderId, uid, productId, shares, JSON.stringify(numbers), paidUse, freeUse, Date.now(), requestKey||null,useFree]);
 
       const newSold = sold2 + shares;
       let locked = null;
@@ -119,7 +142,9 @@ router.post('/buy', requireAuth, async (req, res, next) => {
         await client.query(`UPDATE products SET status='drawing' WHERE id=$1`, [productId]);
         locked = { round, drawTime: roundTime(round) };
       }
-      return { orderId, numbers, freeUse, paidUse, newSold, locked, totalShares: p.total_shares };
+      const result={ orderId, numbers, freeUse, paidUse, newSold, locked, totalShares: p.total_shares };
+      if(requestKey)await client.query('INSERT INTO purchase_receipts (user_id,request_key,product_id,shares,use_free,response,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7)',[uid,requestKey,productId,shares,useFree,JSON.stringify(result),Date.now()]);
+      return result;
     });
 
     res.json({
@@ -127,10 +152,10 @@ router.post('/buy', requireAuth, async (req, res, next) => {
       numbers: result.numbers, usedFree: result.freeUse, usedPaid: result.paidUse,
       orderId: result.orderId, freeUsed: result.freeUse, paidUsed: result.paidUse,
       sold: result.newSold, totalShares: result.totalShares,
-      drawing: result.locked,
+      drawing: result.locked, replayed:!!result.replayed,
     });
   } catch (e) {
-    res.status(e.status || 500).json({ ok: false, msg: e.message || '购买失败' });
+    res.status(e.status || 500).json({ ok: false, msg: e.status&&e.status<500?e.message:'购买结果暂未确认，请使用原请求重试或查看参与记录' });
   }
 });
 
@@ -138,8 +163,7 @@ router.post('/buy', requireAuth, async (req, res, next) => {
 router.post('/checkin', requireAuth, async (req, res) => {
   try {
     const uid = req.user.id;
-    const todayStart = new Date(); todayStart.setHours(0,0,0,0);
-    const todayMs = todayStart.getTime();
+    const todayMs = Math.floor((Date.now()+8*3600000)/86400000)*86400000-8*3600000;
 
     const result = await withTransaction(async (client) => {
       await client.query(`SELECT id FROM users WHERE id=$1 FOR UPDATE`, [uid]);
@@ -171,18 +195,17 @@ router.post('/checkin', requireAuth, async (req, res) => {
 router.get('/checkin-status', requireAuth, async (req, res) => {
   try {
     const uid = req.user.id;
-    const todayStart = new Date(); todayStart.setHours(0,0,0,0);
-    const todayMs = todayStart.getTime();
+    const todayMs = Math.floor((Date.now()+8*3600000)/86400000)*86400000-8*3600000;
 
     const { rows: today } = await pool.query(
       `SELECT id FROM checkins WHERE user_id=$1 AND created_at>=$2`, [uid, todayMs]);
     const checkedIn = today.length > 0;
 
     const { rows: last } = await pool.query(
-      `SELECT streak, reward FROM checkins WHERE user_id=$1 ORDER BY created_at DESC LIMIT 1`, [uid]);
-    const streak = last.length > 0 ? last[0].streak : 0;
+      `SELECT streak, reward, created_at FROM checkins WHERE user_id=$1 ORDER BY created_at DESC LIMIT 1`, [uid]);
+    const streak = last.length > 0 && Number(last[0].created_at)>=todayMs-86400000 ? last[0].streak : 0;
 
-    res.json({ ok: true, checkedIn, streak });
+    res.json({ ok: true, checkedIn, streak, timeZone:'Asia/Shanghai',nextCheckinAt:todayMs+86400000 });
   } catch (e) {
     res.status(500).json({ ok: false, msg: '获取签到状态失败' });
   }
@@ -196,7 +219,7 @@ router.get('/packages', async (req, res, next) => {
       { amount: 10, bonus: 1 }, { amount: 50, bonus: 5 },
       { amount: 100, bonus: 15 }, { amount: 200, bonus: 40 },
     ];
-    res.json({ ok: true, packages });
+    res.json({ ok: true, packages, methods:paymentMethods() });
   } catch (e) { next(e); }
 });
 
@@ -204,7 +227,8 @@ router.get('/packages', async (req, res, next) => {
 router.post('/recharge', requireAuth, async (req, res, next) => {
   let rid;
   try {
-    const amount = Math.floor(Number(req.body?.amount) || 0);
+    const amount = Number(req.body?.amount);
+    if(!Number.isSafeInteger(amount))throw bad('充值金额必须为整数');
     const method = req.body?.method || 'stripe';
     if (!['stripe', 'paypal'].includes(method)) return res.status(400).json({ ok: false, msg: '不支持的支付方式' });
     if (amount < 1) return res.status(400).json({ ok: false, msg: '充值金额至少 $1' });
@@ -215,6 +239,9 @@ router.post('/recharge', requireAuth, async (req, res, next) => {
     const pkg = packages.find(p => p.amount === amount);
     const bonus = pkg ? (pkg.bonus || 0) : 0;
 
+    const methods=paymentMethods();
+    const demo=process.env.NODE_ENV!=='production'&&process.env.ALLOW_DEMO_PAYMENTS==='true'&&!methods.stripe&&!methods.paypal;
+    if(!methods[method]&&!demo)return res.status(503).json({ok:false,msg:'此支付方式暂未开通，请稍后再试'});
     rid = genId('rc_');
     await pool.query(
       `INSERT INTO recharges (id,user_id,amount,bonus,method,status,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
@@ -243,7 +270,7 @@ router.post('/recharge', requireAuth, async (req, res, next) => {
     if (method === 'paypal') {
       const paypal = await import('../lib/paypal.js');
       const order = await paypal.createOrder(amount, rid, `${origin}/api/wallet/paypal-return`, cancelUrl);
-      if (!order) return res.status(502).json({ ok: false, msg: 'PayPal 服务不可用' });
+      if (!order?.approveUrl) throw new Error('PayPal 服务不可用');
       await pool.query(`UPDATE recharges SET stripe_session=$1 WHERE id=$2`, [order.orderId, rid]);
       return res.json({ ok: true, url: order.approveUrl, rechargeId: rid });
     }
@@ -265,7 +292,7 @@ router.post('/recharge', requireAuth, async (req, res, next) => {
 
     const r = await fetch('https://api.stripe.com/v1/checkout/sessions', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/x-www-form-urlencoded', 'Idempotency-Key': rid },
       body: form,
       signal: AbortSignal.timeout(15000),
     });
@@ -275,7 +302,7 @@ router.post('/recharge', requireAuth, async (req, res, next) => {
     res.json({ ok: true, url: s.url, rechargeId: rid });
   } catch (e) {
     if (rid) await pool.query(`UPDATE recharges SET status='failed' WHERE id=$1 AND status='pending'`, [rid]).catch(() => {});
-    res.status(502).json({ ok: false, msg: e.message });
+    res.status(e.status||502).json({ok:false,msg:e.status&&e.status<500?e.message:'支付服务暂时不可用，请稍后查询充值记录'});
   }
 });
 
@@ -291,15 +318,9 @@ router.get('/paypal-return', requireAuth, async (req, res, next) => {
     if (rc.status === 'paid') return res.redirect(`/recharge.html?result=success&id=${rc.id}`);
     if (rc.status !== 'pending') return res.redirect('/recharge.html?result=cancel');
     try {
-      const paypal = await import('../lib/paypal.js');
-      const capture = await paypal.captureOrder(token);
-      const units = capture?.purchase_units || [];
-      const payments = units.flatMap(unit => unit.payments?.captures || []);
-      if (capture?.id !== token || capture.status !== 'COMPLETED' || units.length !== 1 ||
-          units[0].reference_id !== rc.id || payments.length !== 1 ||
-          payments[0].status !== 'COMPLETED' || payments[0].amount?.currency_code !== 'USD' ||
-          Number(payments[0].amount.value) !== Number(rc.amount)) throw new Error('支付尚未确认或金额不匹配');
-      await settleRecharge(rc.id, 'paypal', token);
+      await reconcilePayment(rc);
+      const state=(await pool.query('SELECT status FROM recharges WHERE id=$1',[rc.id])).rows[0]?.status;
+      if(state!=='paid')return res.redirect(`/recharge.html?result=pending&id=${rc.id}`);
     } catch (e) {
       console.error('[paypal capture]', e.message);
       return res.redirect(`/recharge.html?result=pending&id=${rc.id}`);
@@ -334,8 +355,9 @@ router.post('/address', requireAuth, async (req, res, next) => {
       state: b.state || '', city: b.city || '', address: b.address,
       zip: b.zip || '', filledAt: Date.now(),
     };
-    await pool.query(`UPDATE draws SET win_address=$1 WHERE product_id=$2`,
-      [JSON.stringify(addr), b.productId]);
+    const changed=await pool.query(`UPDATE draws SET win_address=$1 WHERE product_id=$2 AND winner_user_id=$3 AND ship_status='pending' RETURNING product_id`,
+      [JSON.stringify(addr), b.productId,req.user.id]);
+    if(!changed.rows.length)throw bad('订单已发货或状态已变化，请联系管理员修改地址');
     res.json({ ok: true, msg: '收货地址已提交，我们将尽快发货' });
   } catch (e) { next(e); }
 });
@@ -349,28 +371,8 @@ router.post('/draw/:productId', requireAuth, async (req, res, next) => {
     if (!d) return res.status(404).json({ ok: false, msg: '该商品未进入揭晓' });
     if (d.drawn_at) return res.json({ ok: true, done: true, draw: publicDraw(d) });
 
-    const { getRound, computeWinner, roundTime: rt } = await import('../lib/drand.js');
-    if (Date.now() < rt(d.round))
-      return res.json({ ok: true, done: false, msg: '幸运轮次尚未产生，请稍候', drawTime: rt(d.round) });
-
-    const rd = await getRound(d.round);
-    if (!rd) return res.json({ ok: true, done: false, msg: '随机数生成中，请稍候' });
-
-    const winNumber = computeWinner(rd.randomness, pid, d.total_shares);
-    const { rows: allOrders } = await pool.query(
-      `SELECT user_id, numbers FROM orders WHERE product_id=$1`, [pid]);
-    const winner = allOrders.find(o => JSON.parse(o.numbers).includes(winNumber));
-
-    await withTransaction(async (client) => {
-      await client.query(
-        `UPDATE draws SET randomness=$1,signature=$2,win_number=$3,winner_user_id=$4,drawn_at=$5
-         WHERE product_id=$6 AND drawn_at IS NULL`,
-        [rd.randomness, rd.signature, winNumber, winner?.user_id || null, Date.now(), pid]);
-      await client.query(`UPDATE products SET status='done' WHERE id=$1`, [pid]);
-    });
-
-    const { rows: fresh } = await pool.query(`SELECT * FROM draws WHERE product_id=$1`, [pid]);
-    res.json({ ok: true, done: true, draw: publicDraw(fresh[0]) });
+    const fresh=await resolveDraw(pid);
+    res.json({ok:true,done:!!fresh?.drawn_at,draw:fresh?publicDraw(fresh):null,drawTime:fresh?roundTime(fresh.round):null});
   } catch (e) { next(e); }
 });
 
@@ -384,3 +386,6 @@ function publicDraw(d) {
 }
 
 export default router;
+
+router.get('/recharges',requireAuth,async(req,res,next)=>{try{const page=Math.max(1,parseInt(req.query.page)||1);const {rows}=await pool.query('SELECT id,amount,bonus,method,status,created_at,paid_at FROM recharges WHERE user_id=$1 ORDER BY created_at DESC LIMIT 30 OFFSET $2',[req.user.id,(page-1)*30]);res.json({ok:true,recharges:rows,page})}catch(e){next(e)}});
+router.post('/recharges/:id/refresh',requireAuth,async(req,res,next)=>{try{const rc=(await pool.query('SELECT * FROM recharges WHERE id=$1 AND user_id=$2',[req.params.id,req.user.id])).rows[0];if(!rc)throw bad('充值记录不存在',404);await reconcilePayment(rc);const fresh=(await pool.query('SELECT id,amount,bonus,status FROM recharges WHERE id=$1',[rc.id])).rows[0];res.json({ok:true,recharge:fresh})}catch(e){next(e)}});

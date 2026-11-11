@@ -7,6 +7,7 @@ function esc(s) { const d = document.createElement('div'); d.textContent = s; re
 function v(id) { return document.getElementById(id).value.trim(); }
 
 // ========== Tab switching ==========
+const loadedTabs=new Set(['overview']);
 function initTabs() {
   document.querySelectorAll('.admin-tabs .tab').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -14,6 +15,8 @@ function initTabs() {
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      const key=btn.dataset.tab;
+      if(!loadedTabs.has(key)){loadedTabs.add(key);if(key==='users')loadUsers();if(key==='showcase')loadShowcases();if(key==='wins')loadWins();if(key==='settings'){loadPkgs();loadSystemStatus();loadAudit();}}
     });
   });
 }
@@ -21,7 +24,7 @@ function initTabs() {
 // ========== Dashboard ==========
 async function loadDashboard() {
   try {
-    const r = await fetch('/api/admin/overview');
+    const r = await adminFetch('/api/admin/overview');
     const d = await r.json();
     if (!d.ok) return;
     document.getElementById('stat-users').textContent = d.stats.users;
@@ -34,7 +37,7 @@ async function loadDashboard() {
 
 async function loadRecentOrders() {
   try {
-    const r = await fetch('/api/admin/recent-orders');
+    const r = await adminFetch('/api/admin/recent-orders');
     const d = await r.json();
     const el = document.getElementById('recent-orders');
     if (!d.ok || !d.orders || !d.orders.length) { el.innerHTML = '<div class="empty">暂无订单</div>'; return; }
@@ -215,25 +218,20 @@ function bindMultiplierAuto() {
 }
 
 // ========== Users ==========
-async function loadUsers() {
-  try {
-    const r = await fetch('/api/admin/users');
-    const d = await r.json();
-    if (d.ok) { allUsers = d.users; renderUsers(allUsers); }
-  } catch (e) { console.error(e); }
+let userPage=1,userPages=1,userTotal=0,userSearchTimer=null,userLoadId=0;
+async function loadUsers(page=userPage){
+ const sequence=++userLoadId;userPage=page;
+ const r=await adminFetch('/api/admin/users?page='+page+'&q='+encodeURIComponent(v('user-search')));const d=await r.json();
+ if(sequence!==userLoadId)return;
+ if(d.ok){allUsers=d.users;userTotal=d.total??d.users.length;userPages=d.pages||1;renderUsers(allUsers);}
 }
-
-function searchUsers() {
-  const q = v('user-search').toLowerCase();
-  const filtered = q ? allUsers.filter(u => (u.account||'').toLowerCase().includes(q) || (u.name||'').toLowerCase().includes(q)) : allUsers;
-  renderUsers(filtered);
-}
+function searchUsers(){clearTimeout(userSearchTimer);userSearchTimer=setTimeout(()=>loadUsers(1),300);}
 
 function renderUsers(users) {
-  document.getElementById('user-count').textContent = `共 ${users.length} 人`;
+  document.getElementById('user-count').textContent = `共 ${userTotal} 人`;
   const el = document.getElementById('user-list');
   if (!users.length) { el.innerHTML = '<div class="empty">无匹配用户</div>'; return; }
-  let html = '<table class="user-table"><tr><th>账号</th><th>昵称</th><th>角色</th><th>余额(金币)</th><th>注册时间</th><th>操作</th></tr>';
+  let html = '<table class="user-table"><tr><th>账号</th><th>昵称</th><th>角色</th><th>充值 / 免费金币</th><th>注册时间</th><th>操作</th></tr>';
   users.forEach(u => {
     const t = new Date(Number(u.created_at)).toLocaleDateString('zh-CN');
     const role = u.role === 'admin' ? '<span class="role-admin">管理员</span>' : '用户';
@@ -241,23 +239,23 @@ function renderUsers(users) {
       <td>${esc(u.account)}</td>
       <td>${esc(u.name||'—')}</td>
       <td>${role}</td>
-      <td>${u.paid_balance||0}</td>
+      <td>${u.paid_balance||0} / ${u.free_balance||0}${u.disabled?' · 已停用':''}</td>
       <td>${t}</td>
       <td>
         <a href="#" onclick="renameUser('${u.id}');return false">改名</a> ·
         <a href="#" onclick="resetPwd('${u.id}');return false">重置密码</a> ·
-        <a href="#" onclick="delUser('${u.id}');return false" style="color:#c00">删除</a>
+        <a href="#" onclick="delUser('${u.id}');return false" style="color:#c00">停用</a> · <a href="#" onclick="enableUser('${u.id}');return false">启用</a> · <a href="#" onclick="showLedger('${u.id}');return false">流水</a> · <a href="#" onclick="adjustBalance('${u.id}');return false">调整余额</a>
       </td>
     </tr>`;
   });
-  el.innerHTML = html + '</table>';
+  el.innerHTML = html + '</table>'+`<div class="pagination"><button onclick="loadUsers(${userPage-1})" ${userPage<=1?'disabled':''}>上一页</button><span>${userPage}/${userPages}</span><button onclick="loadUsers(${userPage+1})" ${userPage>=userPages?'disabled':''}>下一页</button></div>`;
 }
 
 async function renameUser(uid) {
   const oldName = allUsers.find(u => u.id === uid)?.name || '';
   const name = prompt('输入新昵称：', oldName);
   if (name === null || !name.trim()) return;
-  const r = await fetch('/api/admin/users/' + uid + '/rename', {
+  const r = await adminFetch('/api/admin/users/' + uid + '/rename', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name: name.trim() })
   });
@@ -268,9 +266,10 @@ async function renameUser(uid) {
 
 async function resetPwd(uid) {
   const account = allUsers.find(u => u.id === uid)?.account || '';
-  const pwd = prompt(`重置 ${account} 的密码为：`);
-  if (pwd === null || !pwd.trim()) return;
-  const r = await fetch('/api/admin/users/' + uid + '/reset-pwd', {
+  const input=await askFields('重置 '+account+' 的密码',[{key:'password',label:'新密码（至少8位）',type:'password'}]);
+  if(!input)return;const pwd=input.password;
+  if(pwd.length<8){toast('新密码至少8位');return;}
+  const r = await adminFetch('/api/admin/users/' + uid + '/reset-pwd', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ password: pwd.trim() })
   });
@@ -280,8 +279,8 @@ async function resetPwd(uid) {
 
 async function delUser(uid) {
   const account = allUsers.find(u => u.id === uid)?.account || '';
-  if (!confirm(`确定删除用户 ${account}？此操作不可恢复。`)) return;
-  const r = await fetch('/api/admin/users/' + uid, { method: 'DELETE' });
+  if (!confirm(`确定停用用户 ${account}？账号将退出登录，交易记录保留，可重新启用。`)) return;
+  const r = await adminFetch('/api/admin/users/' + uid, { method: 'DELETE' });
   const d = await r.json();
   toast(d.msg || (d.ok ? '已删除' : '删除失败'));
   if (d.ok) loadUsers();
@@ -299,13 +298,14 @@ function loadRules() {
 }
 
 async function saveRules() {
-  await Store.saveConfig({
+  const result = await Store.saveConfig({
     grantRegister: Math.max(0, parseInt(v('r-register')) || 0),
     grantCheckin: Math.max(0, parseInt(v('r-checkin')) || 0),
     grantShowcase: Math.max(0, parseInt(v('r-showcase')) || 0),
     grantInvitee: Math.max(0, parseInt(v('r-invitee')) || 0),
     grantInviter: Math.max(0, parseInt(v('r-inviter')) || 0),
   });
+  if(!result.ok){toast(result.msg||'保存失败');return;}
   toast('规则已保存');
 }
 
@@ -318,11 +318,12 @@ function loadDisplayHours() {
 }
 
 async function saveDisplayHours() {
-  await Store.saveConfig({
+  const result = await Store.saveConfig({
     recentBuysHours: Math.max(0, parseInt(v('r-recentBuysHours')) || 0),
     winnersHours: Math.max(0, parseInt(v('r-winnersHours')) || 0),
     showcaseHours: Math.max(0, parseInt(v('r-showcaseHours')) || 0),
   });
+  if(!result.ok){toast(result.msg||'保存失败');return;}
   toast('展示时间已保存');
 }
 
@@ -334,7 +335,8 @@ function loadDrawDelay() {
 
 async function saveDrawDelay() {
   const val = Math.max(1, Math.min(60, parseInt(v('r-drawDelay')) || 10));
-  await Store.saveConfig({ drawDelay: val });
+  const result = await Store.saveConfig({ drawDelay: val });
+  if(!result.ok){toast(result.msg||'保存失败');return;}
   toast('开奖延迟已保存：' + val + ' 分钟');
 }
 
@@ -430,7 +432,8 @@ function addPkg() {
 function removePkg(i) { pkgList.splice(i, 1); renderPkgs(); }
 
 async function savePkgs() {
-  await Store.saveConfig({ recharge_packages: pkgList });
+  const result = await Store.saveConfig({ recharge_packages: pkgList });
+  if(!result.ok){toast(result.msg||'保存失败');return;}
   toast('套餐已保存');
 }
 
@@ -472,7 +475,7 @@ async function reviewSC(id, action) {
 async function loadWins() {
   const el = document.getElementById('wins-list');
   try {
-    const r = await fetch('/api/admin/wins');
+    const r = await adminFetch('/api/admin/wins');
     const d = await r.json();
     if (!d.ok || !d.wins || !d.wins.length) { el.innerHTML = '<div class="empty">暂无中奖记录</div>'; return; }
     let html = '<table class="orders-table"><tr><th>商品</th><th>中奖号</th><th>中奖用户</th><th>地址</th><th>状态</th><th>备注</th><th>操作</th></tr>';
@@ -503,12 +506,13 @@ async function loadWins() {
 }
 
 async function updateShip(productId, status) {
-  const r = await fetch('/api/admin/wins/' + productId + '/ship', {
+  const r = await adminFetch('/api/admin/wins/' + productId + '/ship', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ status })
   });
   const d = await r.json();
   toast(d.msg || (d.ok ? '已更新' : '更新失败'));
+  loadWins();
 }
 
 async function editShipNote(productId) {
@@ -516,7 +520,7 @@ async function editShipNote(productId) {
   if (note === null) return;
   const el = document.querySelector(`select[onchange*="${productId}"]`);
   const status = el ? el.value : 'pending';
-  const r = await fetch('/api/admin/wins/' + productId + '/ship', {
+  const r = await adminFetch('/api/admin/wins/' + productId + '/ship', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ status, note })
   });
@@ -544,18 +548,50 @@ onReady(() => {
   fillCategoryOptions();
   fieldsFrom(null);
   loadProducts();
-  // Users
-  loadUsers();
-  // Showcase
-  loadShowcases();
-  // Wins
-  loadWins();
+  // Users are loaded when their tab opens.
+
+
   // Settings
   loadRules();
   loadDisplayHours();
   loadDrawDelay();
   renderCats();
-  loadPkgs();
 });
 
 
+
+async function adminFetch(url,options={}){
+ try {const r=await fetch(url,{...options,signal:AbortSignal.timeout(60000)});const data=await r.json();if(!r.ok||!data.ok)toast(data.msg||'操作失败');return {json:async()=>data};}
+ catch(e){toast('服务连接失败，请稍后重试；未确认前请勿重复提交');return {json:async()=>({ok:false,msg:'连接失败'})};}
+}
+async function enableUser(id){const r=await adminFetch('/api/admin/users/'+id+'/enable',{method:'POST'});const d=await r.json();toast(d.msg);if(d.ok)loadUsers();}
+async function showLedger(id,page=1){
+ const r=await adminFetch('/api/admin/users/'+id+'/ledger?page='+page);const d=await r.json();if(!d.ok)return;
+ let box=document.getElementById('ledger-view');if(!box){box=document.createElement('div');box.id='ledger-view';document.getElementById('user-list').after(box);}
+ box.innerHTML='<h3>用户资金流水</h3>'+d.records.map(t=>`<p>${esc(new Date(Number(t.created_at)).toLocaleString())} · ${esc(t.kind)} · ${esc(t.amount)} · 余额 ${esc(t.balance)} · ${esc(t.ref||'')}</p>`).join('')+`<button class="btn ghost" onclick="showLedger('${id}',${Math.max(1,page-1)})" ${page<=1?'disabled':''}>上一页</button> <button class="btn ghost" onclick="showLedger('${id}',${page+1})" ${d.records.length<50?'disabled':''}>下一页</button>`;
+}
+async function loadSystemStatus(){
+ const box=document.getElementById('system-status');if(!box)return;
+ const r=await adminFetch('/api/admin/system-status');const d=await r.json();if(!d.ok){box.textContent='服务状态暂时无法读取';return;}
+ box.textContent=`数据库：${d.database?'正常':'不可用'}；信用卡支付：${d.payments?.stripe?'已配置':'未开通'}；PayPal：${d.payments?.paypal?'已配置':'未开通'}；邮件：${d.mail?'已配置，需实际收件验收':'未配置'}；短信注册：未开通。签到按北京时间零点刷新。`;
+}
+
+function askFields(title,fields){return new Promise(resolve=>{
+ const mask=document.createElement('div');mask.className='coin-choice-mask';
+ const form=document.createElement('form');form.className='coin-choice-modal';form.setAttribute('role','dialog');form.setAttribute('aria-modal','true');form.setAttribute('aria-label',title);
+ const h=document.createElement('h3');h.textContent=title;form.append(h);
+ const inputs={};for(const f of fields){const label=document.createElement('label');label.style.cssText='display:block;margin:12px 0;text-align:left';label.textContent=f.label;const input=document.createElement('input');input.type=f.type||'text';input.value=f.value??'';input.required=true;input.style.cssText='display:block;width:100%;margin-top:6px;padding:10px;box-sizing:border-box';if(f.type==='password')input.autocomplete='new-password';label.append(input);form.append(label);inputs[f.key]=input;}
+ const ok=document.createElement('button');ok.className='btn';ok.type='submit';ok.textContent='确认';const cancel=document.createElement('button');cancel.type='button';cancel.className='btn ghost';cancel.textContent='取消';cancel.style.marginLeft='12px';form.append(ok,cancel);mask.append(form);document.body.append(mask);
+ const previous=document.activeElement;const close=value=>{mask.remove();previous?.focus();resolve(value)};
+ cancel.onclick=()=>close(null);form.onsubmit=e=>{e.preventDefault();close(Object.fromEntries(Object.entries(inputs).map(([k,v])=>[k,v.value])))};
+ form.onkeydown=e=>{if(e.key==='Escape'){e.preventDefault();close(null)}if(e.key==='Tab'){const all=[...Object.values(inputs),ok,cancel],i=all.indexOf(document.activeElement);if(e.shiftKey&&i===0){e.preventDefault();cancel.focus()}else if(!e.shiftKey&&i===all.length-1){e.preventDefault();all[0].focus()}}};Object.values(inputs)[0].focus();
+})}
+async function adjustBalance(id){
+ const user=allUsers.find(u=>u.id===id);if(!user)return;
+ const values=await askFields('调整余额（会记录资金流水）',[{key:'paidBalance',label:'调整后充值金币',type:'number',value:user.paid_balance},{key:'freeBalance',label:'调整后免费金币',type:'number',value:user.free_balance||0},{key:'reason',label:'调整原因（至少3字）'}]);if(!values)return;
+ const r=await adminFetch('/api/admin/fix-balance',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...values,userId:id})});const d=await r.json();toast(d.msg);if(d.ok){loadUsers();showLedger(id);}
+}
+async function loadAudit(page=1){
+ const r=await adminFetch('/api/admin/audit?page='+page);const d=await r.json();if(!d.ok)return;
+ const box=document.getElementById('audit-list');box.innerHTML=d.records.map(a=>`<p>${esc(new Date(Number(a.created_at)).toLocaleString())} · ${esc(a.action)} · ${esc(a.target_id||'系统配置')}</p>`).join('')||'暂无操作记录';
+}

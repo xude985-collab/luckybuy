@@ -12,3 +12,6 @@ tmp_cookies.txt
 test-results/
 playwright-report/
 dist/
+
+# Local recovery archives, database credentials and administrator login details.
+/本地恢复资料/

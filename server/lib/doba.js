@@ -1,3 +1,4 @@
+import {productUrl,fetchProduct} from './productUrl.js';
 /*
  * Doba.com 商品页解析。
  *
@@ -24,7 +25,7 @@ async function fetchHtml(url, cookie) {
     'Accept-Language': 'en-US,en;q=0.9',
   };
   if (cookie) headers['Cookie'] = cookie;
-  const resp = await fetch(url, { headers, signal: AbortSignal.timeout(15000) });
+  const resp = await fetchProduct(url, { headers, signal: AbortSignal.timeout(15000) });
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
   return resp.text();
 }
@@ -48,6 +49,7 @@ function parseNextData(html) {
 }
 
 export async function fetchDoba(url) {
+  url=productUrl(url,'doba').url;
   const parsed = parseDobaUrl(url);
   if (!parsed) throw new Error('无效的 Doba 商品链接');
 

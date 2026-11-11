@@ -156,3 +156,13 @@ router.get('/my-wins', attachUser, async (req, res, next) => {
 });
 
 export default router;
+
+router.get('/catalog',async(req,res,next)=>{try{
+ const page=Math.max(1,parseInt(req.query.page)||1),limit=Math.min(50,Math.max(1,parseInt(req.query.limit)||20)),cat=String(req.query.category||'all');
+ const status=req.query.status==='done'?'done':'active';
+ const where="WHERE ($1='all' OR p.category=$1) AND (($2='done' AND p.status='done') OR ($2='active' AND p.status IN ('active','drawing')))";
+ const total=Number((await pool.query(`SELECT COUNT(*) AS n FROM products p ${where}`,[cat,status])).rows[0].n);
+ const {rows}=await pool.query(`SELECT p.*,COALESCE(s.total,0) AS sold,d.round AS draw_round,d.win_number,d.winner_user_id,d.randomness,d.signature,d.win_address,u.name AS winner_name FROM products p LEFT JOIN (SELECT product_id,SUM(shares) AS total FROM orders GROUP BY product_id) s ON s.product_id=p.id LEFT JOIN draws d ON d.product_id=p.id LEFT JOIN users u ON u.id=d.winner_user_id ${where} ORDER BY COALESCE(s.total,0)::numeric/GREATEST(p.total_shares,1) DESC,p.created_at DESC,p.id LIMIT $3 OFFSET $4`,[cat,status,limit,(page-1)*limit]);
+ const products=rows.map(p=>{const f=formatProduct(p);return {...f,gallery:f.gallery.slice(0,1),desc:'',specs:[]}});
+ res.json({ok:true,products,total,page,pages:Math.max(1,Math.ceil(total/limit))});
+}catch(e){next(e)}});

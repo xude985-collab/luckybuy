@@ -146,11 +146,12 @@ async function initCheckinCard() {
   const card = document.getElementById('checkin-card');
   const btn = document.getElementById('checkin-btn');
   const info = document.getElementById('checkin-info');
+  info.textContent+='（北京时间每天00:00刷新）';
   if (!Store.canCheckin()) {
     btn.disabled = true;
     btn.textContent = '今日已签到 ✓';
     btn.style.background = '#4caf50';
-    info.textContent = '明天再来，连续签到奖励更多哦！';
+    info.textContent = '北京时间00:00刷新，连续签到奖励更多哦！';
   }
 }
 
@@ -162,7 +163,7 @@ async function doCheckin() {
   if (r.ok) {
     btn.textContent = '今日已签到 ✓';
     btn.style.background = '#4caf50';
-    document.getElementById('checkin-info').textContent = '明天再来，连续签到奖励更多哦！';
+    document.getElementById('checkin-info').textContent = '北京时间00:00刷新，连续签到奖励更多哦！';
     await Store.refreshMe();
     renderTopbar('profile');
     document.getElementById('p-coins').textContent = Store.totalCoins();

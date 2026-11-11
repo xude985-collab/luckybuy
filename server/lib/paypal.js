@@ -86,3 +86,9 @@ export async function captureOrder(orderId) {
 export function isConfigured() {
   return !!(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_SECRET);
 }
+
+export async function getOrder(orderId){
+ const token=await getAccessToken();if(!token)return null;
+ const r=await fetch(`${BASE}/v2/checkout/orders/${encodeURIComponent(orderId)}`,{headers:{Authorization:`Bearer ${token}`},signal:AbortSignal.timeout(15000)});
+ if(!r.ok)throw new Error('PayPal查询暂不可用');return r.json();
+}

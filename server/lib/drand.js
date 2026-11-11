@@ -9,31 +9,35 @@
  *   winNumber = ( int(HMAC-SHA256(key=randomness, msg=period)) mod totalShares ) + 1
  */
 import crypto from 'crypto';
+import {fetchBeacon} from 'drand-client';
 
 const GATEWAYS = [
   'https://api.drand.sh',
   'https://drand.cloudflare.com',
   'https://api2.drand.sh',
 ];
-const CHAIN_HASH = '52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971';
+export const CHAIN_HASH = '52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971';
 const GENESIS = 1692803367; // quicknet 创世（秒）
 const PERIOD = 3;           // 出块间隔（秒）
 
-async function fetchJSON(path) {
-  let lastErr;
-  for (const g of GATEWAYS) {
-    try {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 8000);
-      const r = await fetch(`${g}/${CHAIN_HASH}/public/${path}`, {
-        cache: 'no-store', signal: ctrl.signal,
-      });
-      clearTimeout(timer);
-      if (r.ok) return await r.json();
-      lastErr = new Error('HTTP ' + r.status);
-    } catch (e) { lastErr = e; }
-  }
-  throw lastErr || new Error('all drand gateways failed');
+export const CHAIN_INFO = {
+ hash:CHAIN_HASH, public_key:'83cf0f2896adee7eb8b5f01fcad3912212c437e0073e911fb90022d3e760183c8c4b450b6a0a6c3ac6a5776a2d1064510d1fec758c921cc22b0e17e63aaf4bcb5ed66304de9cf809bd274ca73bab4af5a6e9c76a4bc09e76eae8991ef5ece45a',
+ period:PERIOD,genesis_time:GENESIS,schemeID:'bls-unchained-g1-rfc9380'
+};
+export async function verifyBeaconData(data,round){
+ if(!Number.isSafeInteger(round)||round<1)throw new Error('无效随机轮次');
+ return fetchBeacon({options:{disableBeaconVerification:false},chain:()=>({info:async()=>CHAIN_INFO}),get:async()=>data},round);
+}
+async function fetchJSON(round) {
+ let lastErr;
+ for(const gateway of GATEWAYS){
+  try {
+   const r=await fetch(`${gateway}/${CHAIN_HASH}/public/${round}`,{cache:'no-store',signal:AbortSignal.timeout(8000)});
+   if(!r.ok)throw new Error('HTTP '+r.status);
+   return await verifyBeaconData(await r.json(),round);
+  }catch(e){lastErr=e}
+ }
+ throw lastErr||new Error('随机源暂不可用');
 }
 
 export function currentRound(nowMs = Date.now()) {
@@ -54,7 +58,7 @@ export function roundTime(round) {
 // 取指定轮次；未产生返回 null（HTTP 404）
 export async function getRound(round) {
   try {
-    const d = await fetchJSON(String(round));
+    const d = await fetchJSON(Number(round));
     return { round: d.round, randomness: d.randomness, signature: d.signature };
   } catch (e) {
     if (/HTTP 404/.test(e.message)) return null;

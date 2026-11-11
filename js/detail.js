@@ -110,12 +110,12 @@ function render() {
         const myUsed = Store.myOrders()
           .filter(o => String(o.productId) === String(id))
           .reduce((s, o) => s + (o.freeUsed || 0), 0);
-        mine = Math.min(poolLeft, u.freeCoins || 0, Math.max(0, 1 - myUsed));
+        mine = Math.min(poolLeft, Math.floor((u.freeCoins || 0)/p.price), myUsed>0?0:1);
       }
       const alreadyUsed = u && Store.myOrders().some(
         o => String(o.productId) === String(id) && (o.freeUsed || 0) > 0
       );
-      quotaTip = `<div class="free-quota-tip">🪙 本商品免费金币额度 <b>${quota}</b> 枚（全场共享，先到先得，每人仅限 1 枚）· 剩余 <b>${poolLeft}</b> 枚${u ? `${alreadyUsed ? ' · <span style="color:#c62828">你已用过本商品的免费金币</span>' : ` · 本单可用 <b>${mine}</b> 枚免费金币`}，其余用充值金币` : ''}。</div>`;
+      quotaTip = `<div class="free-quota-tip">🪙 本商品免费参与额度 <b>${quota}</b> 份（全场共享，先到先得，每人仅限 1 份）· 剩余 <b>${poolLeft}</b> 份${u ? `${alreadyUsed ? ' · <span style="color:#c62828">你已用过本商品的免费金币</span>' : ` · 本单可免费参与 <b>${mine}</b> 份，每份消耗 ${p.price} 免费金币`}，其余用充值金币` : ''}。</div>`;
     }
     action = quotaTip + `
       <div class="qty">
@@ -256,7 +256,10 @@ function stepQty(d) {
 }
 function setQty(v) { const el = document.getElementById('qty'); if (el) el.value = v; }
 
+let buying=false;
 async function buy() {
+  if(buying)return;buying=true;
+  try {
   if (!requireLogin()) return;
   const count = parseInt(document.getElementById('qty').value, 10) || 0;
   if (count < 1) { toast('请选择至少 1 份'); return; }
@@ -266,7 +269,7 @@ async function buy() {
   const myUsedFree = Store.myOrders().filter(o => o.productId === id).reduce((s, o) => s + (o.freeUsed || 0), 0) > 0;
   const quota = p.freeQuota || 0;
   const poolLeft = quota > 0 ? Math.max(0, quota - (p.freeUsed || 0)) : Infinity;
-  const canUseFree = u.freeCoins > 0 && poolLeft > 0 && !myUsedFree;
+  const canUseFree = u.freeCoins >= p.price && poolLeft > 0 && !myUsedFree;
 
   let useFree = false;
   if (canUseFree) {
@@ -291,6 +294,7 @@ async function buy() {
     toast('网络异常，请重试');
     render();
   }
+  } finally {buying=false;}
 }
 
 function showCoinChoice(u, p) {
@@ -344,8 +348,9 @@ async function fillAddress(productId) {
       if (!name || !address) { toast('请填写收件人和地址'); return; }
       const r = await Store.saveAddress(productId, { name, phone, address, country });
       toast(r.msg || (r.ok ? '已提交' : '提交失败'));
+      if (!r.ok) return;
       mask.remove();
-      if (r.ok) { await Store.refreshProducts(); render(); }
+      if (r.ok) { await Store.refreshProduct(id); render(); }
       resolve();
     };
   });
@@ -358,7 +363,7 @@ async function verifyDraw(pid) {
   if (!box) return;
   if (!r.ok && r.msg) { box.textContent = r.msg; return; }
   box.innerHTML = r.ok
-    ? `<span style="color:var(--ok)">✓ 验证通过：用第 ${r.round} 轮随机数复算得号 ${r.recomputed}，与公示一致。</span>`
+    ? `<span style="color:var(--ok)">✓ 信标签名验证通过，号码复算一致：用第 ${r.round} 轮随机数复算得号 ${r.recomputed}，与公示一致。</span>`
     : `<span style="color:#c62828">✗ 复算得 ${r.recomputed}，与公示号 ${r.stored} 不符！</span>`;
 }
 
@@ -373,7 +378,7 @@ async function autoPoll() {
   if (p && p.status === 'drawing') {
     _polling = true;
     try {
-      await Store.refreshProducts();
+      await Store.refreshProduct(id);
       render();
     } finally {
       _polling = false;

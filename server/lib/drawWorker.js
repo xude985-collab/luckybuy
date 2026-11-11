@@ -1,4 +1,5 @@
 import pool from '../db.js';
+import {resolveDraw} from './resolveDraw.js';
 import { getRound, computeWinner, roundTime } from './drand.js';
 import { withTransaction } from './helpers.js';
 import logger from './logger.js';
@@ -25,33 +26,7 @@ async function resolvePendingDraws() {
       if (Date.now() < roundTime(d.round)) continue;
 
       try {
-        const rd = await getRound(d.round);
-        if (!rd) continue;
-
-        const winNumber = computeWinner(rd.randomness, d.product_id, d.total_shares);
-
-        const { rows: orders } = await pool.query(
-          `SELECT user_id, numbers FROM orders WHERE product_id=$1`, [d.product_id]
-        );
-        const winner = orders.find(o => {
-          try { return JSON.parse(o.numbers).includes(winNumber); } catch { return false; }
-        });
-
-        await withTransaction(async (client) => {
-          const { rows: updated } = await client.query(
-            `UPDATE draws SET randomness=$1,signature=$2,win_number=$3,winner_user_id=$4,drawn_at=$5
-             WHERE product_id=$6 AND drawn_at IS NULL RETURNING product_id`,
-            [rd.randomness, rd.signature, winNumber, winner?.user_id || null, Date.now(), d.product_id]
-          );
-          if (updated.length) {
-            await client.query(`UPDATE products SET status='done' WHERE id=$1`, [d.product_id]);
-            logger.info({
-              productId: d.product_id,
-              winNumber,
-              winnerId: winner?.user_id || null,
-            }, '商品揭晓完成');
-          }
-        });
+        await resolveDraw(d.product_id);
       } catch (e) {
         logger.error({ err: e, productId: d.product_id }, '商品揭晓异常');
       }

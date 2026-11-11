@@ -1,10 +1,14 @@
+import {paymentMethods} from '../lib/paymentStatus.js';
 /* 管理后台接口。全部要求 admin 角色。 */
 import express from 'express';
 import pool from '../db.js';
-import { attachUser, requireAdmin, getConfig, genId, withTransaction } from '../lib/helpers.js';
+import { attachUser, requireAdmin, getConfig, genId, withTransaction, walletTx } from '../lib/helpers.js';
 import { fetchAmazon } from '../lib/amazon.js';
 import { fetchSaleyee } from '../lib/saleyee.js';
 import { fetchDoba } from '../lib/doba.js';
+
+import {productUrl} from '../lib/productUrl.js';
+import {audit, bad, integer, resetSales} from '../lib/operations.js';
 
 const router = express.Router();
 router.use(attachUser);
@@ -56,23 +60,19 @@ router.post('/config', requireAdmin, async (req, res, next) => {
   try {
     const allowed = ['grantRegister', 'grantCheckin', 'grantShowcase', 'grantInvitee', 'grantInviter',
                      'recentBuysHours', 'winnersHours', 'showcaseHours', 'drawDelay'];
-    for (const k of allowed) {
-      if (req.body[k] != null) {
-        await pool.query(
-          `INSERT INTO config (k,v) VALUES ($1,$2) ON CONFLICT(k) DO UPDATE SET v=EXCLUDED.v`,
-          [k, String(Math.max(0, parseInt(req.body[k]) || 0))]);
-      }
+    const entries=[];
+    for(const k of allowed)if(req.body[k]!=null)entries.push([k,String(integer(req.body[k],k,k==='drawDelay'?1:0,k==='drawDelay'?60:100000))]);
+    if(req.body.recharge_packages!=null){
+      if(!Array.isArray(req.body.recharge_packages)||req.body.recharge_packages.length>30)throw bad('充值套餐格式无效');
+      const seen=new Set();
+      const pkgs=req.body.recharge_packages.map(p=>{const amount=integer(p.amount,'套餐金额',1,5000),bonus=integer(p.bonus??0,'赠送金币',0,100000);if(seen.has(amount))throw bad('套餐金额不能重复');seen.add(amount);return {amount,bonus}});
+      entries.push(['recharge_packages',JSON.stringify(pkgs)]);
     }
-    if (req.body.recharge_packages != null) {
-      await pool.query(
-        `INSERT INTO config (k,v) VALUES ($1,$2) ON CONFLICT(k) DO UPDATE SET v=EXCLUDED.v`,
-        ['recharge_packages', JSON.stringify(req.body.recharge_packages)]);
-    }
-    if (req.body.doba_cookie != null) {
-      await pool.query(
-        `INSERT INTO config (k,v) VALUES ($1,$2) ON CONFLICT(k) DO UPDATE SET v=EXCLUDED.v`,
-        ['doba_cookie', String(req.body.doba_cookie).trim()]);
-    }
+    if(req.body.doba_cookie!=null)entries.push(['doba_cookie',String(req.body.doba_cookie).trim()]);
+    await withTransaction(async c=>{
+      for(const [k,v] of entries)await c.query('INSERT INTO config (k,v) VALUES ($1,$2) ON CONFLICT(k) DO UPDATE SET v=EXCLUDED.v',[k,v]);
+      await audit(c,req.user.id,'config',null,{keys:entries.map(e=>e[0])});
+    });
     res.json({ ok: true, config: await getConfig() });
   } catch (e) { next(e); }
 });
@@ -94,9 +94,9 @@ router.post('/products', requireAdmin, async (req, res, next) => {
     const b = req.body || {};
     if (!b.name || !b.category) return res.status(400).json({ ok: false, msg: '缺少名称或类别' });
 
-    const pricePerShare = clampInt(b.pricePerShare, 1, 1);
-    const totalShares = clampInt(b.totalShares, 1, 1);
-    const freeQuota = Math.min(clampInt(b.freeQuota, 0, 0), totalShares);
+    const pricePerShare = integer(b.pricePerShare,'单价',1,1000000);
+    const totalShares = integer(b.totalShares,'总份数',1,1000000);
+    const freeQuota = integer(b.freeQuota??0,'免费份数',0,totalShares);
     const gallery = JSON.stringify(Array.isArray(b.gallery) ? b.gallery : []);
     const specs = JSON.stringify(Array.isArray(b.specs) ? b.specs : []);
 
@@ -140,52 +140,7 @@ router.delete('/products/:id', requireAdmin, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// ---- 调试：dump Doba productDetail 原始 JSON（部署后删除） ----
-router.post('/debug-doba', requireAdmin, async (req, res) => {
-  const url = (req.body?.url || '').trim();
-  if (!url) return res.status(400).json({ ok: false, msg: '请填写 Doba 链接' });
-  try {
-    const { parseDobaUrl } = await import('../lib/doba.js');
-    const parsed = parseDobaUrl(url);
-    if (!parsed) return res.status(400).json({ ok: false, msg: '无效 Doba 链接' });
-
-    const { rows } = await pool.query(`SELECT v FROM config WHERE k='doba_cookie'`);
-    const cookie = rows[0]?.v || '';
-
-    const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36';
-    const resp = await fetch(url, {
-      headers: { 'User-Agent': UA, 'Accept': 'text/html', 'Cookie': cookie },
-      signal: AbortSignal.timeout(15000),
-    });
-    const html = await resp.text();
-    const m = html.match(/__NEXT_DATA__[^>]*>([\s\S]*?)<\/script/);
-    if (!m) return res.status(502).json({ ok: false, msg: '未找到 __NEXT_DATA__' });
-    const data = JSON.parse(m[1]);
-    const pd = data?.props?.pageProps?.productDetail;
-    if (!pd) return res.status(502).json({ ok: false, msg: 'productDetail 为空', raw: data?.props?.pageProps });
-
-    // 返回所有含 price/sale/discount 的字段
-    const priceFields = {};
-    for (const [k, v] of Object.entries(pd)) {
-      if (/price|sale|discount|cost|profit|promotion|flash/i.test(k)) {
-        priceFields[k] = v;
-      }
-    }
-    // 也看 selectedSku
-    const skuFields = {};
-    if (pd.selectedSku) {
-      for (const [k, v] of Object.entries(pd.selectedSku)) {
-        if (/price|sale|discount|cost|profit|promotion|flash/i.test(k)) {
-          skuFields[k] = v;
-        }
-      }
-    }
-
-    res.json({ ok: true, priceFields, skuFields, allTopKeys: Object.keys(pd) });
-  } catch (e) {
-    res.status(502).json({ ok: false, msg: e.message });
-  }
-});
+router.post('/debug-doba', requireAdmin, (req,res)=>res.status(410).json({ok:false,msg:'调试接口已关闭，请使用商品导入'}));
 
 // ---- 商品链接导入（赛盈 / 亚马逊） ----
 router.post('/import-product', requireAdmin, async (req, res) => {
@@ -193,12 +148,13 @@ router.post('/import-product', requireAdmin, async (req, res) => {
   if (!url) return res.status(400).json({ ok: false, msg: '请填写商品链接' });
 
   try {
+    const provider=productUrl(url).provider;
     let draft;
-    if (/saleyee\.com/i.test(url)) {
+    if (provider==='saleyee') {
       draft = await fetchSaleyee(url);
-    } else if (/doba\.com/i.test(url)) {
+    } else if (provider==='doba') {
       draft = await fetchDoba(url);
-    } else if (/amazon\./i.test(url)) {
+    } else if (provider==='amazon') {
       draft = await fetchAmazon(url);
     } else {
       return res.status(400).json({ ok: false, msg: '不支持的链接，目前支持赛盈(saleyee.com)、Doba 和亚马逊' });
@@ -292,105 +248,54 @@ router.post('/categories/reorder', requireAdmin, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// ---- 重置所有购买数据 ----
-router.post('/reset-orders', requireAdmin, async (req, res, next) => {
-  try {
-    await withTransaction(async (client) => {
-      // 把用户花掉的免费金币加回去
-      await client.query(
-        `UPDATE users SET free_balance = free_balance + COALESCE((
-          SELECT SUM(free_coins) FROM orders WHERE orders.user_id = users.id
-        ), 0)`);
-      // 把用户花掉的充值金币加回去
-      await client.query(
-        `UPDATE users SET paid_balance = paid_balance + COALESCE((
-          SELECT SUM(paid_coins) FROM orders WHERE orders.user_id = users.id
-        ), 0)`);
-      // 清订单
-      await client.query(`DELETE FROM orders`);
-      // 清开奖记录
-      await client.query(`DELETE FROM draws`);
-      // 重置商品状态
-      await client.query(`UPDATE products SET free_used=0, status='active'`);
-      // 清除消费类的钱包流水
-      await client.query(`DELETE FROM wallet_tx WHERE kind='spend'`);
-    });
-    res.json({ ok: true, msg: '已重置所有购买数据，金币已退回' });
-  } catch (e) { next(e); }
+// Reset operations require an explicit reason; historical rows are retained in admin_audit.
+for (const route of ['/reset-orders', '/reset-product/:productId']) {
+  router.post(route, requireAdmin, async (req,res,next)=>{
+    try { const count=await resetSales(req.user.id,req.params.productId,req.body?.confirmation,req.body?.reason);
+      res.json({ok:true,msg:`已重置并退回${count}笔订单，原记录已归档`});
+    } catch(e){next(e)}
+  });
+}
+router.post('/fix-balance',requireAdmin,async(req,res,next)=>{
+ try {
+  const {userId,paidBalance,freeBalance,reason}=req.body||{};
+  if(!userId||typeof reason!=='string'||reason.trim().length<3)throw bad('请选择用户并填写至少3字的调整原因');
+  if(paidBalance===undefined&&freeBalance===undefined)throw bad('请指定调整后的余额');
+  const paid=paidBalance===undefined?undefined:integer(paidBalance,'充值余额');
+  const free=freeBalance===undefined?undefined:integer(freeBalance,'免费余额');
+  await withTransaction(async c=>{
+    const {rows}=await c.query('SELECT paid_balance,free_balance FROM users WHERE id=$1 FOR UPDATE',[userId]);
+    if(!rows.length)throw bad('用户不存在',404);
+    if(paid!==undefined)await walletTx(userId,'adjust',paid-Number(rows[0].paid_balance),`管理员调整：${reason}`,c);
+    if(free!==undefined)await walletTx(userId,'grant',free-Number(rows[0].free_balance),`管理员调整免费金币：${reason}`,c);
+    await audit(c,req.user.id,'balance',userId,{before:rows[0],paid,free,reason});
+  });res.json({ok:true,msg:'余额已修正并记录流水'});
+ }catch(e){next(e)}
 });
-
-// 手动修正用户余额
-router.post('/fix-balance', requireAdmin, async (req, res, next) => {
-  try {
-    const { userId, paidBalance, freeBalance } = req.body || {};
-    if (!userId) return res.status(400).json({ ok: false, msg: '缺少 userId' });
-    const sets = [];
-    const vals = [];
-    let i = 1;
-    if (paidBalance !== undefined) { sets.push(`paid_balance=$${i++}`); vals.push(Number(paidBalance)); }
-    if (freeBalance !== undefined) { sets.push(`free_balance=$${i++}`); vals.push(Number(freeBalance)); }
-    if (!sets.length) return res.status(400).json({ ok: false, msg: '需指定 paidBalance 或 freeBalance' });
-    vals.push(userId);
-    await pool.query(`UPDATE users SET ${sets.join(',')} WHERE id=$${i}`, vals);
-    res.json({ ok: true, msg: '余额已修正' });
-  } catch (e) { next(e); }
-});
-
-// 重置单个商品的销售记录
-router.post('/reset-product/:productId', requireAdmin, async (req, res, next) => {
-  try {
-    const { productId } = req.params;
-    await withTransaction(async (client) => {
-      // 获取该商品的所有订单，退回金币
-      const { rows: orders } = await client.query(
-        `SELECT user_id, free_coins, paid_coins FROM orders WHERE product_id=$1`, [productId]);
-
-      for (const o of orders) {
-        if (o.free_coins > 0) {
-          await client.query(
-            `UPDATE users SET free_balance = free_balance + $1 WHERE id = $2`,
-            [o.free_coins, o.user_id]);
-        }
-        if (o.paid_coins > 0) {
-          await client.query(
-            `UPDATE users SET paid_balance = paid_balance + $1 WHERE id = $2`,
-            [o.paid_coins, o.user_id]);
-        }
-      }
-
-      // 删除该商品的订单
-      await client.query(`DELETE FROM orders WHERE product_id=$1`, [productId]);
-      // 删除该商品的开奖记录
-      await client.query(`DELETE FROM draws WHERE product_id=$1`, [productId]);
-      // 重置商品状态和免费金币使用记录
-      await client.query(
-        `UPDATE products SET free_used=0, status='active' WHERE id=$1`, [productId]);
-      // 清除该商品相关的消费流水
-      await client.query(
-        `DELETE FROM wallet_tx WHERE kind='spend' AND ref LIKE '%' || (SELECT name FROM products WHERE id=$1) || '%'`,
-        [productId]);
-    });
-    res.json({ ok: true, msg: '商品销售记录已重置，金币已退回' });
-  } catch (e) { next(e); }
-});
-
-// 手动修正商品 free_used
-router.post('/fix-product-free', requireAdmin, async (req, res, next) => {
-  try {
-    const { productId, freeUsed } = req.body || {};
-    if (!productId) return res.status(400).json({ ok: false, msg: '缺少 productId' });
-    if (freeUsed === undefined) return res.status(400).json({ ok: false, msg: '缺少 freeUsed' });
-    await pool.query(`UPDATE products SET free_used=$1 WHERE id=$2`, [Number(freeUsed), productId]);
-    res.json({ ok: true, msg: 'free_used 已修正' });
-  } catch (e) { next(e); }
+router.post('/fix-product-free',requireAdmin,async(req,res,next)=>{
+ try {
+  const {productId,freeUsed,reason}=req.body||{};const amount=integer(freeUsed,'已用免费份数');
+  if(typeof reason!=='string'||reason.trim().length<3)throw bad('请填写调整原因');
+  await withTransaction(async c=>{
+    const {rows}=await c.query('SELECT * FROM products WHERE id=$1 FOR UPDATE',[productId]);
+    if(!rows.length)throw bad('商品不存在',404);
+    const actual=Number((await c.query('SELECT COUNT(*) AS n FROM orders WHERE product_id=$1 AND free_coins>0',[productId])).rows[0].n);
+    if(amount!==actual)throw bad('修正值必须与订单实际免费参与份数一致');
+    await c.query('UPDATE products SET free_used=$1 WHERE id=$2',[amount,productId]);
+    await audit(c,req.user.id,'product-free',productId,{before:rows[0].free_used,after:amount,reason});
+  });res.json({ok:true,msg:'已按订单核对修正'});
+ }catch(e){next(e)}
 });
 
 // ---- 用户管理 ----
 router.get('/users', requireAdmin, async (req, res, next) => {
   try {
-    const { rows } = await pool.query(
-      `SELECT id,account,name,role,paid_balance,created_at FROM users ORDER BY created_at DESC LIMIT 100`);
-    res.json({ ok: true, users: rows });
+    const page=Math.max(1,parseInt(req.query.page)||1), size=30;
+    const search=String(req.query.q||'').slice(0,100);
+    const filter="WHERE ($1='' OR strpos(lower(account),lower($1))>0 OR strpos(lower(name),lower($1))>0)";
+    const total=Number((await pool.query(`SELECT COUNT(*) AS n FROM users ${filter}`,[search])).rows[0].n);
+    const {rows}=await pool.query(`SELECT id,account,name,role,paid_balance,free_balance,disabled,created_at FROM users ${filter} ORDER BY created_at DESC,id LIMIT $2 OFFSET $3`,[search,size,(page-1)*size]);
+    res.json({ok:true,users:rows,total,page,pages:Math.max(1,Math.ceil(total/size))});
   } catch (e) { next(e); }
 });
 
@@ -406,10 +311,15 @@ router.post('/users/:id/rename', requireAdmin, async (req, res, next) => {
 router.post('/users/:id/reset-pwd', requireAdmin, async (req, res, next) => {
   try {
     const password = (req.body?.password || '').trim();
-    if (!password || password.length < 4) return res.status(400).json({ ok: false, msg: '密码至少4位' });
+    if (password.length < 8 || Buffer.byteLength(password)>72) throw bad('新密码至少8位，最多72字节');
     const { default: bcrypt } = await import('bcryptjs');
-    const hash = bcrypt.hashSync(password, 10);
-    await pool.query(`UPDATE users SET pass_hash=$1 WHERE id=$2`, [hash, req.params.id]);
+    const hash = await bcrypt.hash(password, 10);
+    await withTransaction(async c=>{
+      const changed=await c.query('UPDATE users SET pass_hash=$1 WHERE id=$2 RETURNING id',[hash,req.params.id]);
+      if(!changed.rows.length)throw bad('用户不存在',404);
+      await c.query('DELETE FROM sessions WHERE user_id=$1',[req.params.id]);
+      await audit(c,req.user.id,'reset-password',req.params.id,{});
+    });
     res.json({ ok: true, msg: '密码已重置' });
   } catch (e) { next(e); }
 });
@@ -417,10 +327,15 @@ router.post('/users/:id/reset-pwd', requireAdmin, async (req, res, next) => {
 router.delete('/users/:id', requireAdmin, async (req, res, next) => {
   try {
     const uid = req.params.id;
-    const { rows } = await pool.query(`SELECT role FROM users WHERE id=$1`, [uid]);
-    if (rows[0]?.role === 'admin') return res.status(400).json({ ok: false, msg: '不能删除管理员' });
-    await pool.query(`DELETE FROM users WHERE id=$1`, [uid]);
-    res.json({ ok: true, msg: '用户已删除' });
+    await withTransaction(async c=>{
+      const {rows}=await c.query('SELECT role FROM users WHERE id=$1 FOR UPDATE',[uid]);
+      if(!rows.length)throw bad('用户不存在',404);
+      if(rows[0].role==='admin')throw bad('不能停用管理员');
+      await c.query('UPDATE users SET disabled=true WHERE id=$1',[uid]);
+      await c.query('DELETE FROM sessions WHERE user_id=$1',[uid]);
+      await audit(c,req.user.id,'disable-user',uid,{});
+    });
+    res.json({ok:true,msg:'用户已停用，交易记录保留'});
   } catch (e) { next(e); }
 });
 
@@ -447,11 +362,19 @@ router.post('/wins/:productId/ship', requireAdmin, async (req, res, next) => {
     const { status, note } = req.body || {};
     const validStatus = ['pending', 'shipped', 'done'];
     if (!validStatus.includes(status)) return res.status(400).json({ ok: false, msg: '无效状态' });
-    await pool.query(
-      `UPDATE draws SET ship_status=$1, ship_note=$2 WHERE product_id=$3`,
-      [status, note || null, productId]);
+    const changed = await pool.query(
+      `UPDATE draws SET ship_status=$1, ship_note=CASE WHEN $4 THEN $2 ELSE ship_note END
+       WHERE product_id=$3 AND winner_user_id IS NOT NULL AND ($1='pending' OR win_address IS NOT NULL) RETURNING product_id`,
+      [status, note == null ? null : String(note).slice(0,1000), productId, note !== undefined]);
+    if(!changed.rows.length)throw bad('中奖订单不存在或尚未填写收货地址');
     res.json({ ok: true, msg: '已更新' });
   } catch (e) { next(e); }
 });
 
 export default router;
+
+router.post('/users/:id/enable',requireAdmin,async(req,res,next)=>{try{await withTransaction(async c=>{const r=await c.query('UPDATE users SET disabled=false WHERE id=$1 RETURNING id',[req.params.id]);if(!r.rows.length)throw bad('用户不存在',404);await audit(c,req.user.id,'enable-user',req.params.id,{})});res.json({ok:true,msg:'用户已启用'})}catch(e){next(e)}});
+router.get('/audit',requireAdmin,async(req,res,next)=>{try{const page=Math.max(1,parseInt(req.query.page)||1);const {rows}=await pool.query('SELECT id,actor_id,action,target_id,created_at FROM admin_audit ORDER BY created_at DESC LIMIT 50 OFFSET $1',[(page-1)*50]);res.json({ok:true,records:rows,page})}catch(e){next(e)}});
+router.get('/users/:id/ledger',requireAdmin,async(req,res,next)=>{try{const page=Math.max(1,parseInt(req.query.page)||1);const {rows}=await pool.query('SELECT * FROM wallet_tx WHERE user_id=$1 ORDER BY created_at DESC LIMIT 50 OFFSET $2',[req.params.id,(page-1)*50]);res.json({ok:true,records:rows,page})}catch(e){next(e)}});
+
+router.get('/system-status',requireAdmin,async(req,res,next)=>{try{await pool.query('SELECT 1');res.json({ok:true,database:true,payments:paymentMethods(),mail:!!(process.env.RESEND_API_KEY||process.env.SMTP_HOST),sms:false})}catch(e){next(e)}});
