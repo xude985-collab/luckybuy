@@ -25,7 +25,7 @@
     let lastErr;
     for (const g of GATEWAYS) {
       try {
-        const r = await fetch(`${g}/${CHAIN_HASH}/public/${path}`, { cache: 'no-store' });
+        const r = await fetch(`${g}/${CHAIN_HASH}/public/${path}`, { cache: 'no-store',signal:AbortSignal.timeout(8000) });
         if (r.ok) return await r.json();
         lastErr = new Error('HTTP ' + r.status);
       } catch (e) { lastErr = e; }
@@ -48,10 +48,12 @@
   async function getRound(round) {
     const d = await fetchJSON(String(round));
     // d = { round, randomness(hex), signature(hex), previous_signature? }
-    return d;
+    if(Number(d.round)!==Number(round))throw new Error('随机轮次不一致');
+    const {verifyProofData}=await import('./proof.js');
+    return verifyProofData(d);
   }
 
-  async function getLatest() { return fetchJSON('latest'); }
+  async function getLatest() { const data=await fetchJSON('latest');const {verifyProofData}=await import('./proof.js');return verifyProofData(data); }
 
   /* 开奖公式（可复现）：
    *   winNumber = ( int(HMAC-SHA256(key=randomness, msg=period)) mod totalShares ) + 1

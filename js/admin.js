@@ -573,6 +573,7 @@ async function showLedger(id,page=1){
 async function loadSystemStatus(){
  const box=document.getElementById('system-status');if(!box)return;
  const r=await adminFetch('/api/admin/system-status');const d=await r.json();if(!d.ok){box.textContent='服务状态暂时无法读取';return;}
+ if(d.databaseExpiresAt){document.getElementById('database-expiry').value=d.databaseExpiresAt;const notice=document.getElementById('database-expiry-notice');notice.textContent=`数据库到期日：${d.databaseExpiresAt}，剩余约 ${Math.max(0,d.daysRemaining)} 天。请在到期前续费或迁移；本机每日备份保存在项目的“本地恢复资料”。`;notice.style.color=d.daysRemaining<=7?'#b71c1c':'#663c00';}
  box.textContent=`数据库：${d.database?'正常':'不可用'}；信用卡支付：${d.payments?.stripe?'已配置':'未开通'}；PayPal：${d.payments?.paypal?'已配置':'未开通'}；邮件：${d.mail?'已配置，需实际收件验收':'未配置'}；短信注册：未开通。签到按北京时间零点刷新。`;
 }
 
@@ -595,3 +596,5 @@ async function loadAudit(page=1){
  const r=await adminFetch('/api/admin/audit?page='+page);const d=await r.json();if(!d.ok)return;
  const box=document.getElementById('audit-list');box.innerHTML=d.records.map(a=>`<p>${esc(new Date(Number(a.created_at)).toLocaleString())} · ${esc(a.action)} · ${esc(a.target_id||'系统配置')}</p>`).join('')||'暂无操作记录';
 }
+
+async function saveDatabaseExpiry(){const r=await Store.saveConfig({databaseExpiresAt:document.getElementById('database-expiry').value});toast(r.msg);if(r.ok)loadSystemStatus();}

@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>后台管理 · Lucky Buy</title>
-  <link rel="stylesheet" href="css/style.css?v=20261111full">
-  <link rel="stylesheet" href="css/admin.css?v=20261111full">
+  <link rel="stylesheet" href="css/style.css?v=20261111full2">
+  <link rel="stylesheet" href="css/admin.css?v=20261111full2">
 
   <style>
     /* 默认状态：已登录（假设用户已登录，避免闪烁） */
@@ -78,7 +78,7 @@
             </div>
           </div>
           <div class="two-col">
-            <div><label>免费金币额度（商品总额）</label><input id="f-free" type="number" min="0" step="1" placeholder="0" value="0"></div>
+            <div><label>免费参与份数（0不限，每人限1份）</label><input id="f-free" type="number" min="0" step="1" placeholder="0" value="0"></div>
             <div><label>期号</label><input id="f-period" placeholder="第 001 期"></div>
           </div>
           <label>图标（emoji）</label>
@@ -127,7 +127,7 @@
     </section>
 
     <!-- Tab: 系统设置 -->
-    <section id="tab-settings" class="tab-panel"><div class="panel"><h3>服务状态</h3><p id="system-status">读取中…</p><p>数据库到期前请完成续费或迁移；本机每日备份保存在项目的“本地恢复资料”。</p></div><div class="panel"><h3>管理员操作记录</h3><div id="audit-list">读取中…</div></div>
+    <section id="tab-settings" class="tab-panel"><div class="panel"><h3>服务状态</h3><p id="system-status">读取中…</p><p id="database-expiry-notice">数据库到期前请完成续费或迁移；本机每日备份保存在项目的“本地恢复资料”。</p><label>数据库到期日期 <input type="date" id="database-expiry"></label> <button class="btn ghost" onclick="saveDatabaseExpiry()">保存提醒日期</button></div><div class="panel"><h3>管理员操作记录</h3><div id="audit-list">读取中…</div></div>
       <div class="settings-section">
         <h3>商品类别</h3>
         <div id="cat-list" class="cat-list"></div>
@@ -179,8 +179,8 @@
       </div>
     </section>
   </main>
-  <script src="js/common.js?v=20261111full"></script>
-  <script src="js/store.js?v=20261111full"></script>
-  <script src="js/admin.js?v=20261111full"></script>
+  <script src="js/common.js?v=20261111full2"></script>
+  <script src="js/store.js?v=20261111full2"></script>
+  <script src="js/admin.js?v=20261111full2"></script>
 </body>
 </html>

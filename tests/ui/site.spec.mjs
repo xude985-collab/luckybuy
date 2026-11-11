@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import fs from 'node:fs';
 
 const user = { id: 'u_test', name: '测试用户', account: 'test@example.com', role: 'admin', paid_balance: '100', free_balance: '10', invite_code: 'ABC123' };
 const product = { id: 'p_test', sku: 'CL0001', name: '多设备测试商品', category: 'cleaning', pricePerShare: 1, totalShares: 100, sold: 10, status: 'active', gallery: [], emoji: '🎁' };
@@ -159,4 +160,15 @@ test('购买超时后的重试复用请求编号',async({page})=>{
   const bodies=[];await page.route('**/api/wallet/buy',route=>{bodies.push(route.request().postDataJSON());return route.fulfill({status:503,json:{ok:false,msg:'连接中断'}})});
   await page.evaluate(()=>Store.buyShares('p_test',1,false));await page.evaluate(()=>Store.buyShares('p_test',1,false));
   expect(bodies).toHaveLength(2);expect(bodies[0].requestKey).toBe(bodies[1].requestKey);
+});
+test('浏览器独立验证真实drand签名并拒绝篡改',async({page})=>{
+  await mockAPI(page);await page.goto('/index.html');
+  const fixture=JSON.parse(fs.readFileSync(new URL('../fixtures/drand-quicknet-42.json',import.meta.url)));
+  const result=await page.evaluate(async data=>{
+    const {verifyProofData}=await import('/js/proof.js');
+    const valid=await verifyProofData(data);let rejected=false;
+    try{await verifyProofData({...data,signature:'00'.repeat(48)})}catch{rejected=true}
+    return {round:valid.round,rejected};
+  },fixture);
+  expect(result).toEqual({round:42,rejected:true});
 });

@@ -1,5 +1,7 @@
 ﻿$ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
+[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
+$OutputEncoding = [Console]::OutputEncoding
 $backupLog = Join-Path $projectRoot '本地恢复资料\数据库备份\daily-backup.log'
 New-Item -ItemType Directory -Force -Path (Split-Path -Parent $backupLog) | Out-Null
 Push-Location $projectRoot

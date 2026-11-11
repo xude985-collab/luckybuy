@@ -68,6 +68,7 @@ router.post('/config', requireAdmin, async (req, res, next) => {
       const pkgs=req.body.recharge_packages.map(p=>{const amount=integer(p.amount,'套餐金额',1,5000),bonus=integer(p.bonus??0,'赠送金币',0,100000);if(seen.has(amount))throw bad('套餐金额不能重复');seen.add(amount);return {amount,bonus}});
       entries.push(['recharge_packages',JSON.stringify(pkgs)]);
     }
+    if(req.body.databaseExpiresAt!=null){const date=String(req.body.databaseExpiresAt);if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number.isNaN(Date.parse(date)))throw bad('请输入有效的数据库到期日期');entries.push(['databaseExpiresAt',date]);}
     if(req.body.doba_cookie!=null)entries.push(['doba_cookie',String(req.body.doba_cookie).trim()]);
     await withTransaction(async c=>{
       for(const [k,v] of entries)await c.query('INSERT INTO config (k,v) VALUES ($1,$2) ON CONFLICT(k) DO UPDATE SET v=EXCLUDED.v',[k,v]);
@@ -377,4 +378,4 @@ router.post('/users/:id/enable',requireAdmin,async(req,res,next)=>{try{await wit
 router.get('/audit',requireAdmin,async(req,res,next)=>{try{const page=Math.max(1,parseInt(req.query.page)||1);const {rows}=await pool.query('SELECT id,actor_id,action,target_id,created_at FROM admin_audit ORDER BY created_at DESC LIMIT 50 OFFSET $1',[(page-1)*50]);res.json({ok:true,records:rows,page})}catch(e){next(e)}});
 router.get('/users/:id/ledger',requireAdmin,async(req,res,next)=>{try{const page=Math.max(1,parseInt(req.query.page)||1);const {rows}=await pool.query('SELECT * FROM wallet_tx WHERE user_id=$1 ORDER BY created_at DESC LIMIT 50 OFFSET $2',[req.params.id,(page-1)*50]);res.json({ok:true,records:rows,page})}catch(e){next(e)}});
 
-router.get('/system-status',requireAdmin,async(req,res,next)=>{try{await pool.query('SELECT 1');res.json({ok:true,database:true,payments:paymentMethods(),mail:!!(process.env.RESEND_API_KEY||process.env.SMTP_HOST),sms:false})}catch(e){next(e)}});
+router.get('/system-status',requireAdmin,async(req,res,next)=>{try{await pool.query('SELECT 1');const config=await getConfig();res.json({ok:true,database:true,databaseExpiresAt:config.databaseExpiresAt||null,daysRemaining:config.databaseExpiresAt?Math.ceil((Date.parse(config.databaseExpiresAt)-Date.now())/86400000):null,payments:paymentMethods(),mail:!!(process.env.RESEND_API_KEY||process.env.SMTP_HOST),sms:false})}catch(e){next(e)}});
