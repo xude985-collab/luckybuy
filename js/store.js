@@ -31,7 +31,13 @@ const Store = (() => {
     let resp, data;
     try {
       resp = await fetch(API + path, opt);
-      data = await resp.json();
+      const text = await resp.text();
+      try { data = JSON.parse(text); } catch (_) {
+        return { ok: false, msg: resp.status === 429
+          ? '服务请求受限，请稍等一分钟后重试'
+          : resp.status >= 500 ? '服务暂时不可用，请稍后重试'
+          : '服务器响应异常，请稍后重试' };
+      }
       if (!data || typeof data !== 'object' || Array.isArray(data)) {
         return { ok: false, msg: '服务器响应异常，请稍后重试' };
       }

@@ -32,7 +32,7 @@ function render() {
       <input id="invite" placeholder="邀请码（选填）" maxlength="6"
              value="${refCode.replace(/[^A-Za-z0-9]/g, '').toUpperCase()}"
              style="text-transform:uppercase">` : ''}
-      <button class="btn block" onclick="submit()">
+      <button id="submitBtn" class="btn block" onclick="submit()">
         ${isReg ? '注册并登录' : '登录'}</button>
       <p class="auth-hint">${isReg
         ? '注册即同意夺宝规则。'
@@ -64,7 +64,15 @@ async function sendCode() {
   }, 1000);
 }
 
+let submitting = false;
 async function submit() {
+  if (submitting) return;
+  submitting = true;
+  const button = document.getElementById('submitBtn');
+  const label = button.textContent;
+  button.disabled = true;
+  button.textContent = '正在连接，请稍候…';
+  try {
   const account = document.getElementById('account').value;
   const password = document.getElementById('password').value;
   let r;
@@ -78,6 +86,11 @@ async function submit() {
   }
   toast(r.msg);
   if (r.ok) setTimeout(() => location.href = back, 500);
+  } finally {
+    submitting = false;
+    button.disabled = false;
+    button.textContent = label;
+  }
 }
 
 onReady(() => { renderTopbar('home'); render(); });
