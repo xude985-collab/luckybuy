@@ -51,6 +51,8 @@ async function boot() {
 await boot();
 
 const app = express();
+// Render terminates HTTPS and forwards requests through its edge proxy.
+app.set('trust proxy', 1);
 // Stripe webhook 需原始 body 验签，必须在 express.json 之前
 app.post('/api/wallet/stripe-webhook', express.raw({ type: 'application/json' }), stripeWebhook);
 
