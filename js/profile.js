@@ -30,7 +30,7 @@ async function loadProfile() {
     else toast(r.msg || '修改失败');
   };
 
-  document.getElementById('p-coins').textContent = (u.paidBalance || 0) + (u.freeBalance || 0);
+  document.getElementById('p-coins').textContent = Store.totalCoins(u);
 
   // 幸运记录
   try {
@@ -44,7 +44,7 @@ async function loadProfile() {
       el.innerHTML = wins.map(w => {
         const t = new Date(Number(w.drawn_at)).toLocaleDateString('zh-CN');
         return `<div class="win-item">
-          <span class="emoji">${w.emoji || '🎁'}</span>
+          <span class="emoji">${escapeHtml(w.emoji || '🎁')}</span>
           <div class="info"><div class="name">${esc(w.product_name)}</div><div class="date">${t}</div></div>
         </div>`;
       }).join('');
@@ -60,11 +60,7 @@ async function loadProfile() {
   } catch (e) { console.error(e); }
 
   // 参与次数
-  try {
-    const resp = await fetch('/api/wallet/orders', { credentials: 'same-origin' });
-    const data = await resp.json();
-    document.getElementById('p-orders').textContent = data.ok ? data.orders.length : 0;
-  } catch (e) {}
+  document.getElementById('p-orders').textContent = Store.myOrders().length;
 
   // 我的晒单
   loadMyShowcases();
@@ -76,13 +72,13 @@ async function loadMyShowcases() {
   if (!list.length) { el.innerHTML = '<div class="empty">暂无晒单</div>'; return; }
   el.innerHTML = list.map(s => {
     const media = s.media_type === 'video'
-      ? `<video src="${s.media_url}" style="width:80px;height:60px;object-fit:cover;border-radius:8px"></video>`
-      : `<img src="${s.media_url}" style="width:80px;height:60px;object-fit:cover;border-radius:8px">`;
+      ? `<video src="${escapeHtml(s.media_url)}" style="width:80px;height:60px;object-fit:cover;border-radius:8px"></video>`
+      : `<img src="${escapeHtml(s.media_url)}" style="width:80px;height:60px;object-fit:cover;border-radius:8px">`;
     const statusMap = { pending: '审核中', approved: '已通过', rejected: '已拒绝' };
     return `<div class="sc-item">
       ${media}
       <div style="flex:1">
-        <div style="font-weight:600">${s.emoji || '🎁'} ${esc(s.product_name || '')}</div>
+        <div style="font-weight:600">${escapeHtml(s.emoji || '🎁')} ${esc(s.product_name || '')}</div>
         <div style="font-size:12px;color:#888;margin-top:4px">${esc(s.caption || '')}</div>
       </div>
       <span class="sc-status ${s.status}">${statusMap[s.status] || s.status}</span>
@@ -107,7 +103,7 @@ async function submitSC() {
   if (!fileInput.files.length) { toast('请选择图片或视频文件'); return; }
 
   const file = fileInput.files[0];
-  if (file.size > 50 * 1024 * 1024) { toast('文件不能超过50MB'); return; }
+  if (file.size > 5 * 1024 * 1024) { toast('文件不能超过5MB'); return; }
 
   const fd = new FormData();
   fd.append('media', file);
@@ -169,6 +165,7 @@ async function doCheckin() {
     document.getElementById('checkin-info').textContent = '明天再来，连续签到奖励更多哦！';
     await Store.refreshMe();
     renderTopbar('profile');
+    document.getElementById('p-coins').textContent = Store.totalCoins();
   } else {
     btn.disabled = false; btn.textContent = '签到领币';
   }

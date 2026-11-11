@@ -19,8 +19,11 @@ const Store = (() => {
   };
 
   // ---- HTTP ----
+  const pendingGets = new Map();
   async function http(method, path, body) {
-    const opt = { method, credentials: 'same-origin', headers: {} };
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), method === 'GET' ? 15000 : 60000);
+    const opt = { method, credentials: 'same-origin', headers: {}, signal: controller.signal };
     if (body !== undefined) {
       opt.headers['Content-Type'] = 'application/json';
       opt.body = JSON.stringify(body);
@@ -29,13 +32,24 @@ const Store = (() => {
     try {
       resp = await fetch(API + path, opt);
       data = await resp.json();
+      if (!data || typeof data !== 'object' || Array.isArray(data)) {
+        return { ok: false, msg: '服务器响应异常，请稍后重试' };
+      }
     } catch (e) {
-      return { ok: false, msg: '网络异常，请稍后重试' };
+      return { ok: false, msg: controller.signal.aborted
+        ? '请求超时，请刷新确认操作结果' : '网络异常，请稍后重试' };
+    } finally {
+      clearTimeout(timer);
     }
-    if (!resp.ok && data && data.ok === undefined) data.ok = false;
+    if (!resp.ok) data.ok = false;
     return data;
   }
-  const get = (p) => http('GET', p);
+  const get = (p) => {
+    if (!pendingGets.has(p)) {
+      pendingGets.set(p, http('GET', p).finally(() => pendingGets.delete(p)));
+    }
+    return pendingGets.get(p);
+  };
   const post = (p, b) => http('POST', p, b);
   const put = (p, b) => http('PUT', p, b);
   const del = (p) => http('DELETE', p);
@@ -119,6 +133,7 @@ const Store = (() => {
   // ---- 缓存刷新器 ----
   async function refreshMe() {
     const r = await get('/auth/me');
+    if (!r.ok) return cache.user;
     cache.user = r.user ? mapUser(r.user) : null;
     if (cache.user) await refreshWallet();
     return cache.user;
@@ -131,8 +146,8 @@ const Store = (() => {
       role: u.role,
       isAdmin: u.role === 'admin',
       inviteCode: u.invite_code,
-      paidCoins: u.paid_balance || 0,
-      freeCoins: u.free_balance || 0,
+      paidCoins: Number(u.paid_balance) || 0,
+      freeCoins: Number(u.free_balance) || 0,
     };
   }
   async function refreshWallet() {
@@ -146,11 +161,13 @@ const Store = (() => {
   }
   async function refreshProducts() {
     const r = await get('/shop/products');
+    if (!r.ok || !Array.isArray(r.products)) return;
     cache.products = (r.products || []).map(p => normProduct(p));
     indexProducts();
   }
   async function refreshCategories() {
     const r = await get('/shop/categories');
+    if (!r.ok || !Array.isArray(r.categories)) return;
     cache.categories = (r.categories || []).map(c => ({
       key: c.key, name: c.name, prefix: c.prefix, icon: c.icon || '🏷️', sort: c.sort ?? 0,
     }));
@@ -158,10 +175,12 @@ const Store = (() => {
   async function refreshOrders() {
     if (!cache.user) { cache.orders = []; return; }
     const r = await get('/wallet/orders');
+    if (!r.ok || !Array.isArray(r.orders)) return;
     cache.orders = (r.orders || []).map(normOrder);
   }
   async function refreshWinners() {
     const r = await get('/shop/winners');
+    if (!r.ok || !Array.isArray(r.winners)) return;
     cache.winners = (r.winners || []).map(w => ({
       productName: w.name,
       winnerName: w.winner_name || '神秘用户',
@@ -172,6 +191,7 @@ const Store = (() => {
   }
   async function refreshRecentBuys() {
     const r = await get('/shop/recent-buys');
+    if (!r.ok || !Array.isArray(r.buys)) return;
     cache.recentBuys = (r.buys || []).map(b => ({
       buyerName: b.buyer_name || '用户',
       productName: b.product_name,
@@ -248,6 +268,7 @@ const Store = (() => {
     const r = await get('/wallet/packages');
     return r.ok ? r.packages : [];
   }
+  const getRechargeStatus = id => get('/wallet/recharges/' + encodeURIComponent(id));
 
   // ---- 商品/类别 ----
   function listProducts() { return cache.products; }
@@ -422,12 +443,14 @@ const Store = (() => {
   }
   // 续开：让后端把到点的 drawing 商品结算（后端 /wallet/draw）
   async function resumeDraws() {
-    const pending = cache.products.filter(p => p.status === 'drawing');
+    if (!cache.user) return;
+    const pending = cache.products.filter(p => p.status === 'drawing' &&
+      (!p.drawTime || p.drawTime <= Date.now()));
     if (!pending.length) return;
     let changed = false;
     for (const p of pending) {
       const r = await post('/wallet/draw/' + p.id, {});
-      if (r && r.ok) changed = true;
+      if (r && r.ok && r.done) changed = true;
     }
     if (changed) { await refreshProducts(); await refreshWinners(); }
   }
@@ -443,10 +466,8 @@ const Store = (() => {
         refreshWinners(),
         refreshRecentBuys(),
         refreshConfig(),
+        refreshMe().then(() => Promise.all([refreshOrders(), refreshCheckinStatus()])),
       ]);
-      await refreshMe().catch(() => {}); // 登录态接口失败不阻塞首屏
-      await refreshOrders().catch(() => {});
-      await refreshCheckinStatus().catch(() => {});
     })();
     return _ready;
   }
@@ -456,7 +477,7 @@ const Store = (() => {
     get ready() { return _ready || init(); },
     // 会话/用户
     currentUser, isLoggedIn, totalCoins, canCheckin, refreshMe,
-    sendCode, register, login, logout, updateName, recharge, checkin, getPackages,
+    sendCode, register, login, logout, updateName, recharge, checkin, getPackages, getRechargeStatus,
     // 商品/类别
     listProducts, getProduct, listCategories, categoryOf,
     productFreeUsed, winnersFeed, recentBuys, getConfig, myOrders,

@@ -40,6 +40,10 @@ router.post('/send-code', async (req, res, next) => {
     const r = await deliverCode(account, type, code);
 
     if (!r.delivered) {
+      if (process.env.NODE_ENV === 'production') {
+        await pool.query(`DELETE FROM email_codes WHERE account=$1 AND code=$2`, [account, code]);
+        return res.status(503).json({ ok: false, msg: '验证码发送失败，请稍后重试' });
+      }
       await pool.query(`UPDATE email_codes SET sent_at=0 WHERE account=$1`, [account]);
     }
 
@@ -88,12 +92,13 @@ router.post('/register', async (req, res, next) => {
     do { myInvite = genInvite(); }
     while ((await pool.query(`SELECT 1 FROM users WHERE invite_code=$1`, [myInvite])).rows.length);
 
+    const passwordHash = await bcrypt.hash(password, 10);
     await withTransaction(async (client) => {
       await client.query(
         `INSERT INTO users (id,account,account_type,name,pass_hash,role,invite_code,invited_by,paid_balance,created_at)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
         [id, account, type, name || account.split('@')[0],
-         bcrypt.hashSync(password, 10), 'user', myInvite, invitedBy, 0, now()]);
+         passwordHash, 'user', myInvite, invitedBy, 0, now()]);
 
       if (invitedBy) {
         if (cfg.grantInvitee > 0) await walletTx(id, 'grant', cfg.grantInvitee, '受邀奖励', client);
@@ -118,7 +123,7 @@ router.post('/login', async (req, res, next) => {
     const password = String(req.body.password || '');
     const { rows } = await pool.query(`SELECT * FROM users WHERE account=$1`, [account]);
     const u = rows[0];
-    if (!u || !bcrypt.compareSync(password, u.pass_hash)) {
+    if (!u || !(await bcrypt.compare(password, u.pass_hash))) {
       return res.json({ ok: false, msg: '账号或密码错误' });
     }
     const token = await createSession(u.id);
@@ -128,12 +133,14 @@ router.post('/login', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-router.post('/logout', async (req, res) => {
+router.post('/logout', async (req, res, next) => {
+  try {
   const token = req.cookies?.lb_token;
   if (token) await pool.query(`DELETE FROM sessions WHERE token=$1`, [token]);
   res.clearCookie('lb_token');
   res.clearCookie('lb_logged_in');
   res.json({ ok: true });
+  } catch (e) { next(e); }
 });
 
 router.get('/me', async (req, res, next) => {

@@ -9,8 +9,8 @@ onReady(async () => {
   if (!s) { wrap.innerHTML = '<div class="empty">晒单不存在或已被删除</div>'; return; }
 
   const media = s.media_type === 'video'
-    ? `<video src="${s.media_url}" controls playsinline></video>`
-    : `<img src="${s.media_url}" alt="">`;
+    ? `<video src="${escapeHtml(s.media_url)}" controls playsinline></video>`
+    : `<img src="${escapeHtml(s.media_url)}" alt="">`;
 
   const time = new Date(Number(s.created_at)).toLocaleString('zh-CN');
   const likedCls = s.liked ? ' liked' : '';
@@ -19,7 +19,7 @@ onReady(async () => {
     <div class="sc-media">${media}</div>
     <div class="sc-info">
       <div class="sc-product">
-        <span class="emoji">${s.emoji || '🎁'}</span>
+        <span class="emoji">${escapeHtml(s.emoji || '🎁')}</span>
         <span class="name">${esc(s.product_name || '')}</span>
       </div>
       ${s.caption ? `<div class="sc-caption">${esc(s.caption)}</div>` : ''}

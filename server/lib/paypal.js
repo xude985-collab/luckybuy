@@ -40,6 +40,7 @@ export async function createOrder(amountUSD, rechargeId, returnUrl, cancelUrl) {
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
+      'PayPal-Request-Id': `create-${rechargeId}`,
     },
     body: JSON.stringify({
       intent: 'CAPTURE',
@@ -72,6 +73,8 @@ export async function captureOrder(orderId) {
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
+      'PayPal-Request-Id': `capture-${orderId}`,
+      'Prefer': 'return=representation',
     },
     signal: AbortSignal.timeout(15000),
   });

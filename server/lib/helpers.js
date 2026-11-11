@@ -40,16 +40,17 @@ export async function createSession(userId, client) {
 
 export async function userFromToken(token) {
   if (!token) return null;
-  const { rows: sr } = await pool.query(`SELECT * FROM sessions WHERE token=$1`, [token]);
-  const s = sr[0];
-  if (!s || s.expires_at < now()) return null;
-  const { rows: ur } = await pool.query(`SELECT * FROM users WHERE id=$1`, [s.user_id]);
-  return ur[0] || null;
+  const { rows } = await pool.query(
+    `SELECT u.* FROM sessions s JOIN users u ON u.id=s.user_id
+     WHERE s.token=$1 AND s.expires_at>$2`, [token, now()]);
+  return rows[0] || null;
 }
 
 export async function attachUser(req, res, next) {
-  req.user = await userFromToken(req.cookies?.lb_token);
-  next();
+  try {
+    req.user = await userFromToken(req.cookies?.lb_token);
+    next();
+  } catch (e) { next(e); }
 }
 
 export function requireAuth(req, res, next) {
@@ -79,23 +80,16 @@ export async function totalCoins(userId, productId, client) {
 }
 
 export async function walletTx(userId, kind, amount, ref, client) {
-  const q = client || pool;
-  if (kind === 'grant') {
-    const { rows } = await q.query(`SELECT free_balance FROM users WHERE id=$1`, [userId]);
-    const balance = (rows[0] ? Number(rows[0].free_balance) : 0) + amount;
-    if (balance < 0) throw Object.assign(new Error('免费金币不足'), { status: 400 });
-    await q.query(`UPDATE users SET free_balance=$1 WHERE id=$2`, [balance, userId]);
-    await q.query(
-      `INSERT INTO wallet_tx (id,user_id,kind,amount,balance,ref,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-      [genId('tx_'), userId, kind, amount, balance, ref || null, now()]);
-    return balance;
-  }
-  // recharge / spend — operate on paid_balance
-  const { rows } = await q.query(`SELECT paid_balance FROM users WHERE id=$1`, [userId]);
-  const balance = (rows[0] ? Number(rows[0].paid_balance) : 0) + amount;
-  if (balance < 0) throw Object.assign(new Error('余额不足'), { status: 400 });
-  await q.query(`UPDATE users SET paid_balance=$1 WHERE id=$2`, [balance, userId]);
-  await q.query(
+  if (!Number.isSafeInteger(amount)) throw Object.assign(new Error('金币数量无效'), { status: 400 });
+  if (!client) return withTransaction(c => walletTx(userId, kind, amount, ref, c));
+  const column = kind === 'grant' ? 'free_balance' : 'paid_balance';
+  // 原子加减并检查余额；余额与流水必须在同一事务提交。
+  const { rows } = await client.query(
+    `UPDATE users SET ${column}=${column}+$1
+     WHERE id=$2 AND ${column}+$1>=0 RETURNING ${column} AS balance`, [amount, userId]);
+  if (!rows.length) throw Object.assign(new Error(kind === 'grant' ? '免费金币不足或用户不存在' : '余额不足或用户不存在'), { status: 400 });
+  const balance = Number(rows[0].balance);
+  await client.query(
     `INSERT INTO wallet_tx (id,user_id,kind,amount,balance,ref,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
     [genId('tx_'), userId, kind, amount, balance, ref || null, now()]);
   return balance;

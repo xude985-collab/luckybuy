@@ -66,7 +66,7 @@ function renderProductList(list) {
     const state = p.status === 'revealed' ? '已揭晓' : p.status === 'drawing' ? '揭晓中' : '进行中';
     html += `<tr>
       <td>${esc(p.sku||'—')}</td>
-      <td>${p.img||''} ${esc(p.name)}</td>
+      <td>${escapeHtml(p.img||'')} ${esc(p.name)}</td>
       <td>$${p.price}×${p.totalShares}</td>
       <td>${sold}/${p.totalShares} (${pct}%)</td>
       <td>${state}</td>
@@ -79,7 +79,7 @@ function renderProductList(list) {
 function fillCategoryOptions() {
   const sel = document.getElementById('f-category');
   sel.innerHTML = Store.listCategories()
-    .map(c => `<option value="${c.key}">${c.icon} ${c.name}（${c.prefix}）</option>`)
+    .map(c => `<option value="${c.key}">${escapeHtml(c.icon)} ${escapeHtml(c.name)}（${c.prefix}）</option>`)
     .join('');
 }
 
@@ -244,16 +244,17 @@ function renderUsers(users) {
       <td>${u.paid_balance||0}</td>
       <td>${t}</td>
       <td>
-        <a href="#" onclick="renameUser('${u.id}','${esc(u.name||'')}');return false">改名</a> ·
-        <a href="#" onclick="resetPwd('${u.id}','${esc(u.account)}');return false">重置密码</a> ·
-        <a href="#" onclick="delUser('${u.id}','${esc(u.account)}');return false" style="color:#c00">删除</a>
+        <a href="#" onclick="renameUser('${u.id}');return false">改名</a> ·
+        <a href="#" onclick="resetPwd('${u.id}');return false">重置密码</a> ·
+        <a href="#" onclick="delUser('${u.id}');return false" style="color:#c00">删除</a>
       </td>
     </tr>`;
   });
   el.innerHTML = html + '</table>';
 }
 
-async function renameUser(uid, oldName) {
+async function renameUser(uid) {
+  const oldName = allUsers.find(u => u.id === uid)?.name || '';
   const name = prompt('输入新昵称：', oldName);
   if (name === null || !name.trim()) return;
   const r = await fetch('/api/admin/users/' + uid + '/rename', {
@@ -265,7 +266,8 @@ async function renameUser(uid, oldName) {
   if (d.ok) loadUsers();
 }
 
-async function resetPwd(uid, account) {
+async function resetPwd(uid) {
+  const account = allUsers.find(u => u.id === uid)?.account || '';
   const pwd = prompt(`重置 ${account} 的密码为：`);
   if (pwd === null || !pwd.trim()) return;
   const r = await fetch('/api/admin/users/' + uid + '/reset-pwd', {
@@ -276,7 +278,8 @@ async function resetPwd(uid, account) {
   toast(d.msg || (d.ok ? '密码已重置' : '重置失败'));
 }
 
-async function delUser(uid, account) {
+async function delUser(uid) {
+  const account = allUsers.find(u => u.id === uid)?.account || '';
   if (!confirm(`确定删除用户 ${account}？此操作不可恢复。`)) return;
   const r = await fetch('/api/admin/users/' + uid, { method: 'DELETE' });
   const d = await r.json();
@@ -342,7 +345,7 @@ function renderCats() {
   box.innerHTML = cats.map((c, i) => {
     const upBtn = i > 0 ? `<span class="edit" onclick="moveCat(${i},-1)">↑</span>` : `<span class="edit" style="visibility:hidden">↑</span>`;
     const downBtn = i < cats.length - 1 ? `<span class="edit" onclick="moveCat(${i},1)">↓</span>` : `<span class="edit" style="visibility:hidden">↓</span>`;
-    return `<div class="cat-item"><span>${upBtn} ${downBtn} ${c.icon} ${c.name} <small style="color:#888">${c.prefix}</small></span><span><span class="edit" onclick="renameCat('${c.key}','${encodeURIComponent(c.name)}','${encodeURIComponent(c.icon)}')">重命名</span> <span class="del" onclick="delCat('${c.key}')">删除</span></span></div>`;
+    return `<div class="cat-item"><span>${upBtn} ${downBtn} ${escapeHtml(c.icon)} ${escapeHtml(c.name)} <small style="color:#888">${c.prefix}</small></span><span><span class="edit" onclick="renameCat('${c.key}','${encodeURIComponent(c.name)}','${encodeURIComponent(c.icon)}')">重命名</span> <span class="del" onclick="delCat('${c.key}')">删除</span></span></div>`;
   }).join('');
 }
 
@@ -439,13 +442,13 @@ async function loadShowcases() {
     if (!list.length) { el.innerHTML = '<div class="empty">暂无待审核晒单</div>'; return; }
     el.innerHTML = list.map(s => {
       const media = s.media_type === 'video'
-        ? `<video src="${s.media_url}" style="max-width:200px;max-height:150px;border-radius:8px" controls></video>`
-        : `<img src="${s.media_url}" style="max-width:200px;max-height:150px;border-radius:8px;object-fit:cover">`;
+        ? `<video src="${escapeHtml(s.media_url)}" style="max-width:200px;max-height:150px;border-radius:8px" controls></video>`
+        : `<img src="${escapeHtml(s.media_url)}" style="max-width:200px;max-height:150px;border-radius:8px;object-fit:cover">`;
       const t = new Date(Number(s.created_at)).toLocaleString('zh-CN');
       return `<div style="display:flex;gap:16px;align-items:center;padding:16px;background:#f8f9fa;border-radius:12px;margin-bottom:12px">
         ${media}
         <div style="flex:1">
-          <div style="font-weight:600">${s.emoji||'🎁'} ${esc(s.product_name||'')}</div>
+          <div style="font-weight:600">${escapeHtml(s.emoji||'🎁')} ${esc(s.product_name||'')}</div>
           <div style="font-size:13px;color:#888;margin-top:4px">用户: ${esc(s.account||'')} (${esc(s.user_name||'')})</div>
           <div style="font-size:13px;color:#888">${esc(s.caption||'')}</div>
           <div style="font-size:12px;color:#aaa;margin-top:4px">${t}</div>
@@ -474,7 +477,7 @@ async function loadWins() {
     if (!d.ok || !d.wins || !d.wins.length) { el.innerHTML = '<div class="empty">暂无中奖记录</div>'; return; }
     let html = '<table class="orders-table"><tr><th>商品</th><th>中奖号</th><th>中奖用户</th><th>地址</th><th>状态</th><th>备注</th><th>操作</th></tr>';
     d.wins.forEach(w => {
-      const addr = w.win_address ? (() => { try { const a = JSON.parse(w.win_address); return `${a.name} ${a.phone}<br>${a.address}`; } catch { return w.win_address; } })() : '<span style="color:#c00">未填写</span>';
+      const addr = w.win_address ? (() => { try { const a = JSON.parse(w.win_address); return `${escapeHtml(a.name)} ${escapeHtml(a.phone)}<br>${escapeHtml(a.address)}`; } catch { return escapeHtml(w.win_address); } })() : '<span style="color:#c00">未填写</span>';
       const statusMap = { pending: '待发货', shipped: '已发货', done: '已完成' };
       const statusCls = { pending: 'color:#e65100', shipped: 'color:#1565c0', done: 'color:#2e7d32' };
       const st = w.ship_status || 'pending';

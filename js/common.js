@@ -3,13 +3,17 @@
 // 用法：onReady(() => { renderTopbar(...); ...首屏渲染... })
 function onReady(cb) {
   Store.ready.then(async () => {
-    try {
-      if (Store.resumeDraws) await Store.resumeDraws().catch(() => {});
-    } catch (_) {}
-    try { cb(); } catch (e) { console.error(e); }
+    try { await cb(); } catch (e) { console.error(e); }
     renderDrawNotification();
     checkUnclaimedWins();
   }).catch(e => { console.error(e); toast('加载失败，请刷新重试'); });
+}
+
+// 用于 HTML 文本和带引号的属性值；不用于内联 JavaScript。
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  })[c]);
 }
 
 // 顶栏渲染。active: home | orders
@@ -56,7 +60,7 @@ function renderTopbar(active) {
         <span class="recharge-wrap">&nbsp;·&nbsp; <a href="#" id="recharge">充值</a></span>`;
     }
     if (userEl) {
-      userEl.innerHTML = `👤 ${u.name} &nbsp;·&nbsp; <a href="#" id="logout">退出</a>`;
+      userEl.innerHTML = `👤 ${escapeHtml(u.name)} &nbsp;·&nbsp; <a href="#" id="logout">退出</a>`;
     }
 
     // 绑定事件
@@ -142,7 +146,7 @@ function renderDrawNotification() {
   const bar = document.createElement('div');
   bar.id = 'draw-notify-bar';
   bar.className = 'draw-notify-bar';
-  bar.innerHTML = `<span>🔔 你参与的 <b>${p.name}</b> ${timeText}</span><a href="detail.html?id=${p.id}">去看看 →</a>`;
+  bar.innerHTML = `<span>🔔 你参与的 <b>${escapeHtml(p.name)}</b> ${timeText}</span><a href="detail.html?id=${encodeURIComponent(p.id)}">去看看 →</a>`;
   const topbar = document.getElementById('topbar');
   if (topbar) topbar.after(bar);
   else document.body.prepend(bar);
@@ -182,8 +186,8 @@ function showWinCelebration(p) {
       <div class="win-confetti"></div>
       <div class="win-trophy">🏆</div>
       <div class="win-title">恭喜成为幸运儿！</div>
-      <div class="win-product">${p.img || '🎁'} ${p.name}</div>
-      <div class="win-lucky">幸运号码 <b>${p.winNumber}</b></div>
+      <div class="win-product">${escapeHtml(p.img || '🎁')} ${escapeHtml(p.name)}</div>
+      <div class="win-lucky">幸运号码 <b>${escapeHtml(p.winNumber)}</b></div>
       <div class="win-msg">请填写收货信息，我们将尽快安排发货</div>
       <div class="win-form">
         <input id="wf-name" placeholder="收件人姓名">

@@ -5,7 +5,6 @@ import { attachUser } from '../lib/helpers.js';
 import { roundTime } from '../lib/drand.js';
 
 const router = express.Router();
-router.use(attachUser);
 
 function safeJSON(s, d) { try { return s ? JSON.parse(s) : d; } catch { return d; } }
 
@@ -112,7 +111,10 @@ router.get('/config', async (req, res, next) => {
   try {
     const { rows } = await pool.query(`SELECT k,v FROM config`);
     const config = {};
+    const publicKeys = new Set(['grantRegister', 'grantCheckin', 'grantShowcase', 'grantInvitee',
+      'grantInviter', 'recentBuysHours', 'winnersHours', 'showcaseHours', 'drawDelay', 'recharge_packages']);
     for (const r of rows) {
+      if (!publicKeys.has(r.k)) continue;
       if (r.k === 'recharge_packages') config[r.k] = JSON.parse(r.v);
       else config[r.k] = /^\d+$/.test(r.v) ? Number(r.v) : r.v;
     }
@@ -140,7 +142,7 @@ router.get('/winners', async (req, res, next) => {
 });
 
 // 当前用户的中奖记录
-router.get('/my-wins', async (req, res, next) => {
+router.get('/my-wins', attachUser, async (req, res, next) => {
   try {
     if (!req.user) return res.status(401).json({ ok: false, msg: '请先登录' });
     const { rows } = await pool.query(`

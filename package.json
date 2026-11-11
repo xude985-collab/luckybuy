@@ -5,7 +5,12 @@
     "node": "20.x"
   },
   "scripts": {
+    "test": "node --test tests/server.test.mjs",
+    "test:ui": "playwright test",
     "build": "npm install --prefix server",
     "start": "node server/app.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.0"
   }
 }

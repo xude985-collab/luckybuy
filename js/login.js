@@ -1,7 +1,16 @@
 /* 登录 / 注册页 */
 const refCode = (param('ref') || '').trim();          // 邀请码（来自分享链接）
 let mode = (param('mode') === 'register' || refCode) ? 'register' : 'login';
-const back = param('back') || 'index.html';
+function safeReturnPath(value) {
+  try {
+    const url = new URL(value || 'index.html', location.href);
+    if (url.origin !== location.origin || !/^\/(?:index|detail|orders|profile|recharge|rules|showcase|winners|admin)(?:\.html)?$/.test(url.pathname)) {
+      return 'index.html';
+    }
+    return url.pathname + url.search + url.hash;
+  } catch (_) { return 'index.html'; }
+}
+const back = safeReturnPath(param('back'));
 
 function render() {
   const box = document.getElementById('auth');
@@ -26,7 +35,7 @@ function render() {
       <button class="btn block" onclick="submit()">
         ${isReg ? '注册并登录' : '登录'}</button>
       <p class="auth-hint">${isReg
-        ? '注册即同意夺宝规则。演示环境，密码仅存本地浏览器。'
+        ? '注册即同意夺宝规则。'
         : '还没有账号？点上方“注册”。'}</p>
     </div>`;
 }

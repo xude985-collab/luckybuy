@@ -2,7 +2,7 @@
 import express from 'express';
 import multer from 'multer';
 import pool from '../db.js';
-import { attachUser, requireAdmin, genId } from '../lib/helpers.js';
+import { attachUser, requireAdmin, requireAuth, genId, withTransaction, walletTx } from '../lib/helpers.js';
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -38,7 +38,7 @@ router.get('/approved', async (req, res, next) => {
 });
 
 // 用户：提交晒单
-router.post('/submit', upload.single('media'), async (req, res, next) => {
+router.post('/submit', requireAuth, upload.single('media'), async (req, res, next) => {
   try {
     if (!req.user) return res.status(401).json({ ok: false, msg: '请先登录' });
     const { productId, mediaType, caption } = req.body || {};
@@ -154,23 +154,17 @@ router.post('/review/:id', requireAdmin, async (req, res, next) => {
     if (!['approve', 'reject'].includes(action))
       return res.status(400).json({ ok: false, msg: '无效操作' });
 
-    const { rows } = await pool.query(`SELECT * FROM showcases WHERE id=$1`, [req.params.id]);
-    if (!rows.length) return res.status(404).json({ ok: false, msg: '晒单不存在' });
-    const sc = rows[0];
-    if (sc.status !== 'pending') return res.status(400).json({ ok: false, msg: '该晒单已审核' });
-
-    const newStatus = action === 'approve' ? 'approved' : 'rejected';
-    await pool.query(`UPDATE showcases SET status=$1, reviewed_at=$2 WHERE id=$3`,
-      [newStatus, Date.now(), req.params.id]);
-
-    if (action === 'approve') {
-      const { rows: cfgRows } = await pool.query(`SELECT v FROM config WHERE k='grantShowcase'`);
-      const grant = cfgRows[0] ? Number(cfgRows[0].v) : 0;
-      if (grant > 0) {
-        await pool.query(`UPDATE users SET free_balance = free_balance + $1 WHERE id = $2`,
-          [grant, sc.user_id]);
+    await withTransaction(async client => {
+      const { rows } = await client.query(
+        `UPDATE showcases SET status=$1,reviewed_at=$2 WHERE id=$3 AND status='pending' RETURNING *`,
+        [action === 'approve' ? 'approved' : 'rejected', Date.now(), req.params.id]);
+      if (!rows.length) throw Object.assign(new Error('晒单不存在或已审核'), { status: 400 });
+      if (action === 'approve') {
+        const { rows: config } = await client.query(`SELECT v FROM config WHERE k='grantShowcase'`);
+        const grant = Number(config[0]?.v || 0);
+        if (grant > 0) await walletTx(rows[0].user_id, 'grant', grant, '晒单奖励', client);
       }
-    }
+    });
     res.json({ ok: true, msg: action === 'approve' ? '已通过' : '已拒绝' });
   } catch (e) { next(e); }
 });

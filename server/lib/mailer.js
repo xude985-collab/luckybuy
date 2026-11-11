@@ -89,6 +89,6 @@ export async function sendCode(account, type, code) {
     }
   }
   // 所有真实通道都没配置或都失败：打印日志，方便开发自测
-  console.log(`\n  [验证码] ${account} (${type}) => ${code}\n`);
+  if (process.env.NODE_ENV !== 'production') console.log(`\n  [验证码] ${account} (${type}) => ${code}\n`);
   return { delivered: false };
 }

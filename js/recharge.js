@@ -12,11 +12,14 @@ function renderResult() {
     app.innerHTML = `
       <div class="recharge-result success">
         <div class="result-icon">✅</div>
-        <h2>充值成功</h2>
-        <p>金币已到账，快去夺宝吧！</p>
+        <h2 id="payment-status-title">正在确认到账状态</h2>
+        <p id="payment-status-message">请稍候，以服务器确认结果为准。</p>
         <a href="index.html" class="btn">去夺宝</a>
         <a href="recharge.html" class="btn ghost" style="margin-left:12px">继续充值</a>
       </div>`;
+    confirmRecharge();
+  } else if (result === 'pending') {
+    app.innerHTML = '<div class="recharge-result"><h2>支付仍在确认中</h2><p>请检查支付平台的扣款记录，确认前请勿重复支付。</p><a href="profile.html" class="btn">查看余额</a></div>';
   } else {
     app.innerHTML = `
       <div class="recharge-result cancel">
@@ -27,6 +30,30 @@ function renderResult() {
       </div>`;
   }
   return true;
+}
+
+async function confirmRecharge() {
+  const id = param('id');
+  const title = document.getElementById('payment-status-title');
+  const message = document.getElementById('payment-status-message');
+  if (!id) {
+    title.textContent = '暂无法确认充值记录';
+    message.textContent = '请前往个人中心查看余额。';
+    return;
+  }
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const r = await Store.getRechargeStatus(id);
+    if (!r.ok) { title.textContent = '查询失败'; message.textContent = r.msg || '请刷新重试'; return; }
+    if (r.recharge.status === 'paid') {
+      title.textContent = '充值成功'; message.textContent = '金币已到账。';
+      await Store.refreshMe(); renderTopbar('home'); return;
+    }
+    if (r.recharge.status === 'failed') {
+      title.textContent = '充值未完成'; message.textContent = '如已扣款，请联系管理员核对。'; return;
+    }
+    if (attempt < 4) await new Promise(resolve => setTimeout(resolve, 2000));
+  }
+  title.textContent = '支付仍在确认中'; message.textContent = '到账可能稍有延迟，请稍后刷新确认，勿重复支付。';
 }
 
 function render() {
@@ -107,12 +134,24 @@ function onCustomInput(val) {
     selectedAmount = 0;
     selectedBonus = 0;
   }
-  render();
+  updateSummary();
 }
 
 function selectMethod(m) {
   selectedMethod = m;
   render();
+}
+
+function updateSummary() {
+  document.querySelectorAll('.pkg-card').forEach((card, i) => card.classList.toggle('active', packages[i].amount === selectedAmount));
+  const summary = document.querySelector('.recharge-summary');
+  if (summary) summary.textContent = selectedAmount > 0
+    ? `充值 $${selectedAmount}，赠送 ${selectedBonus} 免费金币` : '请选择套餐或输入金额';
+  const btn = document.querySelector('.recharge-btn');
+  if (btn) {
+    btn.disabled = selectedAmount < 1 || selectedAmount > 5000;
+    btn.textContent = `立即支付 ${selectedAmount > 0 ? '$' + selectedAmount : ''}`;
+  }
 }
 
 async function doPay() {
@@ -122,7 +161,7 @@ async function doPay() {
   const r = await Store.recharge(selectedAmount, selectedMethod);
   if (r.ok && r.simulated) {
     toast(r.msg);
-    setTimeout(() => location.href = 'recharge.html?result=success', 500);
+    setTimeout(() => location.href = 'recharge.html?result=success&id=' + encodeURIComponent(r.rechargeId), 500);
     return;
   }
   if (!r.ok) { toast(r.msg || '支付失败'); render(); }

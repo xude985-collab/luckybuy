@@ -38,7 +38,7 @@ function render() {
   }
   const u = Store.currentUser();
   const card = inviteCard(u);
-  const orders = Store.myOrders().slice().reverse();
+  const orders = Store.myOrders();
   if (!orders.length) {
     box.innerHTML = card + '<div class="empty">还没有参与记录，去首页夺宝试试～</div>';
     return;
@@ -70,7 +70,7 @@ function renderOrderTable(orders) {
       }
     }
     return `<tr>
-      <td>${o.productName}<br><small style="color:#999">${o.period}</small></td>
+      <td>${escapeHtml(o.productName)}<br><small style="color:#999">${escapeHtml(o.period)}</small></td>
       <td>${o.count} 份</td>
       <td>$${o.cost}</td>
       <td class="nums">${nums}</td>
@@ -106,10 +106,10 @@ function renderOrderCards(orders) {
     }
     return `<div class="order-card">
       <div class="order-card-top">
-        <span class="order-card-name">${o.productName}</span>
+        <span class="order-card-name">${escapeHtml(o.productName)}</span>
         <span class="order-card-time">${o.time.slice(5, 16).replace('T', ' ')}</span>
       </div>
-      <div class="order-card-meta">${o.count}份 · $${o.cost} · ${o.period}</div>
+      <div class="order-card-meta">${o.count}份 · $${o.cost} · ${escapeHtml(o.period)}</div>
       <div class="order-card-nums">号码：${nums}</div>
       <div class="order-card-result">${result}</div>
     </div>`;
@@ -117,10 +117,12 @@ function renderOrderCards(orders) {
 }
 
 async function fillAddress(orderId) {
+  const order = Store.myOrders().find(o => o.id === orderId);
+  if (!order) { toast('订单不存在，请刷新重试'); return; }
   const name = prompt('收件人姓名：'); if (!name) return;
   const phone = prompt('联系电话：'); if (!phone) return;
   const addr = prompt('详细收货地址：'); if (!addr) return;
-  const r = await Store.saveAddress(orderId, { name, phone, addr });
+  const r = await Store.saveAddress(order.productId, { name, phone, address: addr });
   toast(r.msg);
   render();
 }

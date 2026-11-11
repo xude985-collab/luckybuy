@@ -13,8 +13,8 @@ function renderLiveFeed() {
   const items = list.map(b => {
     const ago = timeAgo(b.time);
     return `<div class="live-feed-item">
-      <span class="buyer">${b.buyerName}</span> 抢购了
-      <span class="product">${b.emoji} ${b.productName}</span> × ${b.shares}份
+      <span class="buyer">${escapeHtml(b.buyerName)}</span> 抢购了
+      <span class="product">${escapeHtml(b.emoji)} ${escapeHtml(b.productName)}</span> × ${b.shares}份
       <div class="time">${ago}</div>
     </div>`;
   }).join('');
@@ -43,7 +43,7 @@ function renderMarquee() {
   if (!feed.length) { el.style.display = 'none'; return; }
   el.style.display = 'flex';
   const items = feed.concat(feed).map(w =>
-    `<span class="item">🎉 <b>${w.winnerName}</b> 用 <b>$${w.price}</b> 夺得 <b>${w.productName}</b>（幸运号 ${w.winNumber}）</span>`
+    `<span class="item">🎉 <b>${escapeHtml(w.winnerName)}</b> 用 <b>$${escapeHtml(w.price)}</b> 夺得 <b>${escapeHtml(w.productName)}</b>（幸运号 ${w.winNumber}）</span>`
   ).join('');
   el.innerHTML = `<div class="label">🏆 幸运榜</div><div class="track">${items}</div>`;
 }
@@ -94,8 +94,8 @@ function cardHtml(p) {
   }
   // 封面:优先用真实商品图(gallery第一张),否则显示emoji
   const cover = (p.gallery && p.gallery.length && p.gallery[0].url)
-    ? `<img src="${p.gallery[0].url}" alt="${p.name}" style="width:100%;height:100%;object-fit:contain;background:#fff">`
-    : (p.img || '🎁');
+    ? `<img src="${escapeHtml(p.gallery[0].url)}" alt="${escapeHtml(p.name)}" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:contain;background:#fff">`
+    : escapeHtml(p.img || '🎁');
   let buySection = '';
   if (!done && !drawing) {
     buySection = `
@@ -118,9 +118,9 @@ function cardHtml(p) {
     <div class="card" onclick="location.href='detail.html?id=${p.id}'">
       <div class="thumb">${cover}</div>
       <div class="body">
-        <div class="sku-line"><code class="sku">${p.sku || ''}</code></div>
-        <div class="name">${p.name}</div>
-        <div class="period">${p.period} · <b>$${p.price}</b>/份
+        <div class="sku-line"><code class="sku">${escapeHtml(p.sku || '')}</code></div>
+        <div class="name">${escapeHtml(p.name)}</div>
+        <div class="period">${escapeHtml(p.period)} · <b>$${p.price}</b>/份
           ${badge}</div>
         <div class="progress"><i style="width:${percent}%"></i></div>
         <div class="progress-meta">
@@ -140,7 +140,7 @@ const PAGE_SIZE = window.innerWidth <= 600 ? 8 : 20;
 function renderCatTabs() {
   const tabs = [{ key: 'all', name: '全部', icon: '🏷️' }].concat(Store.listCategories());
   document.getElementById('cat-tabs').innerHTML = tabs.map(c =>
-    `<span class="cat-tab${c.key === activeCat ? ' active' : ''}" onclick="selectCat('${c.key}')">${c.icon} ${c.name}</span>`
+    `<span class="cat-tab${c.key === activeCat ? ' active' : ''}" onclick="selectCat('${c.key}')">${escapeHtml(c.icon)} ${escapeHtml(c.name)}</span>`
   ).join('');
 }
 
@@ -168,6 +168,7 @@ function renderGrid() {
     return;
   }
   grid.innerHTML = pageItems.map(cardHtml).join('');
+  startCountdownTimer();
   renderPagination(totalPages);
 }
 
@@ -207,13 +208,13 @@ async function renderShowcase() {
   }
   const cards = items.map(s => {
     const media = s.media_type === 'video'
-      ? `<video class="media" src="${s.media_url}" controls muted></video>`
-      : `<div class="media"><img src="${s.media_url}" alt="" style="width:100%;height:100%;object-fit:cover"></div>`;
+      ? `<video class="media" src="${escapeHtml(s.media_url)}" preload="none" controls muted></video>`
+      : `<div class="media"><img src="${escapeHtml(s.media_url)}" loading="lazy" decoding="async" alt="" style="width:100%;height:100%;object-fit:cover"></div>`;
     const likes = Number(s.likes) || 0;
     return `<a href="showcase.html?id=${s.id}" class="showcase-item">${media}
       <div class="cap">${esc(s.caption || s.product_name || '')}</div>
       <div class="sc-card-bottom">
-        <div class="meta">${s.emoji||'🎁'} ${esc(s.product_name||'')} · ${esc(s.user_name||'幸运用户')}</div>
+        <div class="meta">${escapeHtml(s.emoji||'🎁')} ${esc(s.product_name||'')} · ${esc(s.user_name||'幸运用户')}</div>
         <span class="sc-card-like" data-id="${s.id}" onclick="scLike(event,this)">🤍 <span class="sc-like-n">${likes}</span></span>
       </div>
     </a>`;

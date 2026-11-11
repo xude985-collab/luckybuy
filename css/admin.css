@@ -137,3 +137,18 @@
 .empty { color: #aaa; text-align: center; padding: 24px; }
 .btn.sm { padding: 6px 14px; font-size: 13px; }
 .btn.block { width: 100%; }
+
+.admin-layout > *, .admin-form .two-col > * { min-width: 0; }
+.admin-tabs { overflow-x: auto; }
+.admin-tabs .tab { flex: 0 0 auto; white-space: nowrap; min-height: 44px; }
+#recent-orders, #admin-list, #user-list, #wins-list { overflow-x: auto; max-width: 100%; }
+.user-toolbar, .pkg-add, .cat-add, .cat-item { flex-wrap: wrap; }
+.user-toolbar input { max-width: 100%; }
+.amz-row input { min-width: 0; }
+@media (max-width: 600px) {
+  .admin-form .two-col { grid-template-columns: 1fr; }
+  .rules-grid { grid-template-columns: minmax(0, 1fr) 90px; }
+  .settings-section { padding: 14px; }
+  .pkg-add input { min-width: 0; max-width: 100%; }
+  #showcase-pending > div { flex-wrap: wrap; }
+}

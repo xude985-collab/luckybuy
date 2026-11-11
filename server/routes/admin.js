@@ -13,10 +13,9 @@ async function nextSku(category, client) {
   const q = client || pool;
   const { rows: catRows } = await q.query(`SELECT prefix FROM categories WHERE key=$1`, [category]);
   const prefix = catRows[0] ? catRows[0].prefix : 'OT';
-  await q.query(
-    `INSERT INTO sku_seq (prefix,n) VALUES ($1,1) ON CONFLICT(prefix) DO UPDATE SET n=sku_seq.n+1`,
+  const { rows: seqRows } = await q.query(
+    `INSERT INTO sku_seq (prefix,n) VALUES ($1,1) ON CONFLICT(prefix) DO UPDATE SET n=sku_seq.n+1 RETURNING n`,
     [prefix]);
-  const { rows: seqRows } = await q.query(`SELECT n FROM sku_seq WHERE prefix=$1`, [prefix]);
   return prefix + String(seqRows[0].n).padStart(4, '0');
 }
 
@@ -102,15 +101,19 @@ router.post('/products', requireAdmin, async (req, res, next) => {
     const specs = JSON.stringify(Array.isArray(b.specs) ? b.specs : []);
 
     if (b.id) {
-      const { rows: cur } = await pool.query(`SELECT * FROM products WHERE id=$1`, [b.id]);
-      if (!cur.length) return res.status(404).json({ ok: false, msg: '商品不存在' });
-      if (cur[0].status !== 'active' && (totalShares !== cur[0].total_shares || pricePerShare !== cur[0].price_per_share))
-        return res.status(400).json({ ok: false, msg: '揭晓中/已结束的商品不能改价格或份数' });
-      await pool.query(
-        `UPDATE products SET name=$1,category=$2,emoji=$3,price_per_share=$4,total_shares=$5,
-         free_quota=$6,"desc"=$7,gallery=$8,specs=$9,source_url=$10 WHERE id=$11`,
-        [b.name, b.category, b.emoji || '🎁', pricePerShare, totalShares,
-         freeQuota, b.desc || '', gallery, specs, b.sourceUrl || '', b.id]);
+      await withTransaction(async client => {
+        const { rows: cur } = await client.query(`SELECT * FROM products WHERE id=$1 FOR UPDATE`, [b.id]);
+        if (!cur.length) throw Object.assign(new Error('商品不存在'), { status: 404 });
+        const { rows: participated } = await client.query(`SELECT 1 FROM orders WHERE product_id=$1 LIMIT 1`, [b.id]);
+        if ((cur[0].status !== 'active' || participated.length) &&
+            (totalShares !== cur[0].total_shares || pricePerShare !== cur[0].price_per_share))
+          throw Object.assign(new Error('已有参与记录的商品不能修改价格或总份数'), { status: 400 });
+        await client.query(
+          `UPDATE products SET name=$1,category=$2,emoji=$3,price_per_share=$4,total_shares=$5,
+           free_quota=$6,"desc"=$7,gallery=$8,specs=$9,source_url=$10 WHERE id=$11`,
+          [b.name, b.category, b.emoji || '🎁', pricePerShare, totalShares,
+           freeQuota, b.desc || '', gallery, specs, b.sourceUrl || '', b.id]);
+      });
       return res.json({ ok: true, id: b.id, msg: '已更新' });
     }
 
@@ -127,9 +130,12 @@ router.post('/products', requireAdmin, async (req, res, next) => {
 
 router.delete('/products/:id', requireAdmin, async (req, res, next) => {
   try {
-    const { rows } = await pool.query(`SELECT COUNT(*) c FROM orders WHERE product_id=$1`, [req.params.id]);
-    if (Number(rows[0].c) > 0) return res.status(400).json({ ok: false, msg: '已有参与记录，不能删除' });
-    await pool.query(`DELETE FROM products WHERE id=$1`, [req.params.id]);
+    await withTransaction(async client => {
+      await client.query(`SELECT id FROM products WHERE id=$1 FOR UPDATE`, [req.params.id]);
+      const { rows } = await client.query(`SELECT 1 FROM orders WHERE product_id=$1 LIMIT 1`, [req.params.id]);
+      if (rows.length) throw Object.assign(new Error('已有参与记录，不能删除'), { status: 400 });
+      await client.query(`DELETE FROM products WHERE id=$1`, [req.params.id]);
+    });
     res.json({ ok: true, msg: '已删除' });
   } catch (e) { next(e); }
 });

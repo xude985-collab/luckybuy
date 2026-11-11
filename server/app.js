@@ -20,6 +20,7 @@ import walletRoutes from './routes/wallet.js';
 import adminRoutes from './routes/admin.js';
 import showcaseRoutes from './routes/showcase.js';
 import stripeWebhook from './routes/stripe-webhook.js';
+import { mountStaticSite } from './lib/staticSite.js';
 
 process.on('uncaughtException', (err) => {
   logger.fatal({ err }, 'uncaughtException');
@@ -86,15 +87,8 @@ app.use('/api/showcase', showcaseRoutes);
 
 app.get('/api/health', (req, res) => res.json({ ok: true, time: Date.now() }));
 
-// 静态前端（放在 API 之后，避免拦截 /api）
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use((req, res, next) => {
-  if (/\.(js|css)$/i.test(req.path)) {
-    res.set('Cache-Control', 'no-store, must-revalidate');
-  }
-  next();
-});
-app.use(express.static(SITE_DIR, { extensions: ['html'], maxAge: 0, etag: false }));
+// 仅公开前端页面、资源和上传文件。
+mountStaticSite(app, SITE_DIR, path.join(__dirname, 'uploads'));
 
 // 统一错误处理
 app.use((err, req, res, next) => {

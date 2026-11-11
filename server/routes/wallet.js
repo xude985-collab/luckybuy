@@ -6,6 +6,7 @@ import {
   genId, withTransaction, now, getConfig,
 } from '../lib/helpers.js';
 import { futureRound, roundTime } from '../lib/drand.js';
+import { settleRecharge } from '../lib/recharges.js';
 
 const router = express.Router();
 router.use(attachUser);
@@ -25,8 +26,9 @@ router.get('/', requireAuth, async (req, res, next) => {
 router.get('/orders', requireAuth, async (req, res, next) => {
   try {
     const { rows } = await pool.query(`
-      SELECT o.*, p.name, p.emoji, p.total_shares, p.status AS product_status,
-             d.win_number, d.winner_user_id, d.drawn_at
+      SELECT o.*, p.name, p.sku, p.emoji, p.total_shares, p.status AS product_status,
+             d.win_number, d.winner_user_id, d.drawn_at,
+             CASE WHEN d.winner_user_id=o.user_id THEN d.win_address END AS address
       FROM orders o JOIN products p ON p.id=o.product_id
       LEFT JOIN draws d ON d.product_id=o.product_id
       WHERE o.user_id=$1 ORDER BY o.created_at DESC`, [req.user.id]);
@@ -39,24 +41,21 @@ router.post('/buy', requireAuth, async (req, res, next) => {
   try {
     const uid = req.user.id;
     const { productId } = req.body || {};
-    const shares = Math.max(1, parseInt(req.body?.shares) || 0);
+    const shares = Number(req.body?.shares);
+    if (!Number.isSafeInteger(shares) || shares < 1 || shares > 2147483647)
+      return res.status(400).json({ ok: false, msg: '参与份数必须为正整数' });
     const useFree = req.body?.useFree !== false;
 
-    const { rows: pr } = await pool.query(`SELECT * FROM products WHERE id=$1`, [productId]);
-    const p = pr[0];
-    if (!p) return res.status(404).json({ ok: false, msg: '商品不存在' });
-    if (p.status !== 'active') return res.status(400).json({ ok: false, msg: '该商品已停止参与' });
-
-    const { rows: sr } = await pool.query(
-      `SELECT COALESCE(SUM(shares),0) AS s FROM orders WHERE product_id=$1`, [productId]);
-    const sold = Number(sr[0].s);
-    const remain = p.total_shares - sold;
-    if (shares > remain) return res.status(400).json({ ok: false, msg: `仅剩 ${remain} 份` });
-
-    const cost = shares * Number(p.price_per_share);
-    const pricePerShare = Number(p.price_per_share);
-
     const result = await withTransaction(async (client) => {
+      // 同一商品的号码分配串行执行；跨商品购买再锁用户，保护免费余额。
+      const { rows: lockedProducts } = await client.query(`SELECT * FROM products WHERE id=$1 FOR UPDATE`, [productId]);
+      const p = lockedProducts[0];
+      if (!p || p.status !== 'active') throw Object.assign(new Error('该商品已停止参与'), { status: 400 });
+      await client.query(`SELECT id FROM users WHERE id=$1 FOR UPDATE`, [uid]);
+      const pricePerShare = Number(p.price_per_share);
+      const cost = shares * pricePerShare;
+      if (!Number.isSafeInteger(cost) || cost > 2147483647)
+        throw Object.assign(new Error('单次购买金额超出上限'), { status: 400 });
       const { rows: s2 } = await client.query(
         `SELECT COALESCE(SUM(shares),0) AS s FROM orders WHERE product_id=$1`, [productId]);
       const sold2 = Number(s2[0].s);
@@ -102,10 +101,11 @@ router.post('/buy', requireAuth, async (req, res, next) => {
       }
       if (paidUse > 0) await walletTx(uid, 'spend', -paidUse, `购买 ${p.name} ${shares}份`, client);
 
+      const orderId = genId('o_');
       await client.query(
         `INSERT INTO orders (id,user_id,product_id,shares,numbers,paid_coins,free_coins,created_at)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-        [genId('o_'), uid, productId, shares, JSON.stringify(numbers), paidUse, freeUse, Date.now()]);
+        [orderId, uid, productId, shares, JSON.stringify(numbers), paidUse, freeUse, Date.now()]);
 
       const newSold = sold2 + shares;
       let locked = null;
@@ -119,13 +119,14 @@ router.post('/buy', requireAuth, async (req, res, next) => {
         await client.query(`UPDATE products SET status='drawing' WHERE id=$1`, [productId]);
         locked = { round, drawTime: roundTime(round) };
       }
-      return { numbers, freeUse, paidUse, newSold, locked };
+      return { orderId, numbers, freeUse, paidUse, newSold, locked, totalShares: p.total_shares };
     });
 
     res.json({
       ok: true, msg: '参与成功',
       numbers: result.numbers, usedFree: result.freeUse, usedPaid: result.paidUse,
-      sold: result.newSold, totalShares: p.total_shares,
+      orderId: result.orderId, freeUsed: result.freeUse, paidUsed: result.paidUse,
+      sold: result.newSold, totalShares: result.totalShares,
       drawing: result.locked,
     });
   } catch (e) {
@@ -140,25 +141,25 @@ router.post('/checkin', requireAuth, async (req, res) => {
     const todayStart = new Date(); todayStart.setHours(0,0,0,0);
     const todayMs = todayStart.getTime();
 
-    const { rows: already } = await pool.query(
-      `SELECT id FROM checkins WHERE user_id=$1 AND created_at>=$2`, [uid, todayMs]);
-    if (already.length > 0) return res.json({ ok: false, msg: '今天已签到' });
-
-    const yesterdayMs = todayMs - 86400000;
-    const { rows: yest } = await pool.query(
-      `SELECT streak FROM checkins WHERE user_id=$1 AND created_at>=$2 AND created_at<$3 ORDER BY created_at DESC LIMIT 1`,
-      [uid, yesterdayMs, todayMs]);
-    const streak = (yest.length > 0 ? yest[0].streak : 0) + 1;
-
-    const cfg = await getConfig();
-    const base = cfg.grantCheckin || 2;
-    const reward = Math.min(streak, 7) * base;
-
-    await pool.query(
-      `INSERT INTO checkins (id, user_id, reward, streak, created_at) VALUES ($1,$2,$3,$4,$5)`,
-      [genId('ck_'), uid, reward, streak, Date.now()]);
-    await pool.query(
-      `UPDATE users SET free_balance=free_balance+$1 WHERE id=$2`, [reward, uid]);
+    const result = await withTransaction(async (client) => {
+      await client.query(`SELECT id FROM users WHERE id=$1 FOR UPDATE`, [uid]);
+      const { rows: already } = await client.query(
+        `SELECT id FROM checkins WHERE user_id=$1 AND created_at>=$2`, [uid, todayMs]);
+      if (already.length) return null;
+      const { rows: yest } = await client.query(
+        `SELECT streak FROM checkins WHERE user_id=$1 AND created_at>=$2 AND created_at<$3 ORDER BY created_at DESC LIMIT 1`,
+        [uid, todayMs - 86400000, todayMs]);
+      const streak = (yest.length ? yest[0].streak : 0) + 1;
+      const cfg = await getConfig(client);
+      const reward = Math.min(streak, 7) * Number(cfg.grantCheckin ?? 2);
+      await client.query(
+        `INSERT INTO checkins (id,user_id,reward,streak,created_at) VALUES ($1,$2,$3,$4,$5)`,
+        [genId('ck_'), uid, reward, streak, Date.now()]);
+      await walletTx(uid, 'grant', reward, '每日签到', client);
+      return { streak, reward };
+    });
+    if (!result) return res.json({ ok: false, msg: '今天已签到' });
+    const { streak, reward } = result;
 
     res.json({ ok: true, msg: `签到成功！连续${streak}天，获得${reward}免费金币`, streak, reward });
   } catch (e) {
@@ -201,9 +202,11 @@ router.get('/packages', async (req, res, next) => {
 
 // 充值
 router.post('/recharge', requireAuth, async (req, res, next) => {
+  let rid;
   try {
     const amount = Math.floor(Number(req.body?.amount) || 0);
     const method = req.body?.method || 'stripe';
+    if (!['stripe', 'paypal'].includes(method)) return res.status(400).json({ ok: false, msg: '不支持的支付方式' });
     if (amount < 1) return res.status(400).json({ ok: false, msg: '充值金额至少 $1' });
     if (amount > 5000) return res.status(400).json({ ok: false, msg: '单次充值上限 $5000' });
 
@@ -212,12 +215,12 @@ router.post('/recharge', requireAuth, async (req, res, next) => {
     const pkg = packages.find(p => p.amount === amount);
     const bonus = pkg ? (pkg.bonus || 0) : 0;
 
-    const rid = genId('rc_');
+    rid = genId('rc_');
     await pool.query(
       `INSERT INTO recharges (id,user_id,amount,bonus,method,status,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
       [rid, req.user.id, amount, bonus, method, 'pending', Date.now()]);
 
-    const origin = req.headers.origin || `http://localhost:${process.env.PORT || 3000}`;
+    const origin = process.env.SITE_URL || `${req.protocol}://${req.get('host')}`;
     const successUrl = `${origin}/recharge.html?result=success&id=${rid}`;
     const cancelUrl = `${origin}/recharge.html?result=cancel`;
 
@@ -225,7 +228,7 @@ router.post('/recharge', requireAuth, async (req, res, next) => {
     const hasPaypal = !!(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_SECRET);
 
     if ((method === 'stripe' && !hasStripe) || (method === 'paypal' && !hasPaypal)) {
-      if (!hasStripe && !hasPaypal) {
+      if (!hasStripe && !hasPaypal && process.env.NODE_ENV !== 'production' && process.env.ALLOW_DEMO_PAYMENTS === 'true') {
         await withTransaction(async (client) => {
           await walletTx(req.user.id, 'recharge', amount, `模拟充值 $${amount}`, client);
           if (bonus > 0) await walletTx(req.user.id, 'grant', bonus, `充值赠送 $${bonus}`, client);
@@ -239,7 +242,7 @@ router.post('/recharge', requireAuth, async (req, res, next) => {
 
     if (method === 'paypal') {
       const paypal = await import('../lib/paypal.js');
-      const order = await paypal.createOrder(amount, rid, successUrl, cancelUrl);
+      const order = await paypal.createOrder(amount, rid, `${origin}/api/wallet/paypal-return`, cancelUrl);
       if (!order) return res.status(502).json({ ok: false, msg: 'PayPal 服务不可用' });
       await pool.query(`UPDATE recharges SET stripe_session=$1 WHERE id=$2`, [order.orderId, rid]);
       return res.json({ ok: true, url: order.approveUrl, rechargeId: rid });
@@ -247,6 +250,7 @@ router.post('/recharge', requireAuth, async (req, res, next) => {
 
     // Stripe
     const key = process.env.STRIPE_SECRET_KEY;
+    if (!process.env.STRIPE_WEBHOOK_SECRET) throw new Error('Stripe 支付回调尚未配置');
     const form = new URLSearchParams();
     form.set('mode', 'payment');
     form.set('success_url', successUrl);
@@ -263,41 +267,54 @@ router.post('/recharge', requireAuth, async (req, res, next) => {
       method: 'POST',
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/x-www-form-urlencoded' },
       body: form,
+      signal: AbortSignal.timeout(15000),
     });
     const s = await r.json();
     if (!r.ok) throw new Error(s.error?.message || 'Stripe 创建会话失败');
     await pool.query(`UPDATE recharges SET stripe_session=$1 WHERE id=$2`, [s.id, rid]);
     res.json({ ok: true, url: s.url, rechargeId: rid });
   } catch (e) {
-    await pool.query(`UPDATE recharges SET status='failed' WHERE id=$1`, [req.body?._rid]).catch(() => {});
+    if (rid) await pool.query(`UPDATE recharges SET status='failed' WHERE id=$1 AND status='pending'`, [rid]).catch(() => {});
     res.status(502).json({ ok: false, msg: e.message });
   }
 });
 
 // PayPal 回调
-router.get('/paypal-return', requireAuth, async (req, res) => {
-  const { token } = req.query;
-  if (!token) return res.redirect('/recharge.html?result=cancel');
-
-  const { rows: rcRows } = await pool.query(
-    `SELECT * FROM recharges WHERE stripe_session=$1 AND method='paypal'`, [token]);
-  const rc = rcRows[0];
-  if (!rc || rc.status !== 'pending') return res.redirect('/recharge.html?result=success');
-
+router.get('/paypal-return', requireAuth, async (req, res, next) => {
   try {
-    const paypal = await import('../lib/paypal.js');
-    const capture = await paypal.captureOrder(token);
-    if (capture.status === 'COMPLETED') {
-      await withTransaction(async (client) => {
-        await walletTx(rc.user_id, 'recharge', rc.amount, `PayPal 充值 $${rc.amount}`, client);
-        if (rc.bonus > 0) await walletTx(rc.user_id, 'grant', rc.bonus, `充值赠送 $${rc.bonus}`, client);
-        await client.query(`UPDATE recharges SET status='paid',paid_at=$1 WHERE id=$2`, [Date.now(), rc.id]);
-      });
+    const { token } = req.query;
+    if (typeof token !== 'string' || !/^[A-Za-z0-9]+$/.test(token)) return res.redirect('/recharge.html?result=cancel');
+    const { rows } = await pool.query(
+      `SELECT * FROM recharges WHERE stripe_session=$1 AND method='paypal' AND user_id=$2`, [token, req.user.id]);
+    const rc = rows[0];
+    if (!rc) return res.status(404).json({ ok: false, msg: '充值记录不存在' });
+    if (rc.status === 'paid') return res.redirect(`/recharge.html?result=success&id=${rc.id}`);
+    if (rc.status !== 'pending') return res.redirect('/recharge.html?result=cancel');
+    try {
+      const paypal = await import('../lib/paypal.js');
+      const capture = await paypal.captureOrder(token);
+      const units = capture?.purchase_units || [];
+      const payments = units.flatMap(unit => unit.payments?.captures || []);
+      if (capture?.id !== token || capture.status !== 'COMPLETED' || units.length !== 1 ||
+          units[0].reference_id !== rc.id || payments.length !== 1 ||
+          payments[0].status !== 'COMPLETED' || payments[0].amount?.currency_code !== 'USD' ||
+          Number(payments[0].amount.value) !== Number(rc.amount)) throw new Error('支付尚未确认或金额不匹配');
+      await settleRecharge(rc.id, 'paypal', token);
+    } catch (e) {
+      console.error('[paypal capture]', e.message);
+      return res.redirect(`/recharge.html?result=pending&id=${rc.id}`);
     }
-  } catch (e) {
-    console.error('[paypal capture]', e.message);
-  }
-  res.redirect(`/recharge.html?result=success&id=${rc.id}`);
+    res.redirect(`/recharge.html?result=success&id=${rc.id}`);
+  } catch (e) { next(e); }
+});
+
+router.get('/recharges/:id', requireAuth, async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id,amount,bonus,status FROM recharges WHERE id=$1 AND user_id=$2`, [req.params.id, req.user.id]);
+    if (!rows.length) return res.status(404).json({ ok: false, msg: '充值记录不存在' });
+    res.json({ ok: true, recharge: rows[0] });
+  } catch (e) { next(e); }
 });
 
 // 中奖人填写收货地址

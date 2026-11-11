@@ -59,7 +59,7 @@ function render() {
         </div>`
       : `<div class="draw-winner-card">
           <div class="draw-winner-label">🏆 本期幸运儿</div>
-          <div class="draw-winner-name">${p.winnerName || '幸运用户'}</div>
+          <div class="draw-winner-name">${escapeHtml(p.winnerName || '幸运用户')}</div>
         </div>`;
 
     const myResult = iWon ? myNumbersHtml(p.winNumber)
@@ -136,12 +136,12 @@ function render() {
   box.innerHTML = `
     ${galleryHtml(p)}
     <div>
-      <h1>${p.name}</h1>
+      <h1>${escapeHtml(p.name)}</h1>
       <div class="detail-sku">
-        <span class="cat-chip">${Store.categoryOf(p.category).icon} ${Store.categoryOf(p.category).name}</span>
-        <code class="sku">编号 ${p.sku || '—'}</code>
+        <span class="cat-chip">${escapeHtml(Store.categoryOf(p.category).icon)} ${escapeHtml(Store.categoryOf(p.category).name)}</span>
+        <code class="sku">编号 ${escapeHtml(p.sku || '—')}</code>
       </div>
-      <div class="period">${p.period} ·
+      <div class="period">${escapeHtml(p.period)} ·
         ${done ? '<span class="badge done">已揭晓</span>'
                : drawing ? '<span class="badge drawing">揭晓中</span>'
                : '<span class="badge">进行中</span>'}
@@ -154,7 +154,7 @@ function render() {
       <div class="progress"><i style="width:${percent}%"></i></div>
       <div class="progress-meta"><span>完成度 ${percent}%（满额即揭晓）</span></div>
       ${action}
-      <p class="desc">${p.desc || ''}</p>
+      <p class="desc">${escapeHtml(p.desc || '')}</p>
       ${specsHtml(p)}
     </div>
     ${longDetailHtml(p)}`;
@@ -200,14 +200,14 @@ function startDrawCountdown() {
 // 图册：主图 + 缩略图；无图时退化为原来的 emoji 大图
 function galleryHtml(p) {
   const g = (p.gallery || []).filter(m => m.type === 'image' || m.type === 'video');
-  if (!g.length) return `<div class="big-thumb">${p.img || '🎁'}</div>`;
+  if (!g.length) return `<div class="big-thumb">${escapeHtml(p.img || '🎁')}</div>`;
   const main = g[0];
   const mainHtml = main.type === 'video'
-    ? `<video id="gmain" src="${main.url}" controls playsinline></video>`
-    : `<img id="gmain" src="${main.url}" alt="${p.name}">`;
+    ? `<video id="gmain" src="${escapeHtml(main.url)}" controls playsinline></video>`
+    : `<img id="gmain" src="${escapeHtml(main.url)}" alt="${escapeHtml(p.name)}">`;
   const thumbs = g.map((m, i) => `
     <div class="g-thumb ${i === 0 ? 'active' : ''}" onclick="pickMedia(${i})">
-      ${m.type === 'video' ? '<span class="g-play">▶</span>' : `<img src="${m.url}" alt="">`}
+      ${m.type === 'video' ? '<span class="g-play">▶</span>' : `<img src="${escapeHtml(m.url)}" alt="">`}
     </div>`).join('');
   return `<div class="gallery">
     <div class="g-main">${mainHtml}</div>
@@ -220,7 +220,7 @@ function specsHtml(p) {
   const s = (p.specs || []).filter(r => r.k || r.v);
   if (!s.length) return '';
   return `<table class="spec-table">
-    ${s.map(r => `<tr><th>${r.k}</th><td>${r.v}</td></tr>`).join('')}
+    ${s.map(r => `<tr><th>${escapeHtml(r.k)}</th><td>${escapeHtml(r.v)}</td></tr>`).join('')}
   </table>`;
 }
 
@@ -230,7 +230,7 @@ function longDetailHtml(p) {
   if (!imgs.length) return '';
   return `<div class="long-detail">
     <h2 class="ld-title">商品详情</h2>
-    ${imgs.map(m => `<img src="${m.url}" alt="${p.name} 详情图" loading="lazy">`).join('')}
+    ${imgs.map(m => `<img src="${escapeHtml(m.url)}" alt="${escapeHtml(p.name)} 详情图" loading="lazy">`).join('')}
   </div>`;
 }
 
@@ -241,8 +241,8 @@ function pickMedia(i) {
   const m = g[i]; if (!m) return;
   const wrap = document.querySelector('.g-main');
   wrap.innerHTML = m.type === 'video'
-    ? `<video id="gmain" src="${m.url}" controls autoplay playsinline></video>`
-    : `<img id="gmain" src="${m.url}" alt="">`;
+    ? `<video id="gmain" src="${escapeHtml(m.url)}" controls autoplay playsinline></video>`
+    : `<img id="gmain" src="${escapeHtml(m.url)}" alt="">`;
   document.querySelectorAll('.g-thumb').forEach((el, idx) =>
     el.classList.toggle('active', idx === i));
 }
@@ -364,15 +364,25 @@ async function verifyDraw(pid) {
 
 // 开奖中：自动轮询刷新，等 drand 那一轮产生后自动显示结果
 let _pollTimer = null;
-function autoPoll() {
+let _polling = false;
+async function autoPoll() {
+  clearTimeout(_pollTimer);
+  _pollTimer = null;
+  if (_polling || document.hidden) return;
   const p = Store.getProduct(id);
   if (p && p.status === 'drawing') {
-    if (Store.resumeDraws) Store.resumeDraws();
-    _pollTimer = setTimeout(() => { render(); autoPoll(); }, 3000);
-  } else if (_pollTimer) {
-    clearTimeout(_pollTimer); _pollTimer = null;
+    _polling = true;
+    try {
+      await Store.refreshProducts();
+      render();
+    } finally {
+      _polling = false;
+      if (!document.hidden && Store.getProduct(id)?.status === 'drawing')
+        _pollTimer = setTimeout(autoPoll, 5000);
+    }
   }
 }
+document.addEventListener('visibilitychange', autoPoll);
 
 onReady(() => {
   renderTopbar('home');
