@@ -6,6 +6,9 @@
   <title>幸运购 · 一元夺宝</title>
   <link rel="stylesheet" href="css/style.css?v=20261112homeloading">
   <style>
+    @media (max-width:600px) {
+      .home-page .trust-banner > span:not(.trust-icon) { white-space:normal; overflow:visible; line-height:1.6; }
+    }
     /* 默认状态：已登录（假设用户已登录，避免闪烁） */
     .nav-profile, .nav-admin { display: inline-block; }
     #topbar-wallet, #topbar-user { display: inline-block; }
@@ -27,7 +30,7 @@
   <div id="marquee" class="marquee"></div>
   <div class="trust-banner">
     <span class="trust-icon">🔒</span>
-    <span>幸运号码采用 <a href="https://drand.love" target="_blank" rel="noopener"><b>drand</b></a> 公共随机信标，全网可验证</span>
+    <span>幸运号码采用 <a href="https://drand.love" target="_blank" rel="noopener"><b>drand</b></a> 公共随机信标，全网可验证。全程公平公开，下个幸运者就是你！</span>
     <a href="https://drand.love" target="_blank" rel="noopener" class="trust-link">了解 drand →</a>
   </div>
   <div class="home-layout">
