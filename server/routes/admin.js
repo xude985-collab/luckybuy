@@ -13,6 +13,28 @@ import {audit, bad, integer, resetSales} from '../lib/operations.js';
 const router = express.Router();
 router.use(attachUser);
 
+// Manual test credit: admin only, additive and replay-safe.
+router.post('/test-recharge', requireAdmin, async (req,res,next) => {
+  try {
+    const amount=integer(req.body.amount,'测试充值金额',1,5000);
+    const account=String(req.body.account||req.user.account).trim().toLowerCase();
+    const key=String(req.body.requestKey||'');
+    if(!/^[a-f0-9-]{36}$/.test(key))throw bad('请求编号无效');
+    const id='test_'+req.user.id+'_'+key;
+    const result=await withTransaction(async c=>{
+      const u=(await c.query('SELECT id,account,disabled FROM users WHERE account=$1 FOR UPDATE',[account])).rows[0];
+      if(!u||u.disabled)throw bad('账号不存在或已停用');
+      const old=(await c.query('SELECT user_id,amount FROM recharges WHERE id=$1',[id])).rows[0];
+      if(old){if(old.user_id!==u.id||Number(old.amount)!==amount)throw bad('请求已用于其他充值',409);return {account:u.account};}
+      await c.query("INSERT INTO recharges(id,user_id,amount,bonus,method,status,created_at,paid_at) VALUES($1,$2,$3,0,'admin-test','paid',$4,$4)",[id,u.id,amount,Date.now()]);
+      await walletTx(u.id,'test-credit',amount,'管理员测试充值（未实际付款）',c);
+      await audit(c,req.user.id,'test-recharge',u.id,{amount,rechargeId:id});
+      return {account:u.account};
+    });
+    res.json({ok:true,msg:result.account+' 已测试到账 '+amount+' 金币',rechargeId:id});
+  } catch(e){next(e);}
+});
+
 async function nextSku(category, client) {
   const q = client || pool;
   const { rows: catRows } = await q.query(`SELECT prefix FROM categories WHERE key=$1`, [category]);

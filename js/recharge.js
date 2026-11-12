@@ -79,6 +79,13 @@ function render() {
       当前余额：<b>$${Store.totalCoins(u)}</b>
     </div>
 
+    ${u.isAdmin ? `<div class="recharge-section" id="test-credit">
+      <h3>测试充值（无需付款）</h3>
+      <input id="test-account" placeholder="给自己充直接点金额；给别人充先填账号" aria-label="测试充值账号">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        ${[10,100,1000,5000].map(n=>`<button class="btn ghost" onclick="testCredit(${n})">+${n} 金币</button>`).join('')}
+      </div><p id="test-credit-result" role="status"></p>
+    </div>` : ''}
     <div class="recharge-section">
       <h3>选择套餐</h3>
       <div class="pkg-grid">${pkgCards}</div>
@@ -193,5 +200,28 @@ async function loadRechargeHistory(){
  const box=document.getElementById('recharge-history');if(!box)return;
  const r=await Store.getRechargeHistory();if(!r.ok){box.textContent=r.msg||'读取失败';return;}
  const names={pending:'等待确认',paid:'已到账',failed:'未完成'};
- box.innerHTML=(r.recharges||[]).map(rc=>`<p>${escapeHtml(new Date(Number(rc.created_at)).toLocaleString())} · $${rc.amount} · ${names[rc.status]||escapeHtml(rc.status)} ${rc.status==='pending'?`<a href="recharge.html?result=pending&id=${encodeURIComponent(rc.id)}">查询到账</a>`:''}</p>`).join('')||'暂无充值记录';
+ box.innerHTML=(r.recharges||[]).map(rc=>`<p>${escapeHtml(new Date(Number(rc.created_at)).toLocaleString())} · ${rc.method==='admin-test'?'测试充值（未付款） · ':''}$${rc.amount} · ${names[rc.status]||escapeHtml(rc.status)} ${rc.status==='pending'?`<a href="recharge.html?result=pending&id=${encodeURIComponent(rc.id)}">查询到账</a>`:''}</p>`).join('')||'暂无充值记录';
+}
+
+let testCrediting=false;
+async function testCredit(amount){
+ if(testCrediting)return;
+ const account=document.getElementById('test-account').value.trim()||Store.currentUser().account;
+ const storageKey='lb-test-credit-'+Store.currentUser().id;
+ let pending;
+ try { pending=JSON.parse(sessionStorage.getItem(storageKey)||'null'); } catch {}
+ if(pending && (pending.account!==account||pending.amount!==amount)){
+   toast('上次到账结果待确认，请用原账号和金额再点一次');return;
+ }
+ pending=pending||{account,amount,requestKey:crypto.randomUUID()};
+ sessionStorage.setItem(storageKey,JSON.stringify(pending));
+ testCrediting=true;
+ const buttons=document.querySelectorAll('#test-credit button');buttons.forEach(b=>b.disabled=true);
+ const result=document.getElementById('test-credit-result');result.textContent='正在到账…';
+ try{
+  const r=await Store.request('POST','/admin/test-recharge',pending);
+  if(r.ok||!r.uncertain)sessionStorage.removeItem(storageKey);
+  result.textContent=r.msg||'请点击原金额重试确认';toast(result.textContent);
+  if(r.ok){await Store.refreshMe();renderTopbar('home');document.querySelector('.recharge-balance b').textContent='$'+Store.totalCoins(Store.currentUser());await loadRechargeHistory();}
+ }finally{testCrediting=false;buttons.forEach(b=>b.disabled=false);}
 }

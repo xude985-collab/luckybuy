@@ -206,3 +206,17 @@ test('authentication failures count toward brute-force limit', async () => {
  }
  assert.equal(blocked,true,'Repeated failures must trigger the authentication limiter');
 });
+
+test('admin test credits self and others once, rejects ordinary users and invalid amounts',async()=>{
+ const body={amount:100,account:'user@test.invalid',requestKey:'11111111-1111-4111-8111-111111111111'};
+ assert.equal((await api('/admin/test-recharge',body,userCookie)).status,403);
+ assert.equal((await api('/admin/test-recharge',body)).status,401);
+ assert.equal((await api('/admin/test-recharge',{...body,amount:-1},adminCookie)).status,400);
+ const before=Number((await pool.query("SELECT paid_balance FROM users WHERE id='u_test'")).rows[0].paid_balance);
+ const results=await Promise.all([api('/admin/test-recharge',body,adminCookie),api('/admin/test-recharge',body,adminCookie)]);
+ assert(results.every(r=>r.data.ok));
+ assert.equal(Number((await pool.query("SELECT paid_balance FROM users WHERE id='u_test'")).rows[0].paid_balance),before+100);
+ assert.equal((await api('/admin/test-recharge',{...body,amount:101},adminCookie)).status,409);
+ assert.equal((await api('/admin/test-recharge',{amount:10,requestKey:'22222222-2222-4222-8222-222222222222'},adminCookie)).data.ok,true);
+ assert.equal((await pool.query("SELECT count(*)::int AS n FROM admin_audit WHERE action='test-recharge'")).rows[0].n,2);
+});

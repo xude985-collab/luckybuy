@@ -308,3 +308,17 @@ test('登录状态临时失败自动恢复，登录写请求不重发', async({p
  await page.locator('#submitBtn').click();
  await expect(page.locator('#submitBtn')).toBeEnabled();expect(writes).toBe(1);
 });
+
+test('管理员点金额测试到账，可以指定别人账号',async({page})=>{
+ await mockAPI(page);let body;
+ await page.route('**/api/admin/test-recharge',async route=>{body=route.request().postDataJSON();await route.fulfill({json:{ok:true,msg:'已测试到账'}})});
+ await page.goto('/recharge.html');
+ await page.locator('#test-credit button').filter({hasText:'+100 金币'}).click();
+ await expect(page.locator('#test-credit-result')).toHaveText('已测试到账');
+ expect(body.account).toBe(user.account);expect(body.amount).toBe(100);
+ await expect(page.locator('#test-credit button').first()).toBeEnabled();
+ await page.locator('#test-account').fill('friend@example.com');
+ await page.locator('#test-credit button').first().click();
+ await expect(page.locator('#test-credit-result')).toHaveText('已测试到账');
+ expect(body.account).toBe('friend@example.com');expect(body.amount).toBe(10);
+});
