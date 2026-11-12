@@ -124,4 +124,3 @@ async function submit() {
 renderTopbar('home');
 render();
 Store.ready.then(() => renderTopbar('home'));
-

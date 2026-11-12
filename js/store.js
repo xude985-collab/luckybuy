@@ -24,9 +24,15 @@ const Store = (() => {
   const errors = new Map();
   function recordError(path,msg){if(msg)errors.set(path,msg);else errors.delete(path);window.dispatchEvent(new Event('store-status'));}
 
-  async function http(method, path, body) {
+  async function http(method, path, body, attempt = 0) {
+    const retrySession = method === 'GET' && path === '/auth/me' && attempt < 2;
+    const retry = async () => {
+      clearTimeout(timer);
+      await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
+      return http(method, path, body, attempt + 1);
+    };
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 60000);
+    const timer = setTimeout(() => controller.abort(), method === 'GET' && path === '/auth/me' ? 12000 : 60000);
     const opt = { method, credentials: 'same-origin', headers: {}, signal: controller.signal };
     if (body !== undefined) {
       opt.headers['Content-Type'] = 'application/json';
@@ -35,6 +41,10 @@ const Store = (() => {
     let resp, data;
     try {
       resp = await fetch(API + path, opt);
+      if (retrySession && [502, 503, 504].includes(resp.status)) {
+        await resp.body?.cancel();
+        return retry();
+      }
       const text = await resp.text();
       try { data = JSON.parse(text); } catch (_) {
         if(method==='GET')recordError(path,'服务暂时不可用，请稍后重试');
@@ -48,6 +58,7 @@ const Store = (() => {
         return { ok: false, uncertain:true, msg: '服务器响应异常，请稍后重试' };
       }
     } catch (e) {
+      if (retrySession) return retry();
       if(method==='GET')recordError(path,'连接暂时失败，请稍后重试');
       return { ok: false, uncertain:true, msg: controller.signal.aborted
         ? '请求超时，请刷新确认操作结果' : '网络异常，请稍后重试' };

@@ -294,3 +294,17 @@ test('登录状态接口挂起时仍立即展示表单，失败后显示具体�
  release();
  await expect(page.locator('#service-notice')).toContainText('服务暂时无法连接');
 });
+
+test('登录状态临时失败自动恢复，登录写请求不重发', async({page})=>{
+ await mockAPI(page,{guest:true});let reads=0,writes=0;
+ await page.route('**/api/auth/me',async route=>{
+  reads++;await route.fulfill(reads<3?{status:503,json:{ok:false,msg:'temporary'}}:{json:{ok:true,user:null}});
+ });
+ await page.route('**/api/auth/login',async route=>{writes++;await route.fulfill({status:503,json:{ok:false,msg:'暂时不可用'}})});
+ await page.goto('/login.html');
+ await expect.poll(()=>reads).toBe(3);
+ await expect(page.locator('#service-notice')).toHaveCount(0);
+ await page.locator('#account').fill('test@example.com');await page.locator('#password').fill('wrong-password');
+ await page.locator('#submitBtn').click();
+ await expect(page.locator('#submitBtn')).toBeEnabled();expect(writes).toBe(1);
+});
