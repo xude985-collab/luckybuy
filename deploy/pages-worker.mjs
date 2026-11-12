@@ -3,7 +3,10 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname === '/api' || url.pathname.startsWith('/api/') || url.pathname.startsWith('/uploads/')) {
-      const origin = new URL(env.API_ORIGIN || 'https://api.luckybuy.vip');
+      // The custom API alias can challenge server-to-server requests. Use the
+      // same Render service directly, including deployments with the old alias binding.
+      const configuredOrigin = env.API_ORIGIN || 'https://luckybuy.onrender.com';
+      const origin = new URL(configuredOrigin === 'https://api.luckybuy.vip' ? 'https://luckybuy.onrender.com' : configuredOrigin);
       const target = new URL(url.pathname + url.search, origin);
       const headers = new Headers(request.headers);
       headers.delete('host');
@@ -15,7 +18,7 @@ export default {
           redirect: 'manual', duplex: 'half', signal: AbortSignal.timeout(60000) }));
         if (url.pathname.startsWith('/api/') && upstream.headers.get('cf-mitigated') === 'challenge') {
           await upstream.body?.cancel();
-          return Response.json({ ok: false, msg: '登录服务暂时被安全验证拦截，请稍后重试' },
+          return Response.json({ ok: false, msg: '服务暂时被安全验证拦截，请稍后重试' },
             { status: 503, headers: { 'Cache-Control': 'no-store', 'Retry-After': '60' } });
         }
         const response = new Response(upstream.body, upstream);

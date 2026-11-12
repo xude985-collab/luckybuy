@@ -77,7 +77,7 @@ test('刷新失败保留缓存，并合并并发读取', async ({ page }) => {
     await route.fulfill({ status: 503, json: { ok: false } });
   });
   await page.evaluate(() => Promise.all([Store.refreshProducts(), Store.refreshProducts()]));
-  expect(calls).toBe(1);
+  expect(calls).toBe(2);
   expect(await page.evaluate(() => Store.listProducts().length)).toBe(1);
 });
 
@@ -514,3 +514,22 @@ for(const width of [390,1440]) {
   }
  });
 }
+
+test('商品读取临时失败自动恢复，首排封面使用小图且详情保留原图',async({page})=>{
+ const picture='https://m.media-amazon.com/images/I/71Example._AC_SL1500_.jpg';
+ const p={...product,gallery:[{type:'image',url:picture}]};
+ await page.route('https://m.media-amazon.com/**',route=>route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"/>'}));
+ await mockAPI(page,{product:p});
+ let reads=0;
+ await page.route('**/api/shop/catalog?**',route=>++reads===1?route.fulfill({status:503,json:{ok:false}}):route.fulfill({json:{ok:true,products:[p],total:1,pages:1}}));
+ await page.goto('/index.html');
+ await expect(page.locator('.card .name')).toHaveText(product.name);
+ expect(reads).toBe(2);
+ await expect(page.locator('#service-notice')).toHaveCount(0);
+ await expect(page.locator('.card img')).toHaveAttribute('src',picture.replace('SL1500','SL600'));
+ await expect(page.locator('.card img')).toHaveAttribute('loading','eager');
+ await page.locator('.card img').dispatchEvent('error');
+ await expect(page.locator('.card img')).toHaveAttribute('src',picture);
+ await page.goto('/detail.html?id=p_test');
+ await expect(page.locator('#gmain')).toHaveAttribute('src',picture);
+});

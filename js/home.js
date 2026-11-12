@@ -82,7 +82,7 @@ function startCountdownTimer() {
 }
 
 /* ---- 商品网格 ---- */
-function cardHtml(p) {
+function cardHtml(p, index = 0) {
   const percent = pct(p);
   const remain = p.totalShares - p.soldShares;
   const done = p.status === 'revealed';
@@ -98,7 +98,7 @@ function cardHtml(p) {
   }
   // 封面:优先用真实商品图(gallery第一张),否则显示emoji
   const cover = (p.gallery && p.gallery.length && p.gallery[0].url)
-    ? `<img src="${escapeHtml(p.gallery[0].url)}" alt="${escapeHtml(p.name)}" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:contain;background:#fff">`
+    ? `<img src="${escapeHtml(cardImageUrl(p.gallery[0].url))}" data-original-src="${escapeHtml(p.gallery[0].url)}" onerror="this.onerror=null;this.src=this.dataset.originalSrc" alt="${escapeHtml(p.name)}" loading="${index < 4 ? 'eager' : 'lazy'}" decoding="async" style="width:100%;height:100%;object-fit:contain;background:#fff">`
     : escapeHtml(p.img || '🎁');
   let buySection = '';
   if (!done && !drawing && !p.pricingPending) {
@@ -138,6 +138,16 @@ function cardHtml(p) {
         ${buySection}
       </div>
     </div>`;
+}
+function cardImageUrl(url) {
+  try {
+    const image = new URL(url);
+    if (image.hostname === 'm.media-amazon.com' && /^\/images\/I\/[^/]+\._(?:AC_)?SL\d+_\.jpg$/.test(image.pathname)) {
+      image.pathname = image.pathname.replace(/\._(?:AC_)?SL\d+_\.jpg$/, '._AC_SL600_.jpg');
+      return image.href;
+    }
+  } catch (_) {}
+  return url;
 }
 let activeCat = 'all';
 let currentPage = 1;

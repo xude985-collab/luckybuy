@@ -4,7 +4,7 @@ import worker from '../deploy/pages-worker.mjs';
 
 test('Pages proxy preserves POST payload and session cookie without caching user data', async t => {
   t.mock.method(globalThis, 'fetch', async request => {
-    assert.equal(request.url, 'https://api.luckybuy.vip/api/wallet/buy');
+    assert.equal(request.url, 'https://luckybuy.onrender.com/api/wallet/buy');
     assert.equal(request.headers.get('Cookie'), 'lb_token=test-session');
     assert.equal(request.headers.get('X-Forwarded-Host'), 'luckybuy.vip');
     assert.deepEqual(await request.json(), { shares: 1 });
@@ -18,7 +18,7 @@ test('Pages proxy preserves POST payload and session cookie without caching user
 });
 
 test('Pages proxy keeps same-site redirects and delegates static assets', async t => {
-  t.mock.method(globalThis, 'fetch', async () => Response.redirect('https://api.luckybuy.vip/recharge.html?result=success', 302));
+  t.mock.method(globalThis, 'fetch', async () => Response.redirect('https://luckybuy.onrender.com/recharge.html?result=success', 302));
   const response = await worker.fetch(new Request('https://luckybuy.vip/api/wallet/paypal-return'), {});
   assert.equal(response.headers.get('Location'), 'https://luckybuy.vip/recharge.html?result=success');
   const asset = await worker.fetch(new Request('https://luckybuy.vip/index.html'), { ASSETS: { fetch: () => new Response('site') } });
@@ -46,4 +46,10 @@ test('Pages proxy reports upstream security challenge without replaying a write'
   assert.equal(response.status, 503);
   assert.equal(response.headers.get('Cache-Control'), 'no-store');
   assert.equal((await response.json()).ok, false);
+});
+
+test('Pages replaces legacy API alias binding with direct same-service origin', async t => {
+ t.mock.method(globalThis,'fetch',async request=>{assert.equal(request.url,'https://luckybuy.onrender.com/api/shop/catalog?page=1');return Response.json({ok:true,products:[]});});
+ const response=await worker.fetch(new Request('https://luckybuy.vip/api/shop/catalog?page=1'),{API_ORIGIN:'https://api.luckybuy.vip'});
+ assert.equal(response.status,200);
 });
