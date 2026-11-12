@@ -149,7 +149,7 @@ function renderDrawNotification() {
   const bar = document.createElement('div');
   bar.id = 'draw-notify-bar';
   bar.className = 'draw-notify-bar';
-  bar.innerHTML = `<span>🔔 你参与的 <b title="${escapeHtml(p.name)}">${escapeHtml(p.name.length>32?p.name.slice(0,32)+'…':p.name)}</b> ${timeText}</span><a href="detail.html?id=${encodeURIComponent(p.id)}">去看看 →</a>`;
+  bar.innerHTML = `<span>🔔 你参与的 <b>${escapeHtml(p.name)}</b> ${timeText}</span><a href="detail.html?id=${encodeURIComponent(p.id)}">去看看 →</a>`;
   const topbar = document.getElementById('topbar');
   if (topbar) topbar.after(bar);
   else document.body.prepend(bar);
