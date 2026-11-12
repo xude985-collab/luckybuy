@@ -86,8 +86,9 @@
   padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;
 }
 .admin-form .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.amz-row { display: flex; gap: 8px; }
-.amz-row input { flex: 1; }
+.amz-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.amz-row input { flex: 1 0 100%; }
+.amz-row .btn { flex: 1; min-height: 44px; }
 
 /* Users tab */
 .user-toolbar {

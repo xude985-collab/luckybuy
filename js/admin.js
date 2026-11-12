@@ -157,10 +157,18 @@ async function save() {
   if (r.ok) { cancelEdit(); loadProducts(); loadDashboard(); }
 }
 
+function clearSourceLink() {
+  const input = document.getElementById('f-source');
+  input.value = '';
+  input.focus();
+}
+
 async function importProduct() {
   const url = v('f-source');
   if (!url) { toast('请先粘贴商品链接'); return; }
   const btn = document.getElementById('amz-btn');
+  const clearBtn = document.getElementById('clear-source-btn');
+  clearBtn.disabled = true;
   btn.disabled = true; btn.textContent = '导入中…';
   try {
     const resp = await Store.importAmazon(url);
@@ -173,7 +181,7 @@ async function importProduct() {
   } catch (e) {
     toast(e.message || '导入失败');
   }
-  finally { btn.disabled = false; btn.textContent = '自动导入'; }
+  finally { btn.disabled = false; clearBtn.disabled = false; btn.textContent = '自动导入'; }
 }
 
 

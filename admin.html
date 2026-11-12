@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>后台管理 · Lucky Buy</title>
   <link rel="stylesheet" href="css/style.css?v=20261111full2">
-  <link rel="stylesheet" href="css/admin.css?v=20261111full2">
+  <link rel="stylesheet" href="css/admin.css?v=20261112clear">
 
   <style>
     /* 默认状态：已登录（假设用户已登录，避免闪烁） */
@@ -89,6 +89,7 @@
             <label>商品来源链接（赛盈 / Doba / 亚马逊）</label>
             <div class="amz-row">
               <input id="f-source" placeholder="粘贴 saleyee / doba / amazon 商品链接">
+              <button type="button" class="btn ghost" id="clear-source-btn" onclick="clearSourceLink()">清除</button>
               <button type="button" class="btn ghost" id="amz-btn" onclick="importProduct()">自动导入</button>
             </div>
             <div class="amz-hint">粘贴商品链接，自动获取名称、图片、规格</div>
@@ -181,6 +182,6 @@
   </main>
   <script src="js/common.js?v=20261111full2"></script>
   <script src="js/store.js?v=20261111full2"></script>
-  <script src="js/admin.js?v=20261111full2"></script>
+  <script src="js/admin.js?v=20261112clear"></script>
 </body>
 </html>
