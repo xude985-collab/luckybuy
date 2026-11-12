@@ -126,6 +126,8 @@ function renderMobNav(active, u) {
       <span class="nav-icon">🏆</span>幸运区</a>
     <a href="orders.html" class="${active === 'orders' ? 'active' : ''}">
       <span class="nav-icon">📋</span>记录</a>
+    <a href="rules.html" class="${active === 'rules' ? 'active' : ''}">
+      <span class="nav-icon">📖</span>规则</a>
     <a href="${u ? 'profile.html' : 'login.html'}" class="${active === 'profile' ? 'active' : ''}">
       <span class="nav-icon">👤</span>${u ? '我的' : '登录'}</a>
     ${isAdmin ? `<a href="admin.html" class="${active === 'admin' ? 'active' : ''}">
