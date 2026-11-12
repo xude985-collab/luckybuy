@@ -32,6 +32,20 @@ test('integrated money/account/fulfillment workflows on isolated PostgreSQL',asy
  await pool.query("INSERT INTO users(id,account,account_type,name,pass_hash,role,invite_code,paid_balance,free_balance,created_at) VALUES ('u_test','user@test.invalid','email','测试用户',$1,'user','TEST01',20,10,1)",[hash]);
  userCookie=(await api('/auth/login',{account:'user@test.invalid',password:'test-admin-password'})).cookie;
  let product;
+ await t.test('every admin endpoint rejects guests and ordinary accounts before executing',async()=>{
+  const {default:adminRouter}=await import('../server/routes/admin.js');
+  const routes=adminRouter.stack.filter(layer=>layer.route).flatMap(layer=>Object.keys(layer.route.methods).map(method=>({method:method.toUpperCase(),path:'/admin'+layer.route.path.replace(/:[^/]+/g,'permission-test')})));
+  routes.push({method:'GET',path:'/showcase/pending'},{method:'POST',path:'/showcase/review/permission-test'});
+  assert.ok(routes.length>=30);
+  for(const {method,path} of routes){
+   for(const [cookie,status] of [['',401],[userCookie,403]]){
+    const result=await api(path,method==='GET'?undefined:{},cookie,method);
+    assert.equal(result.status,status,`${method} ${path}`);
+    assert.equal(result.data.ok,false);
+   }
+  }
+  assert.equal((await api('/admin/overview',undefined,adminCookie)).status,200);
+ });
  await t.test('reference price controls shares and five percent quota; missing import price is rejected',async()=>{
   const data={name:'价格联动测试',category:'cleaning',sourceUrl:'https://www.amazon.com/dp/B08KT2Z93D',pricePerShare:1,totalShares:1,freeQuota:0,pricing:{referencePrice:100,multiplier:1,freeRatio:100,priceConfirmed:true}};
   const created=await api('/admin/products',data,adminCookie);assert.equal(created.data.ok,true);

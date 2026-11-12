@@ -493,3 +493,24 @@ for (const width of [320, 768, 1440]) {
     await expect(note).toHaveCount(0);
   });
 }
+
+for(const width of [390,1440]) {
+ test(`后台直接访问在身份检查前隐藏，普通用户和访客被拒绝 ${width}px`,async({page})=>{
+  await page.setViewportSize({width,height:900});
+  for(const guest of [false,true]){
+   await mockAPI(page,{guest,user:{...user,role:'user'}});
+   let release;
+   const gate=new Promise(resolve=>release=resolve);
+   await page.route('**/api/auth/me',async route=>{await gate;await route.fulfill({json:{ok:true,user:guest?null:{...user,role:'user'}}});});
+   let adminRequests=0;
+   await page.route('**/api/admin/**',route=>{adminRequests++;return route.fulfill({status:403,json:{ok:false}});});
+   await page.goto('/admin.html',{waitUntil:'domcontentloaded'});
+   await expect(page.locator('#admin-content')).toBeHidden();
+   release();
+   await expect(page.locator('body')).toContainText('此页面仅管理员可访问');
+   await expect(page.locator('.admin-tabs')).toHaveCount(0);
+   expect(adminRequests).toBe(0);
+   await page.unrouteAll({behavior:'wait'});
+  }
+ });
+}

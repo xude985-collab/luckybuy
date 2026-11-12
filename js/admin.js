@@ -622,6 +622,7 @@ onReady(() => {
     return;
   }
   renderTopbar('admin');
+  document.getElementById('admin-content').hidden = false;
   initTabs();
   // Dashboard
   loadDashboard();

@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="css/admin.css?v=20261112clear">
 
   <style>
+    #admin-content[hidden] { display: none !important; }
     /* 默认状态：已登录（假设用户已登录，避免闪烁） */
     .nav-profile, .nav-admin { display: inline-block; }
     #topbar-wallet, #topbar-user { display: inline-block; }
@@ -26,7 +27,7 @@
 </head>
 <body>
   <header id="topbar" class="topbar"><a href="index.html" class="logo">Lucky&nbsp;Buy</a><nav><a href="index.html">全部商品</a><a href="winners.html">幸运区</a><a href="orders.html">我的记录</a><a href="rules.html">规则</a><a href="profile.html" class="nav-profile">个人中心</a><a href="admin.html" class="nav-admin">后台</a></nav><div class="spacer"></div><div class="wallet" id="topbar-wallet"></div><div class="wallet wallet-user" id="topbar-user"></div><a href="login.html" class="wallet" id="topbar-login">登录 / 注册</a></header>
-  <main class="container">
+  <main class="container" id="admin-content" hidden>
     <div class="page-title">后台管理</div>
     <nav class="admin-tabs">
       <button class="tab active" data-tab="dashboard">数据概览</button>
@@ -183,6 +184,6 @@
   </main>
   <script src="js/common.js?v=20261112adminprofile"></script>
   <script src="js/store.js?v=20261112pricing5"></script>
-  <script src="js/admin.js?v=20261112priceconfirm"></script>
+  <script src="js/admin.js?v=20261112adminguard"></script>
 </body>
 </html>
