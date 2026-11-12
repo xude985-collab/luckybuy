@@ -194,6 +194,30 @@ test('Amazon USD price supports primary offer markup and structured offers, reje
  assert.equal(extractUsdPrice('<div id="corePrice_feature_div"><span class="a-price"><span class="a-offscreen">$200</span></span></div>',url.replace('.com','.ca')),0);
 });
 
+test('deleted email can register a fresh account without inheriting old wallet or session',async()=>{
+ const {createSession,walletTx}=await import('../server/lib/helpers.js');
+ const account='recycle@test.invalid';
+ await pool.query("INSERT INTO users(id,account,account_type,name,pass_hash,role,invite_code,paid_balance,free_balance,created_at) SELECT 'u_recycle',$1,'email','old',pass_hash,'user','RECYCL',0,10,1 FROM users WHERE id='u_admin'",[account]);
+ await walletTx('u_recycle','test-credit',17,'old balance');
+ const oldCookie='lb_token='+await createSession('u_recycle');
+ assert.equal((await api('/admin/users/u_recycle/delete',{confirmation:'DELETE'},adminCookie)).data.ok,true);
+ const old=(await pool.query("SELECT * FROM users WHERE id='u_recycle'")).rows[0];
+ assert.equal(old.deleted_account,account);assert.equal(old.account,'deleted:u_recycle');assert.equal(Number(old.paid_balance),17);
+ assert.equal((await api('/wallet',null,oldCookie)).status,401);
+ await pool.query('INSERT INTO email_codes(account,code,expires_at,sent_at) VALUES($1,$2,$3,$4)',[account,'123456',Date.now()+60000,Date.now()]);
+ const registration=await api('/auth/register',{account,password:'new-recycle-password',code:'123456'});
+ assert.equal(registration.data.ok,true,JSON.stringify(registration.data));assert.notEqual(registration.data.user.id,'u_recycle');assert.equal(Number(registration.data.user.paid_balance),0);
+ const login=await api('/auth/login',{account,password:'new-recycle-password'});assert.equal(login.data.ok,true);assert.equal(login.data.user.id,registration.data.user.id);
+ assert.equal((await api('/auth/login',{account,password:'test-admin-password'})).data.ok,false);
+ assert.equal((await api('/admin/users/u_recycle/enable',{},adminCookie)).status,404);
+});
+
+test('startup releases emails for accounts deleted by the previous version',async()=>{
+ await pool.query("INSERT INTO users(id,account,account_type,name,pass_hash,role,invite_code,created_at,disabled,deleted_at) SELECT 'u_old_deleted','old-deleted@test.invalid','email','old',pass_hash,'user','OLDDEL',1,true,1 FROM users WHERE id='u_admin'");
+ const {initDB}=await import('../server/db.js');await initDB({seed:false});await initDB({seed:false});
+ const u=(await pool.query("SELECT account,deleted_account FROM users WHERE id='u_old_deleted'")).rows[0];assert.equal(u.account,'deleted:u_old_deleted');assert.equal(u.deleted_account,'old-deleted@test.invalid');
+});
+
 test('authentication failures count toward brute-force limit', async () => {
  const invalid = await api('/auth/register', {account:'rate@test.invalid',password:'test-password',code:'000000'});
  assert.equal(invalid.status,400);

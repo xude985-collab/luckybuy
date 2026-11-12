@@ -375,7 +375,7 @@ router.post('/users/:id/delete', requireAdmin, async(req,res,next)=>{
    if(!u)throw bad('用户不存在',404);
    if(u.id===req.user.id||u.role==='admin')throw bad('不能删除管理员账号');
    if(u.deleted_at)return;
-   await c.query('UPDATE users SET disabled=true,deleted_at=$2 WHERE id=$1',[u.id,Date.now()]);
+   await c.query("UPDATE users SET disabled=true,deleted_at=$2,deleted_account=account,account='deleted:'||id WHERE id=$1",[u.id,Date.now()]);
    await c.query('DELETE FROM sessions WHERE user_id=$1',[u.id]);
    await audit(c,req.user.id,'delete-user',u.id,{account:u.account,name:u.name,retainedHistory:true});
   });
