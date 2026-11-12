@@ -101,9 +101,9 @@ function render() {
   } else {
     let quotaTip = '';
     const quota = p.freeQuota || 0;
-    if (quota > 0) {
+    {
       const poolUsed = Store.productFreeUsed(id);
-      const poolLeft = Math.max(0, quota - poolUsed);
+      const poolLeft = quota > 0 ? Math.max(0, quota - poolUsed) : remain;
       const u = Store.currentUser();
       let mine = 0;
       if (u) {
@@ -115,7 +115,11 @@ function render() {
       const alreadyUsed = u && Store.myOrders().some(
         o => String(o.productId) === String(id) && (o.freeUsed || 0) > 0
       );
-      quotaTip = `<div class="free-quota-tip">🪙 本商品免费参与额度 <b>${quota}</b> 份（全场共享，先到先得，每人仅限 1 份）· 剩余 <b>${poolLeft}</b> 份${u ? `${alreadyUsed ? ' · <span style="color:#c62828">你已用过本商品的免费金币</span>' : ` · 本单可免费参与 <b>${mine}</b> 份，每份消耗 ${p.price} 免费金币`}，其余用充值金币` : ''}。</div>`;
+      quotaTip = `<div class="free-quota-tip">
+        <div>🪙 ${quota > 0 ? `免费总额度 <b>${quota}</b> 份 · 免费剩余 <b>${poolLeft}</b> 份` : '免费总额度 <b>不限</b> · 免费剩余 <b>不限</b>（以商品剩余份数为限）'}</div>
+        <div>全场共享，先到先得；每人每商品仅限免费 <b>1</b> 份。</div>
+        <div>${u ? `本次可免费参与 <b>${mine}</b> 份${alreadyUsed ? '（你已使用过本商品的免费资格）' : ''}；每份消耗 <b>${p.price}</b> 枚免费金币，其余用充值金币。` : '登录后显示本次可用免费份数。'}</div>
+      </div>`;
     }
     action = quotaTip + `
       <div class="qty">

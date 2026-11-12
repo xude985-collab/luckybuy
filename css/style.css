@@ -1109,3 +1109,4 @@ html:not(.user-is-admin) .topbar .nav-admin { display: none; }
   .draw-countdown { font-size: 36px; }
   .draw-notify-bar { padding: 8px 14px; font-size: 13px; }
 }
+.card-free-quota { margin:8px 0; color:#805400; font-size:12px; line-height:1.5; overflow-wrap:anywhere; }

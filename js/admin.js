@@ -70,7 +70,7 @@ function renderProductList(list) {
     html += `<tr>
       <td>${esc(p.sku||'—')}</td>
       <td>${escapeHtml(p.img||'')} ${esc(p.name)}</td>
-      <td>$${p.price}×${p.totalShares}</td>
+      <td>$${p.price}/份<br>总 ${p.totalShares} 份<br>${p.freeQuota > 0 ? `免费 ${p.freeQuota} 份` : '免费额度不限'}${!p.pricing?.referencePrice ? '<br><small>参考价未保存，请核对份数</small>' : ''}</td>
       <td>${sold}/${p.totalShares} (${pct}%)</td>
       <td>${state}</td>
       <td><a href="#" onclick="editProd('${p.id}');return false">编辑</a> · <a href="#" onclick="delProd('${p.id}');return false" style="color:#c00">删除</a></td>

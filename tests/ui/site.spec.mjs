@@ -151,6 +151,16 @@ test('后台规则保存失败显示实际错误而不是成功', async ({ page 
   await expect(page.locator('#toast')).toHaveText('测试保存失败');
 });
 
+test('首页详情显示总份数和免费额度，包括原规则0表示不限',async({page})=>{
+ await mockAPI(page,{product:{...product,freeQuota:0}});
+ await page.goto('/index.html');await expect(page.locator('.progress-meta').first()).toContainText('总 100 份');
+ await expect(page.locator('.card-free-quota').first()).toContainText('免费额度不限');
+ await page.goto('/detail.html?id=p_test');await expect(page.locator('.free-quota-tip')).toContainText('免费总额度 不限');
+ await mockAPI(page,{product:{...product,freeQuota:5,freeUsed:2}});
+ await page.goto('/index.html');await expect(page.locator('.card-free-quota').first()).toContainText('免费共 5 份 · 剩 3 份');
+ await page.goto('/detail.html?id=p_test');await expect(page.locator('.free-quota-tip')).toContainText('免费剩余 3 份');
+});
+
 test('导入价格按1.5倍联动总份数与免费比例，缺价不沿用旧份数',async({page})=>{
  await mockAPI(page);await page.goto('/admin.html');await page.evaluate(()=>Store.ready);
  await page.locator('[data-tab="products"]').click();
