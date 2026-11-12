@@ -240,6 +240,7 @@ function renderServiceNotice(){
  const messages=typeof Store!=='undefined'&&Store.errors?Store.errors():[];
  if(!messages.length){notice?.remove();return;}
  if(!notice){notice=document.createElement('div');notice.id='service-notice';notice.setAttribute('role','status');notice.style.cssText='padding:12px 16px;background:#fff3cd;color:#663c00;position:relative;z-index:20;text-align:center';document.getElementById('topbar')?.after(notice);}
- notice.replaceChildren(document.createTextNode('部分内容加载失败，当前显示可能不完整。 '));const retry=document.createElement('button');retry.textContent='重新加载';retry.className='btn ghost';retry.onclick=()=>location.reload();notice.append(retry);
+ const isLogin=/\/login(?:\.html)?$/.test(location.pathname);
+ notice.replaceChildren(document.createTextNode(isLogin ? '登录相关数据加载失败：' + [...new Set(messages)].join('；') + '。 ' : '部分内容加载失败，当前显示可能不完整。 '));const retry=document.createElement('button');retry.textContent='重新加载';retry.className='btn ghost';retry.onclick=()=>location.reload();notice.append(retry);
 }
 window.addEventListener('store-status',renderServiceNotice);

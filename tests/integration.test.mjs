@@ -194,3 +194,15 @@ test('Amazon USD price supports primary offer markup and structured offers, reje
  assert.equal(extractUsdPrice('<span class="a-offscreen">$3.99</span><script>{"price":4.99}</script>',url),0);
  assert.equal(extractUsdPrice('<div id="corePrice_feature_div"><span class="a-price"><span class="a-offscreen">$200</span></span></div>',url.replace('.com','.ca')),0);
 });
+
+test('authentication failures count toward brute-force limit', async () => {
+ const invalid = await api('/auth/register', {account:'rate@test.invalid',password:'test-password',code:'000000'});
+ assert.equal(invalid.status,400);
+ let blocked = false;
+ for (let i=0;i<31;i++) {
+  const result=await api('/auth/login',{account:'missing@test.invalid',password:'incorrect'});
+  if(result.status===429){blocked=true;break;}
+  assert.equal(result.status,401);
+ }
+ assert.equal(blocked,true,'Repeated failures must trigger the authentication limiter');
+});

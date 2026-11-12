@@ -25,12 +25,12 @@ router.post('/send-code', async (req, res, next) => {
   try {
     const account = String(req.body.account || '').trim().toLowerCase();
     const type = accountType(account);
-    if (!type) return res.json({ ok: false, msg: '请输入正确的邮箱' });
+    if (!type) return res.status(400).json({ ok: false, msg: '请输入正确的邮箱' });
     if (type === 'phone') return res.status(400).json({ ok: false, msg: '短信注册暂未开通，请使用邮箱注册；已有手机号账号仍可登录' });
 
     const { rows: prev } = await pool.query(`SELECT sent_at FROM email_codes WHERE account=$1`, [account]);
     if (prev[0] && now() - Number(prev[0].sent_at) < 60000) {
-      return res.json({ ok: false, msg: '发送太频繁，请稍后再试' });
+      return res.status(400).json({ ok: false, msg: '发送太频繁，请稍后再试' });
     }
     const code = String(crypto.randomInt(100000, 1000000));
     await pool.query(
@@ -74,13 +74,13 @@ router.post('/register', async (req, res, next) => {
     const invite = String(req.body.invite || '').trim().toUpperCase();
 
     const type = accountType(account);
-    if (!type) return res.json({ ok: false, msg: '请输入正确的邮箱' });
+    if (!type) return res.status(400).json({ ok: false, msg: '请输入正确的邮箱' });
     if (type === 'phone') return res.status(400).json({ ok: false, msg: '短信注册暂未开通，请使用邮箱注册；已有手机号账号仍可登录' });
-    if (password.length < 8 || Buffer.byteLength(password) > 72) return res.json({ ok: false, msg: '新密码至少8位，最多72字节' });
-    if (!/^\d{6}$/.test(code) || !(await verifyCode(account, code))) return res.json({ ok: false, msg: '验证码错误或已过期' });
+    if (password.length < 8 || Buffer.byteLength(password) > 72) return res.status(400).json({ ok: false, msg: '新密码至少8位，最多72字节' });
+    if (!/^\d{6}$/.test(code) || !(await verifyCode(account, code))) return res.status(400).json({ ok: false, msg: '验证码错误或已过期' });
 
     const { rows: dup } = await pool.query(`SELECT id FROM users WHERE account=$1`, [account]);
-    if (dup.length) return res.json({ ok: false, msg: '该账号已注册，请直接登录' });
+    if (dup.length) return res.status(400).json({ ok: false, msg: '该账号已注册，请直接登录' });
 
     let invitedBy = null;
     if (invite) {
@@ -131,7 +131,7 @@ router.post('/login', async (req, res, next) => {
       if(!u||u.disabled||password.length>256||!(await bcrypt.compare(password,u.pass_hash)))return null;
       return {u,token:await createSession(u.id,client)};
     });
-    if(!result)return res.json({ok:false,msg:'账号或密码错误，或账号已停用'});
+    if(!result)return res.status(401).json({ok:false,msg:'账号或密码错误，或账号已停用'});
     const {u,token}=result;
     res.cookie('lb_token', token, { httpOnly: true, sameSite: 'lax', secure: req.secure, maxAge: 30 * 864e5 });
     res.cookie('lb_logged_in', '1', { httpOnly: false, sameSite: 'lax', secure: req.secure, maxAge: 30 * 864e5 });

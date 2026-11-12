@@ -256,3 +256,41 @@ test('浏览器独立验证真实drand签名并拒绝篡改',async({page})=>{
   },fixture);
   expect(result).toEqual({round:42,rejected:true});
 });
+
+test('验证码发送防重复、请求期间切换安全且倒计时跨切换保留', async ({page}) => {
+ await mockAPI(page,{guest:true});
+ let release;
+ const pending=new Promise(resolve=>release=resolve);
+ let calls=0;
+ await page.route('**/api/auth/send-code',async route=>{
+  calls++; await pending;
+  await route.fulfill({json:{ok:true,msg:'验证码已发送',devCode:'123456'}});
+ });
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('/login.html?mode=register');
+ await page.locator('#account').fill('test@example.com');
+ await page.locator('#sendCodeBtn').click();
+ await expect(page.locator('#sendCodeBtn')).toBeDisabled();
+ await page.locator('.auth-tabs span').first().click();
+ await expect(page.locator('#code')).toBeVisible();
+ release();
+ await expect(page.locator('#code')).toHaveValue('123456');
+ await expect(page.locator('#sendCodeBtn')).toContainText('后重发');
+ await page.locator('.auth-tabs span').first().click();
+ await page.locator('.auth-tabs span').last().click();
+ await expect(page.locator('#sendCodeBtn')).toBeDisabled();
+ expect(calls).toBe(1);expect(errors).toEqual([]);
+});
+
+test('登录状态接口挂起时仍立即展示表单，失败后显示具体错误', async ({page})=>{
+ await mockAPI(page,{guest:true});
+ let release;const pending=new Promise(resolve=>release=resolve);
+ await page.route('**/api/auth/me',async route=>{
+  await pending;await route.fulfill({status:503,json:{ok:false,msg:'服务暂时无法连接，请稍后重试'}});
+ });
+ await page.goto('/login.html');
+ await expect(page.locator('#account')).toBeVisible();
+ await expect(page.locator('#submitBtn')).toBeEnabled();
+ release();
+ await expect(page.locator('#service-notice')).toContainText('服务暂时无法连接');
+});
