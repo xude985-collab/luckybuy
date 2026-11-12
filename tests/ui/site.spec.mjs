@@ -384,3 +384,26 @@ for (const width of [390, 768, 1440]) {
   await expect(page.locator('#sc-form')).toBeHidden();
  });
 }
+
+test('电脑每页16件，翻页和分类重置正常',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await mockAPI(page,{user:{...user,role:'user'}});
+ await page.route('**/api/shop/catalog?**',async route=>{
+  const u=new URL(route.request().url());expect(u.searchParams.get('limit')).toBe('16');
+  const n=Number(u.searchParams.get('page'));const count=n===1?16:1;
+  await route.fulfill({json:{ok:true,total:17,pages:2,products:Array.from({length:count},(_,i)=>({...product,id:'p_'+n+'_'+i,name:'商品 '+n+'-'+i}))}});
+ });
+ await page.goto('/index.html');
+ await expect(page.locator('#grid .card')).toHaveCount(16);
+ await expect(page.locator('#pagination')).toContainText('共 17 件 · 每页 16 件');
+ await expect(page.locator('#topbar-wallet')).toContainText('金币：');
+ await expect(page.locator('#recharge')).toHaveCount(1);
+ await page.locator('#pagination button').last().click();
+ await expect(page.locator('#grid .card')).toHaveCount(1);
+ await expect(page.locator('#pagination')).toContainText('第 2 / 2 页');
+ await expect(page.locator('#pagination button').last()).toBeDisabled();
+ await page.locator('.cat-tab').nth(1).click();
+ await expect(page.locator('#grid .card')).toHaveCount(16);
+ await expect(page.locator('#pagination')).toContainText('第 1 / 2 页');
+ await page.screenshot({path:'test-results/desktop-layout-16.png',fullPage:true});
+});

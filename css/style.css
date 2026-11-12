@@ -1086,3 +1086,34 @@ html:not(.user-is-admin) .topbar .nav-admin { display: none; }
   .draw-notify-bar { padding: 8px 14px; font-size: 13px; }
 }
 .card-free-quota { margin:8px 0; color:#805400; font-size:12px; line-height:1.5; overflow-wrap:anywhere; }
+
+/* 首页桌面布局与统一充值入口 */
+.topbar .wallet a#recharge {
+ display:inline-flex; align-items:center; justify-content:center;
+ margin-left:6px; padding:5px 12px; border-radius:14px;
+ background:#c93e12; color:#fff; font-weight:700;
+}
+.topbar .wallet a#recharge:hover { background:#ae330d; }
+.pagination { flex-wrap:wrap; }
+.pagination .page-info { text-align:center; }
+@media (min-width:901px) {
+ .home-layout { max-width:1800px; padding:24px; gap:24px; align-items:flex-start; }
+ .home-layout .container { max-width:none; margin:0; padding:0; }
+ .home-layout .left-col { width:240px; margin:0; top:84px; }
+ .home-layout .page-title { margin-top:0; }
+ .home-layout .grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+ .home-layout .card { display:flex; flex-direction:column; }
+ .home-layout .card .body { flex:1; }
+ .home-layout .card-buy-section { margin-top:auto; padding-top:10px; }
+ .home-layout .card .name { min-height:42px; }
+ .home-layout .showcase-section .empty { padding:24px 12px; }
+ .home-page .topbar { padding-left:max(24px,calc((100vw - 1752px)/2)); padding-right:max(24px,calc((100vw - 1752px)/2)); }
+}
+@media (min-width:1200px) {
+ .home-layout .grid { grid-template-columns:repeat(4,minmax(0,1fr)); }
+}
+@media (max-width:600px) {
+ .topbar .wallet a#recharge { padding:4px 8px; margin-left:3px; }
+ .pagination { gap:8px; }
+ .pagination .page-info { flex-basis:100%; order:-1; }
+}

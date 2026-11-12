@@ -59,8 +59,8 @@ function renderTopbar(active) {
 
   if (u) {
     if (walletEl) {
-      walletEl.innerHTML = `充值：<b>${u.paidCoins||0}</b> 免费：<b>${u.freeCoins||0}</b>
-        <span class="recharge-wrap">&nbsp;·&nbsp; <a href="#" id="recharge">充值</a></span>`;
+      walletEl.innerHTML = `金币：<b>${u.paidCoins||0}</b> · 免费：<b>${u.freeCoins||0}</b>
+        <span class="recharge-wrap"><a href="recharge.html" id="recharge">充值</a></span>`;
     }
     if (userEl) {
       userEl.innerHTML = `👤 ${escapeHtml(u.name)} &nbsp;·&nbsp; <a href="#" id="logout">退出</a>`;

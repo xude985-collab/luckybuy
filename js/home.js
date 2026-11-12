@@ -140,7 +140,7 @@ function cardHtml(p) {
 }
 let activeCat = 'all';
 let currentPage = 1;
-const PAGE_SIZE = window.innerWidth <= 600 ? 8 : 20;
+const PAGE_SIZE = window.innerWidth <= 600 ? 8 : 16;
 
 function renderCatTabs() {
   const tabs = [{ key: 'all', name: '全部', icon: '🏷️' }].concat(Store.listCategories());
@@ -173,12 +173,11 @@ async function renderGrid() {
   }
   grid.innerHTML = pageItems.map(cardHtml).join('');
   startCountdownTimer();
-  renderPagination(totalPages);
+  renderPagination(totalPages, total);
 }
 
-function renderPagination(totalPages) {
+function renderPagination(totalPages, total) {
   let pg = document.getElementById('pagination');
-  if (totalPages <= 1) { removePagination(); return; }
   if (!pg) {
     pg = document.createElement('div');
     pg.id = 'pagination';
@@ -187,7 +186,7 @@ function renderPagination(totalPages) {
   }
   pg.innerHTML = `
     <button onclick="goPage(${currentPage - 1})" ${currentPage <= 1 ? 'disabled' : ''}>上一页</button>
-    <span class="page-info">${currentPage} / ${totalPages}</span>
+    <span class="page-info">第 ${currentPage} / ${totalPages} 页 · 共 ${total} 件 · 每页 ${PAGE_SIZE} 件</span>
     <button onclick="goPage(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled' : ''}>下一页</button>`;
 }
 function removePagination() {
