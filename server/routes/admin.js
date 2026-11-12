@@ -162,7 +162,7 @@ router.post('/import-product', requireAdmin, async (req, res) => {
     }
     res.json({ ok: true, draft });
   } catch (e) {
-    res.status(502).json({ ok: false, msg: '导入失败：' + (e.message || '可稍后重试或手动录入') });
+    res.status(e.status === 400 ? 400 : 502).json({ ok: false, msg: '导入失败：' + (e.message || '可稍后重试或手动录入') });
   }
 });
 

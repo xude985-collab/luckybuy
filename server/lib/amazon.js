@@ -92,6 +92,7 @@ export async function fetchAmazon(rawUrl) {
   if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
   url=productUrl(url,'amazon').url;
   const asin = extractAsin(url);
+  if (!asin) throw Object.assign(new Error('这是亚马逊列表页或非商品详情链接。请先点开具体商品，再复制含 /dp/商品编号 的详情页链接。'), { status: 400 });
 
   const UAs = [UA_CHROME, UA_BOT];
   let lastErr;

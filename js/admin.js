@@ -166,6 +166,15 @@ function clearSourceLink() {
 async function importProduct() {
   const url = v('f-source');
   if (!url) { toast('请先粘贴商品链接'); return; }
+  try {
+    const parsed = new URL(/^https?:\/\//i.test(url) ? url : 'https://' + url);
+    if (/^(www\.)?amazon\./i.test(parsed.hostname) &&
+        !/\/(?:dp|gp\/product|gp\/aw\/d)\/[A-Z0-9]{10}(?:[/?#]|$)/i.test(parsed.pathname) &&
+        !/^[A-Z0-9]{10}$/i.test(parsed.searchParams.get('asin') || '')) {
+      toast('请先点开具体商品，再复制含 /dp/商品编号 的详情页链接；搜索或分类列表页不能导入单件商品。');
+      return;
+    }
+  } catch (_) { toast('商品链接格式不正确，请复制完整的商品详情页地址'); return; }
   const btn = document.getElementById('amz-btn');
   const clearBtn = document.getElementById('clear-source-btn');
   clearBtn.disabled = true;

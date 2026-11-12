@@ -115,6 +115,8 @@ test('drand verifies real signed fixture and rejects tampering',async()=>{
  await assert.rejects(verifyBeaconData(data,43));
 });
 test('product import rejects disguised domains and unsafe redirects',async()=>{
+ const {fetchAmazon}=await import('../server/lib/amazon.js');
+ await assert.rejects(fetchAmazon('https://www.amazon.com/s?i=specialty-aps'),e=>e.status===400&&e.message.includes('详情'));
  const {productUrl}=await import('../server/lib/productUrl.js');
  for(const value of ['https://evil.invalid/?doba.com/product/a/b','https://doba.com.evil.invalid/product/a/b','http://doba.com/product/a/b','https://user:password@doba.com/product/a/b','https://doba.com:444/product/a/b'])assert.throws(()=>productUrl(value));
  assert.equal(productUrl('https://www.doba.com/product/a/b').provider,'doba');
