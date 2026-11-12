@@ -24,6 +24,7 @@ router.post('/test-recharge', requireAdmin, async (req,res,next) => {
     const result=await withTransaction(async c=>{
       const u=(await c.query('SELECT id,account,disabled FROM users WHERE account=$1 FOR UPDATE',[account])).rows[0];
       if(!u||u.disabled)throw bad('账号不存在或已停用');
+      if(req.body.userId && req.body.userId!==u.id)throw bad('所选账号已变更，请刷新后重新选择',409);
       const old=(await c.query('SELECT user_id,amount FROM recharges WHERE id=$1',[id])).rows[0];
       if(old){if(old.user_id!==u.id||Number(old.amount)!==amount)throw bad('请求已用于其他充值',409);return {account:u.account};}
       await c.query("INSERT INTO recharges(id,user_id,amount,bonus,method,status,created_at,paid_at) VALUES($1,$2,$3,0,'admin-test','paid',$4,$4)",[id,u.id,amount,Date.now()]);

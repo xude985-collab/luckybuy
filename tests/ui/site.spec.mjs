@@ -304,16 +304,19 @@ test('登录状态临时失败自动恢复，登录写请求不重发', async({p
 
 test('管理员点金额测试到账，可以指定别人账号',async({page})=>{
  await mockAPI(page);let body;
+ await page.route('**/api/admin/users?**',r=>r.fulfill({json:{ok:true,users:[user,{id:'friend',name:'朋友',account:'friend@example.com'},{id:'disabled',name:'停用',account:'disabled@example.com',disabled:true}],pages:1}}));
  await page.route('**/api/admin/test-recharge',async route=>{body=route.request().postDataJSON();await route.fulfill({json:{ok:true,msg:'已测试到账'}})});
  await page.goto('/recharge.html');
  await page.locator('#test-credit button').filter({hasText:'+100 金币'}).click();
  await expect(page.locator('#test-credit-result')).toHaveText('已测试到账');
  expect(body.account).toBe(user.account);expect(body.amount).toBe(100);
  await expect(page.locator('#test-credit button').first()).toBeEnabled();
- await page.locator('#test-account').fill('friend@example.com');
+ await expect(page.locator('#test-account option[value=friend]')).toHaveText('朋友（friend@example.com）');
+ await expect(page.locator('#test-account option[value=disabled]')).toHaveCount(0);
+ await page.locator('#test-account').selectOption('friend');
  await page.locator('#test-credit button').first().click();
  await expect(page.locator('#test-credit-result')).toHaveText('已测试到账');
- expect(body.account).toBe('friend@example.com');expect(body.amount).toBe(10);
+ expect(body.account).toBe('friend@example.com');expect(body.userId).toBe('friend');expect(body.amount).toBe(10);
 });
 
 test('用户管理删除普通用户且不提供删除管理员入口',async({page})=>{

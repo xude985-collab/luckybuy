@@ -4,6 +4,9 @@ let selectedAmount = 0;
 let selectedBonus = 0;
 let selectedMethod = 'stripe';
 let paying=false;
+let testCreditAccount = '';
+let testCreditUserId = '';
+let testUsersPromise = null;
 let methods={stripe:false,paypal:false};
 
 function renderResult() {
@@ -81,7 +84,10 @@ function render() {
 
     ${u.isAdmin ? `<div class="recharge-section" id="test-credit">
       <h3>测试充值（无需付款）</h3>
-      <input id="test-account" placeholder="给自己充直接点金额；给别人充先填账号" aria-label="测试充值账号">
+      <label for="test-account">充值给</label>
+      <select id="test-account" aria-label="测试充值用户" style="display:block;width:100%;max-width:100%;min-height:44px;margin-top:8px" onchange="testCreditAccount=this.selectedOptions[0].dataset.account;testCreditUserId=this.value">
+        <option value="${escapeHtml(u.id)}" data-account="${escapeHtml(u.account)}">自己 · ${escapeHtml(u.name)}（${escapeHtml(u.account)}）</option>
+      </select><small id="test-user-status" role="status">正在读取其他用户…</small>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
         ${[10,100,1000,5000].map(n=>`<button class="btn ghost" onclick="testCredit(${n})">+${n} 金币</button>`).join('')}
       </div><p id="test-credit-result" role="status"></p>
@@ -126,6 +132,7 @@ function render() {
       立即支付 ${selectedAmount > 0 ? '$' + selectedAmount : ''}
     </button><section style="margin-top:24px"><h3>充值记录</h3><div id="recharge-history">读取中…</div></section>`;
   loadRechargeHistory();
+  if(u.isAdmin)loadTestCreditUsers();
 }
 
 function selectPkg(amount, bonus) {
@@ -206,16 +213,19 @@ async function loadRechargeHistory(){
 let testCrediting=false;
 async function testCredit(amount){
  if(testCrediting)return;
- const account=document.getElementById('test-account').value.trim()||Store.currentUser().account;
+ const select=document.getElementById('test-account');
+ const account=select.selectedOptions[0].dataset.account;
+ const userId=select.value;
  const storageKey='lb-test-credit-'+Store.currentUser().id;
  let pending;
  try { pending=JSON.parse(sessionStorage.getItem(storageKey)||'null'); } catch {}
- if(pending && (pending.account!==account||pending.amount!==amount)){
+ if(pending && (pending.account!==account||pending.amount!==amount||(pending.userId&&pending.userId!==userId))){
    toast('上次到账结果待确认，请用原账号和金额再点一次');return;
  }
- pending=pending||{account,amount,requestKey:crypto.randomUUID()};
+ pending=pending||{account,userId,amount,requestKey:crypto.randomUUID()};
  sessionStorage.setItem(storageKey,JSON.stringify(pending));
  testCrediting=true;
+ select.disabled=true;
  const buttons=document.querySelectorAll('#test-credit button');buttons.forEach(b=>b.disabled=true);
  const result=document.getElementById('test-credit-result');result.textContent='正在到账…';
  try{
@@ -223,5 +233,21 @@ async function testCredit(amount){
   if(r.ok||!r.uncertain)sessionStorage.removeItem(storageKey);
   result.textContent=r.msg||'请点击原金额重试确认';toast(result.textContent);
   if(r.ok){await Store.refreshMe();renderTopbar('home');document.querySelector('.recharge-balance b').textContent='$'+Store.totalCoins(Store.currentUser());await loadRechargeHistory();}
- }finally{testCrediting=false;buttons.forEach(b=>b.disabled=false);}
+ }finally{testCrediting=false;select.disabled=false;buttons.forEach(b=>b.disabled=false);}
+}
+
+async function loadTestCreditUsers(){
+ const select=document.getElementById('test-account'),status=document.getElementById('test-user-status');
+ if(!select)return;
+ if(!testUsersPromise)testUsersPromise=(async()=>{
+  const users=[];let page=1,pages=1;
+  do{const r=await Store.request('GET','/admin/users?page='+page);if(!r.ok)throw new Error(r.msg||'用户列表读取失败');users.push(...(r.users||[]));pages=r.pages||1;page++;}while(page<=pages);
+  return users;
+ })().catch(e=>{testUsersPromise=null;throw e;});
+ try{
+  const users=await testUsersPromise;if(!select.isConnected)return;
+  for(const u of users){if(u.disabled||u.id===Store.currentUser().id)continue;const option=new Option(`${u.name||'未设置昵称'}（${u.account}）`,u.id);option.dataset.account=u.account;select.add(option);}
+  if(testCreditUserId&&[...select.options].some(o=>o.value===testCreditUserId))select.value=testCreditUserId;
+  status.textContent='选择用户后，点击下方金额即可到账。';
+ }catch(e){if(status.isConnected)status.textContent=e.message+'，请刷新重试；仍可给自己充值。';}
 }
