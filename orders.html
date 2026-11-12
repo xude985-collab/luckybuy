@@ -7,6 +7,9 @@
   <link rel="stylesheet" href="css/style.css?v=20261112showcaseheight">
 
   <style>
+    .order-product-link { color: var(--brand-dark); text-decoration: underline; text-decoration-color: #ffccbc; text-underline-offset: 3px; overflow-wrap: anywhere; }
+    .order-product-link:hover { color: var(--brand); text-decoration-color: currentColor; }
+    .order-product-link:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; border-radius: 2px; }
     /* 默认状态：已登录（假设用户已登录，避免闪烁） */
     .nav-profile, .nav-admin { display: inline-block; }
     #topbar-wallet, #topbar-user { display: inline-block; }
@@ -34,6 +37,6 @@
   <script src="js/rng.js"></script>
   <script src="js/store.js?v=20261112pricing5"></script>
   <script src="js/common.js?v=20261112layout"></script>
-  <script src="js/orders.js?v=20261112evidence"></script>
+  <script src="js/orders.js?v=20261112productlinks"></script>
 </body>
 </html>

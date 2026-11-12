@@ -50,6 +50,12 @@ function render() {
   }
 }
 
+function orderProductLink(o) {
+  const name = escapeHtml(o.productName);
+  if (!o.productId) return name;
+  return `<a class="order-product-link" href="detail.html?id=${escapeHtml(encodeURIComponent(o.productId))}">${name}</a>`;
+}
+
 function renderOrderTable(orders) {
   const rows = orders.map(o => {
     const p = Store.getProduct(o.productId);
@@ -70,7 +76,7 @@ function renderOrderTable(orders) {
       }
     }
     return `<tr>
-      <td>${escapeHtml(o.productName)}<br><small style="color:#999">${escapeHtml(o.period)}</small></td>
+      <td>${orderProductLink(o)}<br><small style="color:#999">${escapeHtml(o.period)}</small></td>
       <td>${o.count} 份</td>
       <td>$${o.cost}</td>
       <td class="nums">${nums}</td>
@@ -106,7 +112,7 @@ function renderOrderCards(orders) {
     }
     return `<div class="order-card">
       <div class="order-card-top">
-        <span class="order-card-name">${escapeHtml(o.productName)}</span>
+        <span class="order-card-name">${orderProductLink(o)}</span>
         <span class="order-card-time">${o.time.slice(5, 16).replace('T', ' ')}</span>
       </div>
       <div class="order-card-meta">${o.count}份 · $${o.cost} · ${escapeHtml(o.period)}</div>
