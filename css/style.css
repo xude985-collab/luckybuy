@@ -745,17 +745,17 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
 
 /* drand 信任横幅 */
 .trust-banner {
-  background: linear-gradient(90deg, #e8f5e9, #f1f8e9);
-  border-bottom: 1px solid #c8e6c9;
+  background: #ffe6bf;
+  border-bottom: 1px solid #ffe0b2;
   padding: 8px 20px;
   display: flex; align-items: center; gap: 10px;
-  font-size: 13px; color: #2e7d32;
+  font-size: 13px; color: var(--brand-dark);
 }
 .trust-banner .trust-icon { font-size: 16px; flex: none; }
-.trust-banner a { color: #1b5e20; font-weight: 600; }
+.trust-banner a { color: var(--brand-dark); font-weight: 600; }
 .trust-banner .trust-link {
   margin-left: auto; white-space: nowrap; font-size: 12px;
-  padding: 3px 10px; background: rgba(46,125,50,.1); border-radius: 12px;
+  padding: 3px 10px; background: transparent; border-radius: 12px;
 }
 
 /* ===== 手机适配 ===== */
