@@ -424,7 +424,7 @@ tr:last-child td { border-bottom: none; }
 .cat-tabs { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
 .cat-tab {
   padding: 7px 16px; border-radius: 20px; font-size: 14px; cursor: pointer;
-  background: var(--card); border: 1px solid var(--line); color: #555;
+  background: #ffe6bf; border: 1px solid var(--line); color: #555;
   transition: all .15s;
 }
 .cat-tab:hover { border-color: var(--brand); color: var(--brand); }

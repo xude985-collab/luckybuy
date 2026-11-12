@@ -143,7 +143,7 @@ let currentPage = 1;
 const PAGE_SIZE = window.innerWidth <= 600 ? 8 : 16;
 
 function renderCatTabs() {
-  const tabs = [{ key: 'all', name: '全部', icon: '🏷️' }].concat(Store.listCategories());
+  const tabs = [{ key: 'all', name: '全部商品', icon: '🏷️' }].concat(Store.listCategories());
   document.getElementById('cat-tabs').innerHTML = tabs.map(c =>
     `<span class="cat-tab${c.key === activeCat ? ' active' : ''}" onclick="selectCat('${c.key}')">${escapeHtml(c.icon)} ${escapeHtml(c.name)}</span>`
   ).join('');
