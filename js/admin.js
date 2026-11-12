@@ -109,6 +109,14 @@ function fieldsFrom(p) {
   document.getElementById('f-gallery').value = p && p.gallery ? p.gallery.map(m => typeof m === 'string' ? m : m.url).join('\n') : '';
   document.getElementById('f-specs').value = p && p.specs ? p.specs.map(r => `${r.k}=${r.v}`).join('\n') : '';
   document.getElementById('form-title').textContent = p ? '编辑商品' : '上架新商品';
+  document.getElementById('multiplier-row').style.display = 'block';
+  document.getElementById('base-price').value = p?.pricing?.referencePrice || '';
+  document.getElementById('f-multiplier').value = p?.pricing?.multiplier || 1.5;
+  document.getElementById('f-per-share').value = p?.price || 1;
+  document.getElementById('f-free-ratio').value = p?.pricing?.freeRatio ?? '';
+  document.getElementById('price-import-note').textContent = '总份数 = 参考价 × 倍数 ÷ 每份金额，按原规则四舍五入。';
+  document.getElementById('multi-result').textContent = '';
+  bindMultiplierAuto();
   document.getElementById('cancel-edit').style.display = p ? 'inline-block' : 'none';
 }
 
@@ -121,7 +129,7 @@ function editProd(id) {
 function cancelEdit() {
   editingId = null;
   fieldsFrom(null);
-  document.getElementById('multiplier-row').style.display = 'none';
+  document.getElementById('multiplier-row').style.display = 'block';
 }
 
 async function delProd(id) {
@@ -144,6 +152,7 @@ async function save() {
     period: v('f-period'),
     desc: v('f-desc'),
     sourceUrl: v('f-source'),
+    pricing: {referencePrice: Number(v('base-price')) || null, multiplier: Number(v('f-multiplier')), freeRatio: v('f-free-ratio') === '' ? null : Number(v('f-free-ratio'))},
     gallery: v('f-gallery').split('\n').map(s => s.trim()).filter(Boolean),
     specs: v('f-specs').split('\n').map(line => {
       const i = line.indexOf('=');
@@ -152,6 +161,10 @@ async function save() {
     }).filter(Boolean),
   };
   if (!input.name) { toast('请填写商品名称'); return; }
+  if (input.pricing.freeRatio != null && (!syncFreeQuota() || Number(v('f-free')) < 1)) {
+    toast('免费比例计算结果须至少1份；0在原规则中表示不限，不能作为0%保存'); return;
+  }
+  input.freeQuota = v('f-free');
   const r = await Store.upsertProduct(input);
   toast(r.msg);
   if (r.ok) { cancelEdit(); loadProducts(); loadDashboard(); }
@@ -199,17 +212,17 @@ function applyDraft(d, url) {
   const descText = Array.isArray(d.bullets) && d.bullets.length
     ? d.bullets.map((b, i) => `${i+1}. ${b}`).join('\n') : (d.desc || '');
   if (descText) document.getElementById('f-desc').value = descText;
-  if (d.refPrice && d.refPrice > 0) {
-    document.getElementById('f-price').value = 1;
-    document.getElementById('base-price').textContent = d.refPrice;
-    document.getElementById('multiplier-row').style.display = 'block';
-    document.getElementById('f-multiplier').value = '1.5';
-    document.getElementById('f-per-share').value = '1';
-    const result = Math.round(d.refPrice * 1.5 / 1);
-    document.getElementById('f-total').value = result;
-    document.getElementById('multi-result').textContent = `= ${result} 份`;
-    bindMultiplierAuto();
-  }
+  const hasPrice = Number.isFinite(Number(d.refPrice)) && Number(d.refPrice) > 0;
+  document.getElementById('f-price').value = 1;
+  document.getElementById('base-price').value = hasPrice ? d.refPrice : '';
+  document.getElementById('multiplier-row').style.display = 'block';
+  document.getElementById('f-multiplier').value = '1.5';
+  document.getElementById('f-per-share').value = '1';
+  document.getElementById('price-import-note').textContent = hasPrice
+    ? '已获取参考价，请核对商品售价。按原规则：参考价 × 1.5 ÷ 每份金额，四舍五入。'
+    : (d.priceNote || '未获取到商品价格，请补填美元参考价以自动计算，或手动填写总份数。');
+  bindMultiplierAuto();
+  applyMultiplier();
   const urls = Array.isArray(d.gallery) ? d.gallery.map(g => g.url).filter(Boolean) : [];
   if (urls.length) document.getElementById('f-gallery').value = urls.join('\n');
   if (Array.isArray(d.specs) && d.specs.length)
@@ -218,13 +231,34 @@ function applyDraft(d, url) {
 }
 
 function applyMultiplier() {
-  const price = parseFloat(document.getElementById('base-price').textContent) || 0;
-  const mult = parseFloat(document.getElementById('f-multiplier').value) || 1;
-  const perShare = parseFloat(document.getElementById('f-per-share').value) || 1;
-  const result = Math.round(price * mult / perShare);
+  const price = Number(document.getElementById('base-price').value);
+  const mult = Number(document.getElementById('f-multiplier').value);
+  const perShare = Number(document.getElementById('f-per-share').value);
+  if (!(price > 0 && mult > 0 && Number.isInteger(perShare) && perShare >= 1)) {
+    document.getElementById('f-total').value = '';
+    document.getElementById('multi-result').textContent = '待填写有效参考价及每份金额';
+    syncFreeQuota();
+    return;
+  }
+  const result = Math.max(1, Math.round(Math.round(price * mult * 100) / (perShare * 100)));
   document.getElementById('f-total').value = result;
   document.getElementById('f-price').value = perShare;
   document.getElementById('multi-result').textContent = `= ${result} 份`;
+  syncFreeQuota();
+}
+
+function syncFreeQuota() {
+  const raw = v('f-free-ratio');
+  if (raw === '') return true;
+  const ratio = Number(raw), total = Number(v('f-total'));
+  if (!(ratio > 0 && ratio <= 100 && Number.isInteger(total) && total > 0)) {
+    document.getElementById('f-free').value = '';
+    document.getElementById('free-ratio-note').textContent = '请填写有效总份数及大于0、不超过100的比例'; return false;
+  }
+  const count = Math.round(total * ratio / 100);
+  document.getElementById('f-free').value = count || '';
+  document.getElementById('free-ratio-note').textContent = count ? `${total}份 × ${ratio}% = ${count}免费份` : '计算不足1份，请调整比例；0表示不限，不能混用。';
+  return count > 0;
 }
 
 function bindMultiplierAuto() {
@@ -232,6 +266,18 @@ function bindMultiplierAuto() {
   const perEl = document.getElementById('f-per-share');
   multEl.oninput = applyMultiplier;
   perEl.oninput = applyMultiplier;
+  document.getElementById('base-price').oninput = applyMultiplier;
+  document.getElementById('f-free-ratio').oninput = syncFreeQuota;
+  document.getElementById('f-total').oninput = syncFreeQuota;
+  document.getElementById('f-free').oninput = () => {
+    document.getElementById('f-free-ratio').value = '';
+    document.getElementById('free-ratio-note').textContent = '已切换为手动免费份数；0按原规则表示不限。';
+  };
+  document.getElementById('f-price').oninput = () => {
+    if (document.getElementById('multiplier-row').style.display === 'none') return;
+    perEl.value = document.getElementById('f-price').value;
+    applyMultiplier();
+  };
 }
 
 // ========== Users ==========

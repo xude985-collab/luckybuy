@@ -89,6 +89,7 @@ const Store = (() => {
       gallery: p.gallery || [],
       specs: p.specs || [],
       sourceUrl: p.sourceUrl || '',
+      pricing: p.pricing || {},
       period: p.sku ? ('编号 ' + p.sku) : '',
       status,
     };
@@ -361,9 +362,10 @@ const Store = (() => {
       name: input.name,
       category: input.category,
       emoji: (input.img || '').trim() || undefined,
-      pricePerShare: parseInt(input.price, 10) || 1,
-      totalShares: parseInt(input.totalShares, 10) || 1,
-      freeQuota: parseInt(input.freeQuota, 10) || 0,
+      pricePerShare: Number(input.price),
+      totalShares: Number(input.totalShares),
+      freeQuota: Number(input.freeQuota),
+      pricing: input.pricing,
       desc: input.desc || '',
       gallery: normGallery(input.gallery),
       specs: input.specs || [],
@@ -371,6 +373,8 @@ const Store = (() => {
     };
     if (!body.name) return { ok: false, msg: '请填写商品名称' };
     if (!body.category) return { ok: false, msg: '请选择类别' };
+    if (!Number.isInteger(body.pricePerShare) || body.pricePerShare < 1 || !Number.isInteger(body.totalShares) || body.totalShares < 1)
+      return {ok:false,msg:'请填写有效的每份金额及总份数（正整数），未获取价格时请补填后再保存'};
     const r = await post('/admin/products', body);
     if (r.ok) await refreshProducts();
     return { ok: r.ok, msg: r.msg || (r.ok ? '已保存' : '保存失败') };

@@ -18,6 +18,7 @@ function formatProduct(p) {
     gallery: safeJSON(p.gallery, []),
     specs: safeJSON(p.specs, []),
     sourceUrl: p.source_url || '',
+    pricing: p.pricing || {},
     status: p.status, createdAt: p.created_at,
     sold: Number(p.sold || 0),
   };

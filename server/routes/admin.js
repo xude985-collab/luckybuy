@@ -98,6 +98,15 @@ router.post('/products', requireAdmin, async (req, res, next) => {
     const pricePerShare = integer(b.pricePerShare,'单价',1,1000000);
     const totalShares = integer(b.totalShares,'总份数',1,1000000);
     const freeQuota = integer(b.freeQuota??0,'免费份数',0,totalShares);
+    let pricing;
+    if (b.pricing != null) {
+      const {referencePrice, multiplier, freeRatio} = b.pricing;
+      if (referencePrice != null && (!Number.isFinite(referencePrice) || referencePrice <= 0 || referencePrice > 1000000)) throw bad('参考价无效');
+      if (!Number.isFinite(multiplier) || multiplier <= 0 || multiplier > 10) throw bad('倍数须大于0且不超过10');
+      if (freeRatio != null && (!Number.isFinite(freeRatio) || freeRatio <= 0 || freeRatio > 100)) throw bad('免费比例须大于0且不超过100');
+      if (freeRatio != null && (freeQuota < 1 || freeQuota !== Math.round(totalShares * freeRatio / 100))) throw bad('免费份数与比例不一致');
+      pricing = JSON.stringify({referencePrice:referencePrice??null,multiplier,freeRatio:freeRatio??null});
+    }
     const gallery = JSON.stringify(Array.isArray(b.gallery) ? b.gallery : []);
     const specs = JSON.stringify(Array.isArray(b.specs) ? b.specs : []);
 
@@ -111,9 +120,9 @@ router.post('/products', requireAdmin, async (req, res, next) => {
           throw Object.assign(new Error('已有参与记录的商品不能修改价格或总份数'), { status: 400 });
         await client.query(
           `UPDATE products SET name=$1,category=$2,emoji=$3,price_per_share=$4,total_shares=$5,
-           free_quota=$6,"desc"=$7,gallery=$8,specs=$9,source_url=$10 WHERE id=$11`,
+           free_quota=$6,"desc"=$7,gallery=$8,specs=$9,source_url=$10,pricing=COALESCE($12::jsonb,pricing) WHERE id=$11`,
           [b.name, b.category, b.emoji || '🎁', pricePerShare, totalShares,
-           freeQuota, b.desc || '', gallery, specs, b.sourceUrl || '', b.id]);
+           freeQuota, b.desc || '', gallery, specs, b.sourceUrl || '', b.id, pricing??null]);
       });
       return res.json({ ok: true, id: b.id, msg: '已更新' });
     }
@@ -121,10 +130,10 @@ router.post('/products', requireAdmin, async (req, res, next) => {
     const id = genId('p_');
     const sku = await nextSku(b.category);
     await pool.query(
-      `INSERT INTO products (id,sku,name,category,emoji,price_per_share,total_shares,free_quota,free_used,"desc",gallery,specs,source_url,status,created_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,0,$9,$10,$11,$12,'active',$13)`,
+      `INSERT INTO products (id,sku,name,category,emoji,price_per_share,total_shares,free_quota,free_used,"desc",gallery,specs,source_url,status,created_at,pricing)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,0,$9,$10,$11,$12,'active',$13,$14::jsonb)`,
       [id, sku, b.name, b.category, b.emoji || '🎁', pricePerShare, totalShares,
-       freeQuota, b.desc || '', gallery, specs, b.sourceUrl || '', Date.now()]);
+       freeQuota, b.desc || '', gallery, specs, b.sourceUrl || '', Date.now(), pricing??'{}']);
     res.json({ ok: true, id, sku, msg: '已上架' });
   } catch (e) { next(e); }
 });

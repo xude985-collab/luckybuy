@@ -203,6 +203,7 @@ export async function initDB({seed=true} = {}) {
       `ALTER TABLE users ADD COLUMN IF NOT EXISTS disabled BOOLEAN NOT NULL DEFAULT false`,
       `ALTER TABLE orders ADD COLUMN IF NOT EXISTS request_key TEXT`,
       `ALTER TABLE orders ADD COLUMN IF NOT EXISTS use_free BOOLEAN`,
+      `ALTER TABLE products ADD COLUMN IF NOT EXISTS pricing JSONB NOT NULL DEFAULT '{}'::jsonb`,
       `CREATE TABLE IF NOT EXISTS purchase_receipts (user_id TEXT NOT NULL, request_key TEXT NOT NULL, product_id TEXT NOT NULL, shares INTEGER NOT NULL, use_free BOOLEAN NOT NULL, response JSONB NOT NULL, created_at BIGINT NOT NULL, PRIMARY KEY(user_id,request_key))`,
       `ALTER TABLE showcases ADD COLUMN IF NOT EXISTS deleted_at BIGINT`,
       `CREATE TABLE IF NOT EXISTS showcase_rewards (user_id TEXT NOT NULL, product_id TEXT NOT NULL, created_at BIGINT NOT NULL, PRIMARY KEY(user_id,product_id))`,

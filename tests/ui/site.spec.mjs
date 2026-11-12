@@ -140,6 +140,21 @@ test('后台规则保存失败显示实际错误而不是成功', async ({ page 
   await page.evaluate(()=>saveRules());
   await expect(page.locator('#toast')).toHaveText('测试保存失败');
 });
+
+test('导入价格按1.5倍联动总份数与免费比例，缺价不沿用旧份数',async({page})=>{
+ await mockAPI(page);await page.goto('/admin.html');await page.evaluate(()=>Store.ready);
+ await page.locator('[data-tab="products"]').click();
+ await page.evaluate(()=>applyDraft({name:'价格测试',refPrice:200},'https://www.amazon.com/dp/B08KT2Z93D'));
+ await expect(page.locator('#f-total')).toHaveValue('300');
+ await page.locator('#f-free-ratio').fill('10');await expect(page.locator('#f-free')).toHaveValue('30');
+ await page.locator('#f-price').fill('2');await expect(page.locator('#f-total')).toHaveValue('150');await expect(page.locator('#f-free')).toHaveValue('15');
+ await page.locator('#f-multiplier').fill('1');await expect(page.locator('#f-total')).toHaveValue('100');await expect(page.locator('#f-free')).toHaveValue('10');
+ await page.evaluate(()=>applyDraft({name:'缺价商品',refPrice:0},'https://www.amazon.com/dp/B08KT2Z93D'));
+ await expect(page.locator('#base-price')).toHaveValue('');await expect(page.locator('#f-total')).toHaveValue('');
+ await expect(page.locator('#price-import-note')).toContainText('未获取');
+ await page.locator('#base-price').fill('200');await expect(page.locator('#f-total')).toHaveValue('300');await expect(page.locator('#f-free')).toHaveValue('30');
+ await page.locator('#f-free').fill('12');await expect(page.locator('#f-free-ratio')).toHaveValue('');
+});
 test('未开通支付时按钮禁用且不创建充值',async({page})=>{
   await mockAPI(page);await page.route('**/api/wallet/packages',route=>route.fulfill({json:{ok:true,packages:[{amount:10,bonus:1}],methods:{stripe:false,paypal:false}}}));
   let writes=0;await page.route('**/api/wallet/recharge',route=>{writes++;return route.fulfill({json:{ok:false}})});

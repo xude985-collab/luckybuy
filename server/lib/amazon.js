@@ -32,6 +32,41 @@ function decodeEntities(s = '') {
 
 function pick(re, html) { const m = html.match(re); return m ? decodeEntities(m[1]) : ''; }
 
+export function extractUsdPrice(html, url) {
+  const usSite = /^(www\.)?amazon\.com$/.test(new URL(url).hostname);
+  // Restrict HTML prices to the main offer, not recommendations, list prices or installments.
+  if (usSite) {
+    const blocks = [...html.matchAll(/<(?:div|span)[^>]*id=["'](?:corePriceDisplay_desktop_feature_div|corePrice_feature_div|apex_desktop|corePrice_mobile_feature_div)["'][^>]*>/gi)];
+    for (const block of blocks) {
+      const section = html.slice(block.index, block.index + 14000);
+      const offer = section.match(/<span[^>]*class=["'][^"']*\ba-price\b[^"']*["'][^>]*>[\s\S]{0,1800}/gi) || [];
+      for (const item of offer) {
+        if (/a-text-price/.test(item.slice(0,item.indexOf('>')))) continue;
+        const text = pick(/class=["'][^"']*a-offscreen[^"']*["'][^>]*>\s*\$\s*([\d,]+(?:\.\d{1,2})?)/i,item);
+        const whole = pick(/class=["'][^"']*a-price-whole[^"']*["'][^>]*>\s*([\d,]+)/i,item);
+        const fraction = pick(/class=["'][^"']*a-price-fraction[^"']*["'][^>]*>\s*(\d{2})/i,item);
+        const price = Number((text || (whole && fraction ? whole+'.'+fraction : '')).replace(/,/g,''));
+        if (price > 0) return price;
+      }
+    }
+    const legacy=pick(/id=["']priceblock_(?:ourprice|dealprice)["'][^>]*>\s*\$\s*([\d,]+(?:\.\d{1,2})?)/i,html);
+    if (legacy) return Number(legacy.replace(/,/g,''));
+  }
+  for (const match of html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      const data=JSON.parse(match[1]);
+      const nodes=Array.isArray(data)?data:(data['@graph']||[data]);
+      for(const node of nodes){
+        if(![node['@type']].flat().includes('Product'))continue;
+        for(const offer of [node.offers].flat()){
+          if(offer?.priceCurrency==='USD'&&Number(offer.price)>0)return Number(offer.price);
+        }
+      }
+    } catch {}
+  }
+  return 0;
+}
+
 function parseHtml(html, url, asin) {
   // 标题：优先 productTitle，其次 og:title
   const title =
@@ -54,11 +89,7 @@ function parseHtml(html, url, asin) {
   }
 
   // 价格：多种位置兜底
-  const priceStr =
-    pick(/<span[^>]*class="a-offscreen"[^>]*>\s*\$?([\d,]+\.?\d*)/i, html) ||
-    pick(/"price"\s*:\s*"?\$?([\d,]+\.?\d*)/i, html) ||
-    pick(/id="priceblock_ourprice"[^>]*>\s*\$?([\d,]+\.?\d*)/i, html);
-  const price = priceStr ? parseFloat(priceStr.replace(/,/g, '')) : 0;
+  const price = extractUsdPrice(html,url);
 
   // 要点（feature bullets）→ 规格/描述
   const bullets = [];
@@ -80,6 +111,7 @@ function parseHtml(html, url, asin) {
     sourceUrl: url,
     asin,
     refPrice: price,                       // 参考价（美元），管理员据此定份数
+    priceNote: price > 0 ? `已获取美元参考价 $${price}，请核对所选规格` : '页面未提供可确认的美元售价，请手动补填参考价，系统会自动计算总份数及免费份数。',
     gallery: [...gallery].map(u => ({ type: 'image', url: u })),
     specs: [],
     desc: bullets.join('\n'),

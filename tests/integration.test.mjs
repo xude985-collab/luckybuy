@@ -32,6 +32,14 @@ test('integrated money/account/fulfillment workflows on isolated PostgreSQL',asy
  await pool.query("INSERT INTO users(id,account,account_type,name,pass_hash,role,invite_code,paid_balance,free_balance,created_at) VALUES ('u_test','user@test.invalid','email','测试用户',$1,'user','TEST01',20,10,1)",[hash]);
  userCookie=(await api('/auth/login',{account:'user@test.invalid',password:'test-admin-password'})).cookie;
  let product;
+ await t.test('pricing rules survive save and edit; invalid free ratio cannot become unlimited',async()=>{
+  const data={name:'价格联动测试',category:'cleaning',pricePerShare:1,totalShares:300,freeQuota:30,pricing:{referencePrice:200,multiplier:1.5,freeRatio:10}};
+  const created=await api('/admin/products',data,adminCookie);assert.equal(created.data.ok,true);
+  const fetched=await api('/shop/products/'+created.data.id);assert.deepEqual(fetched.data.product.pricing,data.pricing);
+  assert.equal((await api('/admin/products',{...data,id:created.data.id,pricePerShare:2,totalShares:150,freeQuota:15},adminCookie)).data.ok,true);
+  assert.equal((await api('/admin/products',{...data,freeQuota:0},adminCookie)).status,400);
+  await api('/admin/products/'+created.data.id,null,adminCookie,'DELETE');
+ });
  await t.test('create product and replay purchase exactly once',async()=>{
   const created=await api('/admin/products',{name:'隔离测试商品',category:'cleaning',pricePerShare:1,totalShares:10,freeQuota:3},adminCookie);assert.equal(created.data.ok,true);product=created.data.id;
   const body={productId:product,shares:2,useFree:true,requestKey:'test-purchase-request-001'};
@@ -122,4 +130,13 @@ test('product import rejects disguised domains and unsafe redirects',async()=>{
  assert.equal(productUrl('https://www.doba.com/product/a/b').provider,'doba');
  assert.equal(productUrl('amazon.com/eos-Cashmere/dp/B08KT2Z93D?ref=test').url,'https://amazon.com/eos-Cashmere/dp/B08KT2Z93D?ref=test');
  assert.throws(()=>productUrl('amazon.com.evil.invalid/dp/B08KT2Z93D'));
+});
+
+test('Amazon USD price supports primary offer markup and structured offers, rejects unrelated prices',async()=>{
+ const {extractUsdPrice}=await import('../server/lib/amazon.js');const url='https://www.amazon.com/dp/B08KT2Z93D';
+ assert.equal(extractUsdPrice('<div id="corePriceDisplay_desktop_feature_div"><span class="a-price priceToPay"><span aria-hidden="true" class="a-offscreen">$1,200.50</span></span></div>',url),1200.5);
+ assert.equal(extractUsdPrice('<div id="corePrice_feature_div"><span class="a-price"><span class="a-price-whole">200<span>.</span></span><span class="a-price-fraction">99</span></span></div>',url),200.99);
+ assert.equal(extractUsdPrice('<script type="application/ld+json">{"@type":"Product","offers":{"price":"200","priceCurrency":"USD"}}</script>',url),200);
+ assert.equal(extractUsdPrice('<span class="a-offscreen">$3.99</span><script>{"price":4.99}</script>',url),0);
+ assert.equal(extractUsdPrice('<div id="corePrice_feature_div"><span class="a-price"><span class="a-offscreen">$200</span></span></div>',url.replace('.com','.ca')),0);
 });
