@@ -6,9 +6,9 @@ import { attachUser, requireAdmin, requireAuth, genId, withTransaction, walletTx
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 50 * 1024 * 1024 },
   fileFilter(req, file, cb) {
-    if (/^(image\/(jpeg|png|webp|gif)|video\/(mp4|webm))$/.test(file.mimetype)) cb(null, true);
+    if (/^(image\/(jpeg|png|webp|gif)|video\/(mp4|webm|quicktime))$/.test(file.mimetype)) cb(null, true);
     else cb(new Error('只支持图片或视频文件'));
   }
 });
@@ -96,7 +96,7 @@ router.get('/pending', requireAdmin, async (req, res, next) => {
 router.get('/media/:id',async(req,res,next)=>{
  try{const {rows}=await pool.query(`SELECT media_url FROM showcases WHERE id=$1 AND deleted_at IS NULL AND (status='approved' OR user_id=$2 OR $3)`,[req.params.id,req.user?.id||null,req.user?.role==='admin']);
  if(!rows.length)return res.status(404).end();
- const m=rows[0].media_url.match(/^data:(image\/(?:jpeg|png|webp|gif)|video\/(?:mp4|webm));base64,([A-Za-z0-9+/=]+)$/);
+ const m=rows[0].media_url.match(/^data:(image\/(?:jpeg|png|webp|gif)|video\/(?:mp4|webm|quicktime));base64,([A-Za-z0-9+/=]+)$/);
  if(!m)return res.status(404).end();
  res.set({'Content-Type':m[1],'X-Content-Type-Options':'nosniff','Cache-Control':'private, max-age=300'}).send(Buffer.from(m[2],'base64'));
  }catch(e){next(e)}

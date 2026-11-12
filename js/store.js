@@ -14,6 +14,7 @@ const Store = (() => {
     orders: [],          // 当前用户订单（已归一化）
     winners: [],         // 跑马灯
     recentBuys: [],      // 实时抢购动态
+    notifications: null,
     config: {},
     wallet: { paidBalance: 0, tx: [] },
   };
@@ -174,6 +175,11 @@ const Store = (() => {
       cache.user.paidCoins = r.paidBalance || 0;
       cache.user.freeCoins = r.freeBalance || 0;
     }
+  }
+  async function refreshNotifications() {
+    if(!cache.user){cache.notifications=[];return;}
+    const r=await get('/shop/notifications');
+    if(r.ok&&Array.isArray(r.products))cache.notifications=r.products;
   }
   async function refreshProducts() {
     const r = await get('/shop/products');
@@ -528,7 +534,8 @@ const Store = (() => {
     listProducts, getProduct, listCategories, categoryOf,
     productFreeUsed, winnersFeed, recentBuys, getConfig, myOrders,
     // 刷新
-    refreshProducts, refreshRecentBuys, refreshProduct, catalog,
+    refreshProducts, refreshRecentBuys, refreshProduct, catalog, refreshNotifications,
+    notificationProducts:()=>cache.notifications??cache.products,
     errors:()=>Array.from(errors.values()), request:http, paymentMethods:()=>cache.paymentMethods||{}, getRechargeHistory,refreshRecharge,
     // 购买/地址
     buyShares, saveAddress,

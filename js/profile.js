@@ -103,7 +103,7 @@ async function submitSC() {
   if (!fileInput.files.length) { toast('请选择图片或视频文件'); return; }
 
   const file = fileInput.files[0];
-  if (file.size > 5 * 1024 * 1024) { toast('文件不能超过5MB'); return; }
+  if (file.size > 50 * 1024 * 1024) { toast('文件不能超过50MB'); return; }
 
   const fd = new FormData();
   fd.append('media', file);

@@ -143,6 +143,19 @@ router.get('/winners', async (req, res, next) => {
 });
 
 // 当前用户的中奖记录
+router.get('/notifications', attachUser, async (req, res, next) => {
+  try {
+    if (!req.user) return res.status(401).json({ok:false,msg:'请先登录'});
+    const {rows}=await pool.query(`SELECT p.id,p.name,p.emoji,p.status,d.round,d.win_number,d.winner_user_id,d.win_address
+      FROM products p JOIN draws d ON d.product_id=p.id
+      WHERE (p.status='drawing' AND EXISTS (SELECT 1 FROM orders o WHERE o.product_id=p.id AND o.user_id=$1))
+         OR (p.status='done' AND d.winner_user_id=$1 AND d.win_address IS NULL)
+      ORDER BY d.locked_at DESC LIMIT 50`,[req.user.id]);
+    res.json({ok:true,products:rows.map(p=>({id:p.id,name:p.name,img:p.emoji,status:p.status==='done'?'revealed':p.status,
+      drawTime:p.round?roundTime(Number(p.round)):null,winNumber:p.win_number,winnerUserId:p.winner_user_id,hasAddress:!!p.win_address}))});
+  } catch(e){next(e)}
+});
+
 router.get('/my-wins', attachUser, async (req, res, next) => {
   try {
     if (!req.user) return res.status(401).json({ ok: false, msg: '请先登录' });

@@ -101,7 +101,7 @@ app.use((err, req, res, next) => {
   const id=crypto.randomUUID();
   const status=err.code==='LIMIT_FILE_SIZE'?413:(err.status||500);
   logger.error({errorId:id,err},'请求失败编号');
-  res.status(status).json({ok:false,msg:status===413?'上传文件不能超过5MB':status<500?err.message:'服务暂时不可用，请稍后重试',errorId:id});
+  res.status(status).json({ok:false,msg:status===413?'上传文件不能超过50MB':status<500?err.message:'服务暂时不可用，请稍后重试',errorId:id});
 });
 
 export {app};

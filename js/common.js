@@ -4,6 +4,7 @@
 function onReady(cb) {
   Store.ready.then(async () => {
     try { await cb(); } catch (e) { console.error(e); }
+    await Store.refreshNotifications();
     renderDrawNotification();
     checkUnclaimedWins();
   }).catch(e => { console.error(e); toast('加载失败，请刷新重试'); });
@@ -135,7 +136,7 @@ function renderDrawNotification() {
   const me = Store.currentUser();
   if (!me) return;
   const myPids = new Set(Store.myOrders().map(o => o.productId));
-  const hits = Store.listProducts().filter(p => p.status === 'drawing' && myPids.has(p.id));
+  const hits = Store.notificationProducts().filter(p => p.status === 'drawing' && myPids.has(p.id));
   if (!hits.length) return;
   const p = hits[0];
   let timeText = '正在开奖';
@@ -155,7 +156,8 @@ function renderDrawNotification() {
 function checkUnclaimedWins() {
   const me = Store.currentUser();
   if (!me) return;
-  const unclaimed = Store.listProducts().filter(
+  if(document.querySelector('.win-celebrate-mask'))return;
+  const unclaimed = Store.notificationProducts().filter(
     p => p.status === 'revealed' && p.winnerUserId === me.id && !p.hasAddress
       && !localStorage.getItem('win_dismiss_' + p.id)
   );
@@ -225,6 +227,7 @@ function showWinCelebration(p) {
       toast('收货地址已提交 ✓');
       mask.remove();
       await Store.refreshProducts();
+      await Store.refreshNotifications();
     } else {
       toast(r.msg || '提交失败');
       btn.disabled = false; btn.textContent = '提交收货地址';

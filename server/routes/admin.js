@@ -298,6 +298,21 @@ router.post('/fix-product-free',requireAdmin,async(req,res,next)=>{
 });
 
 // ---- 用户管理 ----
+// Recovered from historical commit 479be2d: read-only reward/check-in detail.
+router.get('/free-coin-detail', requireAdmin, async(req,res,next)=>{
+ try{
+  const uid=String(req.query.userId||''),account=String(req.query.account||'').trim().toLowerCase();
+  if(!uid&&!account)throw bad('请填写用户ID或邮箱');
+  const {rows}=await pool.query(`SELECT id,name,account,free_balance,paid_balance FROM users WHERE ${uid?'id':'account'}=$1`,[uid||account]);
+  if(!rows.length)throw bad('用户不存在',404);
+  const id=rows[0].id;
+  const walletGrants=(await pool.query("SELECT kind,amount,balance,ref,created_at FROM wallet_tx WHERE user_id=$1 AND kind IN ('grant','recharge','free-use','adjust-free') ORDER BY created_at DESC LIMIT 50",[id])).rows;
+  const checkins=(await pool.query('SELECT streak,reward,created_at FROM checkins WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20',[id])).rows;
+  const freeGrants=(await pool.query('SELECT amount,reason,created_at FROM free_grants WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20',[id])).rows;
+  res.json({ok:true,user:rows[0],walletGrants,checkins,freeGrants});
+ }catch(e){next(e)}
+});
+
 router.get('/users', requireAdmin, async (req, res, next) => {
   try {
     const page=Math.max(1,parseInt(req.query.page)||1), size=30;

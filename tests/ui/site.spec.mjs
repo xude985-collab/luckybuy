@@ -155,6 +155,18 @@ test('导入价格按1.5倍联动总份数与免费比例，缺价不沿用旧�
  await page.locator('#base-price').fill('200');await expect(page.locator('#f-total')).toHaveValue('300');await expect(page.locator('#f-free')).toHaveValue('30');
  await page.locator('#f-free').fill('12');await expect(page.locator('#f-free-ratio')).toHaveValue('');
 });
+
+test('首页分页之外的中奖商品仍弹出领奖地址窗口',async({page})=>{
+ await mockAPI(page);
+ await page.route('**/api/shop/notifications',r=>r.fulfill({json:{ok:true,products:[{id:'outside-page',name:'未在首页加载的中奖商品',status:'revealed',winnerUserId:user.id,winNumber:9,hasAddress:false}]}}));
+ await page.goto('/index.html');await expect(page.locator('.win-celebrate-mask')).toBeVisible();await expect(page.locator('.win-product')).toContainText('未在首页加载');
+});
+
+test('任意详情页显示另一个已参与商品的开奖通知',async({page})=>{
+ await mockAPI(page);
+ await page.route('**/api/shop/notifications',r=>r.fulfill({json:{ok:true,products:[{id:product.id,name:'等待揭晓商品',status:'drawing',drawTime:Date.now()+300000}]}}));
+ await page.goto('/detail.html?id=another-product');await expect(page.locator('#draw-notify-bar')).toContainText('等待揭晓商品');
+});
 test('未开通支付时按钮禁用且不创建充值',async({page})=>{
   await mockAPI(page);await page.route('**/api/wallet/packages',route=>route.fulfill({json:{ok:true,packages:[{amount:10,bonus:1}],methods:{stripe:false,paypal:false}}}));
   let writes=0;await page.route('**/api/wallet/recharge',route=>{writes++;return route.fulfill({json:{ok:false}})});

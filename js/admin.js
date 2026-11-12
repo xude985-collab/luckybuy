@@ -307,6 +307,7 @@ function renderUsers(users) {
       <td>
         <a href="#" onclick="renameUser('${u.id}');return false">改名</a> ·
         <a href="#" onclick="resetPwd('${u.id}');return false">重置密码</a> ·
+        <a href="#" onclick="showFreeCoinDetail('${u.id}');return false">免费金币明细</a> ·
         <a href="#" onclick="delUser('${u.id}');return false" style="color:#c00">停用</a> · <a href="#" onclick="enableUser('${u.id}');return false">启用</a> · <a href="#" onclick="showLedger('${u.id}');return false">流水</a> · <a href="#" onclick="adjustBalance('${u.id}');return false">调整余额</a>
       </td>
     </tr>`;
@@ -632,6 +633,16 @@ async function showLedger(id,page=1){
  const r=await adminFetch('/api/admin/users/'+id+'/ledger?page='+page);const d=await r.json();if(!d.ok)return;
  let box=document.getElementById('ledger-view');if(!box){box=document.createElement('div');box.id='ledger-view';document.getElementById('user-list').after(box);}
  box.innerHTML='<h3>用户资金流水</h3>'+d.records.map(t=>`<p>${esc(new Date(Number(t.created_at)).toLocaleString())} · ${esc(t.kind)} · ${esc(t.amount)} · 余额 ${esc(t.balance)} · ${esc(t.ref||'')}</p>`).join('')+`<button class="btn ghost" onclick="showLedger('${id}',${Math.max(1,page-1)})" ${page<=1?'disabled':''}>上一页</button> <button class="btn ghost" onclick="showLedger('${id}',${page+1})" ${d.records.length<50?'disabled':''}>下一页</button>`;
+}
+async function showFreeCoinDetail(id){
+ const r=await adminFetch('/api/admin/free-coin-detail?userId='+encodeURIComponent(id));const d=await r.json();if(!d.ok)return;
+ let box=document.getElementById('ledger-view');if(!box){box=document.createElement('div');box.id='ledger-view';document.getElementById('user-list').after(box);}
+ const date=n=>esc(new Date(Number(n)).toLocaleString());
+ box.innerHTML=`<h3>免费金币明细 · ${esc(d.user.account)}</h3><p>免费余额 ${esc(d.user.free_balance)} · 充值余额 ${esc(d.user.paid_balance)}</p>`+
+  '<h4>最近20次签到</h4>'+(d.checkins.map(c=>`<p>${date(c.created_at)} · 连续${esc(c.streak)}天 · 奖励${esc(c.reward)}金币</p>`).join('')||'<p>暂无签到记录</p>')+
+  '<h4>最近50条奖励与免费金币流水</h4>'+(d.walletGrants.map(c=>`<p>${date(c.created_at)} · ${esc(c.kind)} · ${esc(c.amount)} · ${esc(c.ref||'')}</p>`).join('')||'<p>暂无记录</p>')+
+  '<h4>旧版赠送记录（最近20条）</h4>'+(d.freeGrants.map(c=>`<p>${date(c.created_at)} · ${esc(c.amount)} · ${esc(c.reason||'')}</p>`).join('')||'<p>暂无旧版记录</p>');
+ box.scrollIntoView({behavior:'smooth',block:'start'});
 }
 async function loadSystemStatus(){
  const box=document.getElementById('system-status');if(!box)return;

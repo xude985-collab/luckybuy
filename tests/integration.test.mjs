@@ -109,11 +109,39 @@ test('integrated money/account/fulfillment workflows on isolated PostgreSQL',asy
   assert.equal((await api('/wallet',null,userCookie)).status,401);
   assert.equal((await pool.query("SELECT disabled FROM users WHERE id='u_test'")).rows[0].disabled,true);
   assert.equal((await api('/admin/users/u_test/enable',{},adminCookie)).data.ok,true);
-  assert.equal((await api('/auth/login',{account:'user@test.invalid',password:'new-test-password'})).data.ok,true);
+  const enabledLogin=await api('/auth/login',{account:'user@test.invalid',password:'new-test-password'});
+  assert.equal(enabledLogin.data.ok,true);userCookie=enabledLogin.cookie;
  });
  await t.test('search finds an old user beyond first page',async()=>{
   for(let i=0;i<105;i++)await pool.query("INSERT INTO users(id,account,account_type,name,pass_hash,role,invite_code,paid_balance,created_at) VALUES ($1,$2,'email','分页测试',$3,'user',$4,0,$5)",['page'+i,'page'+i+'@test.invalid',hash,'PAGE'+String(i).padStart(2,'0'),100+i]);
   const result=await api('/admin/users?q=user%40test.invalid&page=1',null,adminCookie);assert.equal(result.data.total,1);assert.equal(result.data.users[0].id,'u_test');
+ });
+ await t.test('legacy category creation rename order and deletion remain available',async()=>{
+  const c=await api('/admin/categories',{name:'Recovery test',prefix:'RC',icon:'📦'},adminCookie);assert.equal(c.data.ok,true);
+  assert.equal((await api('/admin/categories/'+c.data.key,{name:'Renamed',icon:'🎁'},adminCookie,'PUT')).data.ok,true);
+  const cats=(await api('/shop/categories')).data.categories;
+  const keys=[c.data.key,...cats.filter(x=>x.key!==c.data.key).map(x=>x.key)];
+  assert.equal((await api('/admin/categories/reorder',{keys},adminCookie)).data.ok,true);
+  assert.equal((await api('/shop/categories')).data.categories[0].name,'Renamed');
+  assert.equal((await api('/admin/categories/'+c.data.key,null,adminCookie,'DELETE')).data.ok,true);
+ });
+ await t.test('restored free coin audit supports account and does not alter balance',async()=>{
+  const before=(await api('/wallet',null,userCookie)).data.freeBalance;
+  const detail=await api('/admin/free-coin-detail?account=user%40test.invalid',null,adminCookie);assert.equal(detail.data.ok,true);assert.equal(detail.data.user.id,'u_test');
+  assert.equal(Number(detail.data.user.free_balance),Number(before));assert.ok(Array.isArray(detail.data.checkins));
+  assert.equal((await api('/admin/free-coin-detail?userId=u_test',null,userCookie)).status,403);
+ });
+ await t.test('user notifications include own off-page wins and disappear after address submission',async()=>{
+  const p=(await api('/admin/products',{name:'Notification test',category:'cleaning',pricePerShare:1,totalShares:1},adminCookie)).data.id;
+  await pool.query("UPDATE products SET status='done' WHERE id=$1",[p]);
+  await pool.query("INSERT INTO draws(product_id,round,total_shares,locked_at,drawn_at,winner_user_id,win_number) VALUES ($1,42,1,1,2,'u_test',1)",[p]);
+  assert.ok((await api('/shop/notifications',null,userCookie)).data.products.some(x=>x.id===p));
+  assert.ok(!(await api('/shop/notifications',null,adminCookie)).data.products.some(x=>x.id===p));
+  assert.equal((await api('/shop/notifications')).status,401);
+  assert.equal((await api('/wallet/address',{productId:p,name:'测试',address:'测试地址'},userCookie)).data.ok,true);
+  assert.ok(!(await api('/shop/notifications',null,userCookie)).data.products.some(x=>x.id===p));
+  const fd=new FormData();fd.set('productId',p);fd.set('mediaType','video');fd.set('caption','超过旧5MB限额的恢复测试');fd.set('media',new Blob([new Uint8Array(6*1024*1024)],{type:'video/mp4'}),'test.mp4');
+  const uploaded=await fetch(origin+'/api/showcase/submit',{method:'POST',headers:{Cookie:userCookie},body:fd});assert.equal((await uploaded.json()).ok,true);
  });
 });
 test('drand verifies real signed fixture and rejects tampering',async()=>{
