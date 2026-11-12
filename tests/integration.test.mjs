@@ -272,13 +272,13 @@ test('Amazon current main offer excludes per-ounce and per-piece unit prices',as
 
 test('Amazon import falls back to rendered HTML when static page omits the price',async t=>{
  const {fetchAmazon}=await import('../server/lib/amazon.js');
- const basic='<span id="productTitle">Test B08SY7TLT9</span><meta property="og:image" content="https://example.com/product.jpg">'+' '.repeat(6000);
+ const basic='<input id="ASIN" value="B08SY7TLT9"><span id="productTitle">Test B08SY7TLT9</span><meta property="og:image" content="https://example.com/product.jpg">'+' '.repeat(6000);
  let fallback=0;
  t.mock.method(globalThis,'fetch',async url=>{
-  if(String(url).startsWith('https://r.jina.ai/')){fallback++;return new Response(basic+'<span class="apex-pricetopay-accessibility-label">$399.99</span>');}
+  if(String(url).startsWith('https://r.jina.ai/')){assert(String(url).includes('?th=1&psc=1'));fallback++;return new Response(basic+'<span class="apex-pricetopay-accessibility-label">$399.99</span>');}
   return new Response(basic);
  });
- const d=await fetchAmazon('https://www.amazon.com/dp/B08SY7TLT9');assert.equal(d.refPrice,399.99);assert.equal(fallback,1);
+ const d=await fetchAmazon('https://www.amazon.com/dp/B08SY7TLT9?th=1&psc=1');assert.equal(d.refPrice,399.99);assert.equal(fallback,1);
 });
 
 test('delete user hides account, revokes sessions, preserves history and cannot be re-enabled',async()=>{
@@ -294,4 +294,13 @@ test('delete user hides account, revokes sessions, preserves history and cannot 
  assert.equal(Number((await pool.query('SELECT count(*) AS n FROM orders WHERE user_id=$1',[id])).rows[0].n),before);
  assert.equal((await api('/admin/users/'+id+'/delete',body,adminCookie)).data.ok,true);
  assert.equal(Number((await pool.query("SELECT count(*) AS n FROM admin_audit WHERE action='delete-user' AND target_id=$1",[id])).rows[0].n),1);
+});
+
+
+test('Amazon price requires selected ASIN match, not recommendation text, and retains selected variant',async()=>{
+ const {inspectAmazonIdentity}=await import('../server/lib/amazon.js');
+ const html='<input name="ASIN" value="B0DPNKVFVW" id="ASIN"><script>{"dimensionValuesDisplayData":{"B0DPNKVFVW":["Charcoal Gray"],"B0DWG2XQXF":["Black"]}}</script><a href="/dp/B0DWG2XQXF">G185 $799.99</a>';
+ const a=inspectAmazonIdentity(html,'B0DPNKVFVW');assert.equal(a.matched,true);assert.equal(a.specs[1].v,'Charcoal Gray');
+ assert.equal(inspectAmazonIdentity(html,'B0DWG2XQXF').matched,false);
+ assert.equal(inspectAmazonIdentity('<a href="/dp/B0DPNKVFVW">Recommendation</a>','B0DPNKVFVW').matched,false);
 });

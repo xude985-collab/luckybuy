@@ -80,6 +80,24 @@ export function extractUsdPrice(html, url) {
   return 0;
 }
 
+export function inspectAmazonIdentity(html, requestedAsin) {
+  const ids=new Set();
+  for(const m of html.matchAll(/<input\b[^>]*>/gi)){
+    const attrs=Object.fromEntries([...m[0].matchAll(/([\w-]+)=["']([^"']*)["']/g)].map(a=>[a[1].toLowerCase(),a[2]]));
+    if(attrs.id==='ASIN' && attrs.value)ids.add(attrs.value.toUpperCase());
+  }
+  const matched=ids.size===1 && ids.has(requestedAsin);
+  const specs=[{k:'ASIN',v:requestedAsin}];
+  if(matched){
+    try {
+      const values=JSON.parse(html.match(/"dimensionValuesDisplayData"\s*:\s*(\{[\s\S]*?\})/)?.[1]||'{}');
+      const selected=values[requestedAsin];
+      if(Array.isArray(selected)&&selected.length)specs.push({k:'所选规格',v:selected.join(' / ')});
+    }catch{}
+  }
+  return {matched,requestedAsin,selectedAsin:ids.size===1?[...ids][0]:null,specs};
+}
+
 function parseHtml(html, url, asin) {
   // 标题：优先 productTitle，其次 og:title
   const title =
@@ -102,7 +120,8 @@ function parseHtml(html, url, asin) {
   }
 
   // 价格：多种位置兜底
-  const price = extractUsdPrice(html,url);
+  const identity=inspectAmazonIdentity(html,asin);
+  const price = identity.matched ? extractUsdPrice(html,url) : 0;
 
   // 要点（feature bullets）→ 规格/描述
   const bullets = [];
@@ -126,7 +145,8 @@ function parseHtml(html, url, asin) {
     refPrice: price,                       // 参考价（美元），管理员据此定份数
     priceNote: price > 0 ? `抓取参考价 $${price}（未核实）。请核对原站实际可购买价格、规格和地区；不同会话价格可能不同` : '页面未提供可确认的美元售价，请手动补填参考价，系统会自动计算总份数及免费份数。',
     gallery: [...gallery].map(u => ({ type: 'image', url: u })),
-    specs: [],
+    specs: identity.specs,
+    priceEvidence: {requestedAsin:asin,selectedAsin:identity.selectedAsin,matched:identity.matched,sourceUrl:url,observedAt:Date.now()},
     desc: bullets.join('\n'),
     bullets,
   };
@@ -174,14 +194,14 @@ export async function fetchAmazon(rawUrl) {
   }
   // A rendered public page supplies prices omitted from bot/static responses.
   try {
-    const source=new URL(url);source.pathname='/dp/'+asin;source.search='';
+    const source=new URL(url); // Preserve every parameter from the user's original product link.
     const response=await fetch('https://r.jina.ai/'+source.href,{
       headers:{'X-Return-Format':'html'},signal:AbortSignal.timeout(25000)
     });
     if(response.ok){
       const html=await response.text();
       const draft=parseHtml(html,url,asin);
-      if(draft.refPrice>0 && draft.gallery.length && html.includes(asin))return draft;
+      if(draft.refPrice>0 && draft.gallery.length && draft.priceEvidence.matched)return draft;
       if(!unpricedDraft && draft.gallery.length)unpricedDraft=draft;
     }
   } catch(e){lastErr=e;}
