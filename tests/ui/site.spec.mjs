@@ -348,3 +348,13 @@ test('普通用户所有页面均不显示后台入口，管理员和退出状�
  await page.evaluate(()=>{Store._cache.user=null;renderTopbar('home');});
  await expect(page.locator('#topbar a[href="admin.html"]')).toBeHidden();
 });
+
+test('导入价格保存前确认实际采购价和份数，取消不写入',async({page})=>{
+ await mockAPI(page);await page.goto('/admin.html');await page.evaluate(()=>Store.ready);await page.locator('[data-tab="products"]').click();
+ await page.evaluate(()=>applyDraft({name:'Roomba',refPrice:799.99},'https://www.amazon.com/dp/B0DPNKVFVW'));
+ let saved=null;await page.route('**/api/admin/products',r=>{saved=r.request().postDataJSON();return r.fulfill({json:{ok:true,msg:'已保存'}})});
+ page.once('dialog',d=>{expect(d.message()).toContain('1200');expect(d.message()).toContain('60');return d.dismiss()});
+ await page.evaluate(()=>save());expect(saved).toBeNull();
+ page.once('dialog',d=>d.accept());await page.evaluate(()=>save());
+ expect(saved.pricing.priceConfirmed).toBe(true);expect(saved.totalShares).toBe(1200);expect(saved.freeQuota).toBe(60);
+});

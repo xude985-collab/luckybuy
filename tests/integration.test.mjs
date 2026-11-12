@@ -33,13 +33,14 @@ test('integrated money/account/fulfillment workflows on isolated PostgreSQL',asy
  userCookie=(await api('/auth/login',{account:'user@test.invalid',password:'test-admin-password'})).cookie;
  let product;
  await t.test('reference price controls shares and five percent quota; missing import price is rejected',async()=>{
-  const data={name:'价格联动测试',category:'cleaning',sourceUrl:'https://www.amazon.com/dp/B08KT2Z93D',pricePerShare:1,totalShares:1,freeQuota:0,pricing:{referencePrice:100,multiplier:1,freeRatio:100}};
+  const data={name:'价格联动测试',category:'cleaning',sourceUrl:'https://www.amazon.com/dp/B08KT2Z93D',pricePerShare:1,totalShares:1,freeQuota:0,pricing:{referencePrice:100,multiplier:1,freeRatio:100,priceConfirmed:true}};
   const created=await api('/admin/products',data,adminCookie);assert.equal(created.data.ok,true);
   let p=(await api('/shop/products/'+created.data.id)).data.product;
-  assert.equal(p.totalShares,150);assert.equal(p.freeQuota,8);assert.deepEqual(p.pricing,{referencePrice:100,multiplier:1.5,freeRatio:5});
-  assert.equal((await api('/admin/products',{...data,id:created.data.id,pricing:{referencePrice:66}},adminCookie)).data.ok,true);
+  assert.equal(p.totalShares,150);assert.equal(p.freeQuota,8);assert.equal(p.pricing.referencePrice,100);assert.equal(p.pricing.multiplier,1.5);assert.equal(p.pricing.freeRatio,5);assert.equal(p.pricing.priceConfirmed,true);
+  assert.equal((await api('/admin/products',{...data,id:created.data.id,pricing:{referencePrice:66,priceConfirmed:true}},adminCookie)).data.ok,true);
   p=(await api('/shop/products/'+created.data.id)).data.product;assert.equal(p.totalShares,99);assert.equal(p.freeQuota,5);
   assert.equal((await api('/admin/products',{...data,pricing:{referencePrice:null}},adminCookie)).status,400);
+  assert.equal((await api('/admin/products',{...data,pricing:{referencePrice:799.99}},adminCookie)).status,400);
   await api('/admin/products/'+created.data.id,null,adminCookie,'DELETE');
  });
  await t.test('create product and replay purchase exactly once',async()=>{

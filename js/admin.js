@@ -70,7 +70,7 @@ function renderProductList(list) {
     html += `<tr>
       <td>${esc(p.sku||'—')}</td>
       <td>${escapeHtml(p.img||'')} ${esc(p.name)}</td>
-      <td>$${p.price}/份<br>总 ${p.totalShares} 份<br>${p.freeQuota > 0 ? `免费 ${p.freeQuota} 份` : '免费 0 份'}${!p.pricing?.referencePrice ? '<br><small>参考价未保存，请核对份数</small>' : ''}</td>
+      <td>$${p.price}/份<br>总 ${p.totalShares} 份<br>${p.freeQuota > 0 ? `免费 ${p.freeQuota} 份` : '免费 0 份'}${!p.pricing?.priceConfirmed ? '<br><small>采购价格待人工核对</small>' : ''}</td>
       <td>${sold}/${p.totalShares} (${pct}%)</td>
       <td>${state}</td>
       <td><a href="#" onclick="editProd('${p.id}');return false">编辑</a> · <a href="#" onclick="delProd('${p.id}');return false" style="color:#c00">删除</a></td>
@@ -169,6 +169,10 @@ async function save() {
   input.totalShares=Number(v('f-total'));
   input.freeQuota=Number(v('f-free'));
   input.pricing={referencePrice:input.pricing.referencePrice,multiplier:1.5,freeRatio:5};
+  if(input.sourceUrl){
+    if(!confirm(`请按实际可购买的商品价格核对（同一链接可能存在地区、规格或促销差异）：\n参考价 $${input.pricing.referencePrice}\n总份数 ${input.totalShares} 份\n免费名额 ${input.freeQuota} 个\n确认价格无误并保存？`))return;
+    input.pricing.priceConfirmed=true;
+  }
   const r = await Store.upsertProduct(input);
   toast(r.msg);
   if (r.ok) { cancelEdit(); loadProducts(); loadDashboard(); }
@@ -223,7 +227,7 @@ function applyDraft(d, url) {
   document.getElementById('f-multiplier').value = '1.5';
   document.getElementById('f-per-share').value = '1';
   document.getElementById('price-import-note').textContent = hasPrice
-    ? '已获取整件商品参考价：总份数按价格×1.5四舍五入，免费名额按总份数×5%四舍五入。'
+    ? '抓取参考价未核实，请打开原商品页核对实际可购买的价格、规格和地区；保存前将再次确认总份数和免费名额。'
     : (d.priceNote || '未获取到商品价格，请补填美元参考价以自动计算，补填后才能上架。');
   bindMultiplierAuto();
   applyMultiplier();

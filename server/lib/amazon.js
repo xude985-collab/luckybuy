@@ -124,7 +124,7 @@ function parseHtml(html, url, asin) {
     sourceUrl: url,
     asin,
     refPrice: price,                       // 参考价（美元），管理员据此定份数
-    priceNote: price > 0 ? `已获取美元参考价 $${price}，请核对所选规格` : '页面未提供可确认的美元售价，请手动补填参考价，系统会自动计算总份数及免费份数。',
+    priceNote: price > 0 ? `抓取参考价 $${price}（未核实）。请核对原站实际可购买价格、规格和地区；不同会话价格可能不同` : '页面未提供可确认的美元售价，请手动补填参考价，系统会自动计算总份数及免费份数。',
     gallery: [...gallery].map(u => ({ type: 'image', url: u })),
     specs: [],
     desc: bullets.join('\n'),

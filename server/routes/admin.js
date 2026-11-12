@@ -119,11 +119,12 @@ router.post('/products', requireAdmin, async (req, res, next) => {
 
     const referencePrice = b.pricing?.referencePrice;
     if (b.sourceUrl && !(Number.isFinite(referencePrice) && referencePrice > 0)) throw bad('未读取到商品美元价格，请补填参考价后再保存，不能按1份上架');
+    if(b.sourceUrl && b.pricing?.priceConfirmed !== true)throw bad('请核对实际采购价格后确认保存；抓取价格不能直接作为已核实价格');
     if(referencePrice != null && (!Number.isFinite(referencePrice)||referencePrice<=0||referencePrice>666666))throw bad('参考价无效');
     const pricePerShare = 1;
     const totalShares = referencePrice != null ? Math.max(1, Math.round(referencePrice * 1.5)) : integer(b.totalShares,'总份数',1,1000000);
     const freeQuota = Math.round(totalShares * 0.05);
-    const pricing = JSON.stringify({referencePrice:referencePrice??null,multiplier:1.5,freeRatio:5});
+    const pricing = JSON.stringify({referencePrice:referencePrice??null,multiplier:1.5,freeRatio:5,priceConfirmed:b.pricing?.priceConfirmed===true,confirmedAt:b.pricing?.priceConfirmed===true?Date.now():null});
     const gallery = JSON.stringify(Array.isArray(b.gallery) ? b.gallery : []);
     const specs = JSON.stringify(Array.isArray(b.specs) ? b.specs : []);
 
