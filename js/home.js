@@ -42,13 +42,13 @@ function renderMarquee() {
   const feed = Store.winnersFeed();
   el.style.display = 'flex';
   if (!feed.length) {
-    el.innerHTML = '<div class="label">🏆 幸运榜</div><span class="marquee-empty">暂无可显示的揭晓记录，开奖后将在这里滚动公示</span>';
+    el.innerHTML = '<div class="label"><span class="notice-icon">🏆</span><span>幸运榜</span></div><span class="marquee-empty">暂无可显示的揭晓记录，开奖后将在这里滚动公示</span>';
     return;
   }
   const items = feed.concat(feed).map(w =>
     `<span class="item">🎉 <b>${escapeHtml(w.winnerName)}</b> 用 <b>$${escapeHtml(w.price)}</b> 夺得 <b>${escapeHtml(w.productName)}</b>（幸运号 ${w.winNumber}）</span>`
   ).join('');
-  el.innerHTML = `<div class="label">🏆 幸运榜</div><div class="track">${items}</div>`;
+  el.innerHTML = `<div class="label"><span class="notice-icon">🏆</span><span>幸运榜</span></div><div class="marquee-window"><div class="track">${items}</div></div>`;
 }
 
 /* ---- 倒计时工具 ---- */
