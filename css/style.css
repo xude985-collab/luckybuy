@@ -1150,3 +1150,18 @@ html:not(.user-is-admin) .topbar .nav-admin { display: none; }
  .home-layout .showcase-section { min-height:calc(var(--catalog-row-height, 580px) - 336px); display:flex; flex-direction:column; }
  .home-layout .showcase-section > .empty { flex:1; display:flex; align-items:center; justify-content:center; }
 }
+
+/* 首屏先保留商品区域，避免手机下方动态在登录/退出重载时顶上来。 */
+.catalog-loading { grid-column:1 / -1; width:100%; }
+.catalog-loading p { color:var(--muted); font-size:14px; margin-bottom:12px; }
+.catalog-skeletons { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+.catalog-skeletons i { display:block; height:380px; border-radius:12px; background:linear-gradient(#f0f1f3,#f0f1f3) 16px 16px / calc(100% - 32px) 52% no-repeat,#fff; }
+@media (min-width:1200px) { .catalog-skeletons { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+@media (max-width:900px) {
+ .home-catalog-loading .left-col { display:none; }
+ .catalog-skeletons { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media (max-width:600px) {
+ .catalog-skeletons { grid-template-columns:1fr; gap:8px; }
+ .catalog-skeletons i { height:150px; background:linear-gradient(#f0f1f3,#f0f1f3) 12px center / 80px 96px no-repeat,linear-gradient(#f0f1f3,#f0f1f3) 108px 24px / calc(100% - 124px) 14px no-repeat,linear-gradient(#fff3e0,#fff3e0) 108px 106px / calc(100% - 124px) 28px no-repeat,#fff; }
+}

@@ -161,8 +161,10 @@ async function renderGrid() {
   const seq=++gridRequest;
   const grid=document.getElementById('grid');
   if(!grid.children.length)grid.textContent='商品加载中…';
-  const r=await Store.catalog(currentPage,PAGE_SIZE,activeCat);
+  const r=await Store.catalog(currentPage,PAGE_SIZE,activeCat).catch(() => ({ok:false}));
   if(seq!==gridRequest)return;
+  document.body.classList.remove('home-catalog-loading');
+  grid.setAttribute('aria-busy', 'false');
   if(!r.ok){grid.innerHTML='<div class="empty">商品加载失败。<button class="btn ghost" onclick="renderGrid()">重试</button></div>';return;}
   const pageItems=r.products,total=r.total??pageItems.length,totalPages=r.pages||Math.ceil(total/PAGE_SIZE)||1;
   if(currentPage>totalPages){currentPage=totalPages;return renderGrid();}

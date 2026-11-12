@@ -407,3 +407,47 @@ test('电脑每页16件，翻页和分类重置正常',async({page})=>{
  await expect(page.locator('#pagination')).toContainText('第 1 / 2 页');
  await page.screenshot({path:'test-results/desktop-layout-16.png',fullPage:true});
 });
+
+for (const guest of [false, true]) {
+ test(`手机首页重载在身份及商品请求等待期间保持商品占位（访客=${guest}）`, async ({ page }) => {
+  await page.setViewportSize({width:390,height:844});
+  await mockAPI(page, {guest});
+  let releaseSession, releaseCatalog;
+  const sessionGate = new Promise(resolve => { releaseSession = resolve; });
+  const catalogGate = new Promise(resolve => { releaseCatalog = resolve; });
+  await page.route('**/api/auth/me', async route => { await sessionGate; await route.fallback(); });
+  await page.route('**/api/shop/catalog?**', async route => { await catalogGate; await route.fallback(); });
+  await page.goto('/index.html');
+  await expect(page.locator('.catalog-loading')).toBeVisible();
+  await expect(page.locator('.left-col')).toBeHidden();
+  await expect(page.locator('#grid')).toHaveAttribute('aria-busy','true');
+  const catalogRequest = page.waitForRequest('**/api/shop/catalog?**');
+  releaseSession();
+  await catalogRequest;
+  await expect(page.locator('.catalog-loading')).toBeVisible();
+  await expect(page.locator('.left-col')).toBeHidden();
+  releaseCatalog();
+  await expect(page.locator('.card')).toHaveCount(1);
+  await expect(page.locator('.left-col')).toBeVisible();
+  await expect(page.locator('#grid')).toHaveAttribute('aria-busy','false');
+  expect(await page.evaluate(() => document.querySelector('.left-col').getBoundingClientRect().top >= document.querySelector('#grid').getBoundingClientRect().bottom)).toBe(true);
+ });
+}
+
+test('手机首页商品失败与空列表都能结束初始占位，失败可重试', async ({ page }) => {
+ await page.setViewportSize({width:390,height:844});
+ await mockAPI(page);
+ await page.route('**/api/shop/catalog?**', route => route.fulfill({status:503,json:{ok:false}}));
+ await page.goto('/index.html');
+ await expect(page.locator('#grid')).toContainText('商品加载失败');
+ await expect(page.locator('.catalog-loading')).toHaveCount(0);
+ await expect(page.locator('.left-col')).toBeVisible();
+ await page.unroute('**/api/shop/catalog?**');
+ await page.locator('#grid button').click();
+ await expect(page.locator('.card')).toHaveCount(1);
+ await page.route('**/api/shop/catalog?**', route => route.fulfill({json:{ok:true,products:[],total:0,pages:1}}));
+ await page.reload();
+ await expect(page.locator('#grid')).toContainText('该类别下暂无商品');
+ await expect(page.locator('.catalog-loading')).toHaveCount(0);
+ await expect(page.locator('.left-col')).toBeVisible();
+});
