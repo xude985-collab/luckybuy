@@ -745,7 +745,7 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
 
 /* drand 信任横幅 */
 .trust-banner {
-  background: #ffe6bf;
+  background: linear-gradient(90deg, #fff3e0, #ffe0b2);
   border-bottom: 1px solid #ffe0b2;
   padding: 8px 20px;
   display: flex; align-items: center; gap: 10px;
