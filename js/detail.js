@@ -25,7 +25,15 @@ function myNumbersHtml(winNumber) {
 function render() {
   const p = Store.getProduct(id);
   const box = document.getElementById('detail');
-  if (!p) { box.innerHTML = '<div class="empty">商品不存在</div>'; return; }
+  if (!p) {
+    box.innerHTML = '<div class="empty">暂时无法显示该商品。<button class="btn ghost" id="retry-product">重新加载</button></div>';
+    document.getElementById('retry-product').onclick = async (event) => {
+      event.currentTarget.disabled = true;
+      event.currentTarget.textContent = '加载中…';
+      try { await Store.refreshProduct(id); } finally { render(); autoPoll(); }
+    };
+    return;
+  }
 
   const percent = pct(p);
   const remain = p.totalShares - p.soldShares;

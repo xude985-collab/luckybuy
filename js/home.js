@@ -168,6 +168,33 @@ function selectCat(key) {
 }
 
 let gridRequest=0;
+let homeDrawingIds = [];
+let homeDrawPollTimer = null;
+let homeDrawPolling = false;
+function scheduleHomeDrawPoll() {
+  clearTimeout(homeDrawPollTimer);
+  if (!document.hidden && homeDrawingIds.length && !homeDrawPolling)
+    homeDrawPollTimer = setTimeout(pollHomeDraws, 5000);
+}
+async function pollHomeDraws() {
+  if (document.hidden || homeDrawPolling) return;
+  homeDrawPolling = true;
+  try {
+    const results = await Promise.all(homeDrawingIds.map(async id => {
+      const result = await Store.refreshProduct(id);
+      return result.ok && Store.getProduct(id)?.status !== 'drawing';
+    }));
+    if (results.some(Boolean)) {
+      await Promise.all([renderGrid(), Store.refreshWinners(), Store.refreshNotifications()]);
+      renderMarquee();
+      renderDrawNotification();
+      checkUnclaimedWins();
+    }
+  } finally {
+    homeDrawPolling = false;
+    scheduleHomeDrawPoll();
+  }
+}
 async function renderGrid() {
   const seq=++gridRequest;
   const grid=document.getElementById('grid');
@@ -178,6 +205,8 @@ async function renderGrid() {
   grid.setAttribute('aria-busy', 'false');
   if(!r.ok){grid.innerHTML='<div class="empty">商品加载失败。<button class="btn ghost" onclick="renderGrid()">重试</button></div>';return;}
   const pageItems=r.products,total=r.total??pageItems.length,totalPages=r.pages||Math.ceil(total/PAGE_SIZE)||1;
+  homeDrawingIds = pageItems.filter(p => p.status === 'drawing').map(p => p.id);
+  scheduleHomeDrawPoll();
   if(currentPage>totalPages){currentPage=totalPages;return renderGrid();}
   if (!total) {
     grid.innerHTML = '<div class="empty">该类别下暂无商品。</div>';
@@ -362,6 +391,7 @@ onReady(async () => {
 
 // 页面恢复可见时刷新商品数据（解决从详情页返回时数据过期问题）
 document.addEventListener('visibilitychange', () => {
+  scheduleHomeDrawPoll();
   if (!document.hidden) {
     Promise.all([Store.refreshProducts(), Store.refreshRecentBuys(), Store.refreshWinners()]).then(() => {
       renderAll();

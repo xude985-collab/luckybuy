@@ -533,3 +533,35 @@ test('商品读取临时失败自动恢复，首排封面使用小图且详情�
  await page.goto('/detail.html?id=p_test');
  await expect(page.locator('#gmain')).toHaveAttribute('src',picture);
 });
+
+test('首页等待开奖自动更新结果，等待期间不打断其他商品输入',async({page})=>{
+ const drawing={...product,status:'drawing',draw:{drawTime:Date.now()-1000}};
+ const active={...product,id:'p_active',name:'其他商品'};
+ await mockAPI(page,{guest:true,product:drawing});
+ let done=false;
+ await page.route('**/api/shop/catalog?**',r=>r.fulfill({json:{ok:true,products:done?[active]:[drawing,active],total:done?1:2,pages:1}}));
+ await page.route('**/api/shop/products/p_test',r=>r.fulfill({json:{ok:true,product:done?{...drawing,status:'done',draw:{win_number:1}}:drawing}}));
+ await page.route('**/api/shop/winners',r=>r.fulfill({json:{ok:true,winners:done?[{name:product.name,winner_name:'新幸运儿',win_number:1,price:1}]:[]}}));
+ await page.goto('/index.html');
+ await page.locator('#cqty-p_active').fill('5');
+ await page.evaluate(()=>pollHomeDraws());
+ await expect(page.locator('#cqty-p_active')).toHaveValue('5');
+ done=true;
+ await expect(page.locator('#marquee')).toContainText('新幸运儿',{timeout:9000});
+ await expect(page.locator('.card-countdown')).toHaveCount(0);
+ await expect(page.locator('.card .name')).toHaveText('其他商品');
+});
+
+test('详情接口失败显示重试而非商品不存在，恢复后正常展示',async({page})=>{
+ await mockAPI(page);
+ let fail=true;
+ await page.route('**/api/shop/products/p_test',r=>fail?r.fulfill({status:503,json:{ok:false}}):r.fulfill({json:{ok:true,product}}));
+ await page.goto('/detail.html?id=p_test');
+ await expect(page.locator('#retry-product')).toBeVisible();
+ await expect(page.locator('#detail')).not.toContainText('商品不存在');
+ fail=false;
+ await page.locator('#retry-product').click();
+ await expect(page.locator('#retry-product')).toHaveCount(0);
+ await expect(page.locator('#detail')).toContainText(product.name);
+ await expect(page.locator('#service-notice')).toHaveCount(0);
+});
