@@ -75,6 +75,8 @@ function renderTopbar(active) {
     };
   }
 
+  const adminEntry = document.getElementById('profile-admin-entry');
+  if (adminEntry) adminEntry.hidden = !isAdmin;
   renderMobNav(active, u);
 }
 
@@ -118,7 +120,6 @@ function renderMobNav(active, u) {
     nav.className = 'mob-nav';
     document.body.appendChild(nav);
   }
-  const isAdmin = u && u.isAdmin;
   nav.innerHTML = `
     <a href="index.html" class="${active === 'home' ? 'active' : ''}">
       <span class="nav-icon">🏠</span>首页</a>
@@ -128,10 +129,8 @@ function renderMobNav(active, u) {
       <span class="nav-icon">📋</span>记录</a>
     <a href="rules.html" class="${active === 'rules' ? 'active' : ''}">
       <span class="nav-icon">📖</span>规则</a>
-    <a href="${u ? 'profile.html' : 'login.html'}" class="${active === 'profile' ? 'active' : ''}">
-      <span class="nav-icon">👤</span>${u ? '我的' : '登录'}</a>
-    ${isAdmin ? `<a href="admin.html" class="${active === 'admin' ? 'active' : ''}">
-      <span class="nav-icon">⚙️</span>后台</a>` : ''}`;
+    <a href="${u ? 'profile.html' : 'login.html'}" class="${active === 'profile' || active === 'admin' ? 'active' : ''}">
+      <span class="nav-icon">👤</span>${u ? '我的' : '登录'}</a>`;
 }
 
 function renderDrawNotification() {

@@ -339,17 +339,37 @@ test('普通用户所有页面均不显示后台入口，管理员和退出状�
   await expect(page.locator('#topbar a[href="admin.html"]')).toBeHidden();
   await expect(page.locator('#mob-nav a[href="admin.html"]')).toHaveCount(0);
   await expect(page.locator('#topbar a[href="admin.html"]')).toHaveClass(/nav-admin/);
+  if(path==='profile') await expect(page.locator('#profile-admin-entry')).toBeHidden();
  }
+ await page.goto('/profile.html');
+ await page.evaluate(()=>Store.ready);
  for(const width of [390,768,1440]){
   await page.setViewportSize({width,height:900});
   await page.evaluate(()=>{Store._cache.user.isAdmin=true;renderTopbar('home');});
-  await expect(page.locator((width<=1100?'#mob-nav':'#topbar')+' a[href="admin.html"]')).toBeVisible();
+  await expect(page.locator('#mob-nav a')).toHaveCount(5);
+  await expect(page.locator('#mob-nav a[href="admin.html"]')).toHaveCount(0);
+  await expect(page.locator('#profile-admin-entry a')).toBeVisible();
+  if(width>1100) await expect(page.locator('#topbar a[href="admin.html"]')).toBeVisible();
   await page.evaluate(()=>{Store._cache.user.isAdmin=false;renderTopbar('home');});
   await expect(page.locator('#topbar a[href="admin.html"]')).toBeHidden();
   await expect(page.locator('#mob-nav a[href="admin.html"]')).toHaveCount(0);
+  await expect(page.locator('#profile-admin-entry')).toBeHidden();
  }
  await page.evaluate(()=>{Store._cache.user=null;renderTopbar('home');});
  await expect(page.locator('#topbar a[href="admin.html"]')).toBeHidden();
+ await expect(page.locator('#profile-admin-entry')).toBeHidden();
+});
+
+test('手机管理员通过我的进入后台',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await mockAPI(page);
+ await page.goto('/index.html');
+ await expect(page.locator('#mob-nav a')).toHaveCount(5);
+ await page.locator('#mob-nav a[href="profile.html"]').click();
+ await page.locator('#profile-admin-entry a').click();
+ await expect(page).toHaveURL(/admin\.html/);
+ await expect(page.locator('[data-tab="products"]')).toBeVisible();
+ await expect(page.locator('#mob-nav a')).toHaveCount(5);
 });
 
 test('导入价格保存前确认实际采购价和份数，取消不写入',async({page})=>{
