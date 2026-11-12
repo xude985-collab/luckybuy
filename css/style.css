@@ -1144,3 +1144,9 @@ html:not(.user-is-admin) .topbar .nav-admin { display: none; }
 }
 
 .home-page .marquee-window { position:relative; flex:1; min-width:0; height:100%; overflow:hidden; }
+
+@media (min-width:901px) {
+ .home-layout .live-feed { flex-shrink:0; }
+ .home-layout .showcase-section { min-height:calc(var(--catalog-row-height, 580px) - 336px); display:flex; flex-direction:column; }
+ .home-layout .showcase-section > .empty { flex:1; display:flex; align-items:center; justify-content:center; }
+}

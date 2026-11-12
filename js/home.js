@@ -330,6 +330,18 @@ function showCardCoinChoice(u, p) {
 
 onReady(async () => {
   renderTopbar('home');
+  const grid = document.getElementById('grid');
+  const sidebar = document.querySelector('.left-col');
+  const syncSidebarHeight = () => {
+    const card = grid.querySelector('.card');
+    if (window.innerWidth > 900 && card) {
+      sidebar.style.setProperty('--catalog-row-height', `${card.getBoundingClientRect().height}px`);
+    } else {
+      sidebar.style.removeProperty('--catalog-row-height');
+    }
+  };
+  new ResizeObserver(syncSidebarHeight).observe(grid);
+  window.addEventListener('resize', syncSidebarHeight);
   await Store.ready;
   renderAll();
   renderShowcase();
