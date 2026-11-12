@@ -9,7 +9,7 @@ async function mockAPI(page, options = {}) {
   await page.route('**/api/**', async route => {
     const path = new URL(route.request().url()).pathname.replace('/api', '');
     const data = {
-      '/auth/me': { user: options.guest ? null : user },
+      '/auth/me': { user: options.guest ? null : (options.user || user) },
       '/wallet': { paidBalance: 100, freeBalance: 10, tx: [] },
       '/wallet/orders': { orders: [order] },
       '/wallet/checkin-status': { checkedIn: false, streak: 0 },
@@ -324,4 +324,27 @@ test('用户管理删除普通用户且不提供删除管理员入口',async({pa
  await expect(page.locator('#tab-users').getByRole('link',{name:'删除',exact:true})).toHaveCount(1);
  page.once('dialog',d=>d.accept());await page.locator('#tab-users').getByRole('link',{name:'删除',exact:true}).click();
  await expect(page.locator('#tab-users')).not.toContainText('ordinary@example.com');
+});
+
+
+test('普通用户所有页面均不显示后台入口，管理员和退出状态正确切换',async({page})=>{
+ await mockAPI(page,{user:{...user,role:'user'}});
+ await page.setViewportSize({width:1440,height:900});
+ for(const path of ['index','detail?id=p_test','orders','profile','recharge','rules','showcase','winners','login']){
+  await page.goto('/'+path.replace('?', '.html?')+(path.includes('?')?'':'.html'));
+  await page.evaluate(()=>Store.ready);
+  await expect(page.locator('#topbar a[href="admin.html"]')).toBeHidden();
+  await expect(page.locator('#mob-nav a[href="admin.html"]')).toHaveCount(0);
+  await expect(page.locator('#topbar a[href="admin.html"]')).toHaveClass(/nav-admin/);
+ }
+ for(const width of [390,768,1440]){
+  await page.setViewportSize({width,height:900});
+  await page.evaluate(()=>{Store._cache.user.isAdmin=true;renderTopbar('home');});
+  await expect(page.locator((width<=1100?'#mob-nav':'#topbar')+' a[href="admin.html"]')).toBeVisible();
+  await page.evaluate(()=>{Store._cache.user.isAdmin=false;renderTopbar('home');});
+  await expect(page.locator('#topbar a[href="admin.html"]')).toBeHidden();
+  await expect(page.locator('#mob-nav a[href="admin.html"]')).toHaveCount(0);
+ }
+ await page.evaluate(()=>{Store._cache.user=null;renderTopbar('home');});
+ await expect(page.locator('#topbar a[href="admin.html"]')).toBeHidden();
 });

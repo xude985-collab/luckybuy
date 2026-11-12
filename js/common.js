@@ -43,12 +43,14 @@ function renderTopbar(active) {
   const navLinks = el.querySelectorAll('nav a');
   navLinks.forEach(a => {
     const href = a.getAttribute('href');
-    if (href === 'index.html') a.className = active === 'home' ? 'active' : '';
-    else if (href === 'winners.html') a.className = active === 'winners' ? 'active' : '';
-    else if (href === 'orders.html') a.className = active === 'orders' ? 'active' : '';
-    else if (href === 'rules.html') a.className = active === 'rules' ? 'active' : '';
-    else if (href === 'profile.html') a.className = active === 'profile' ? 'active' : '';
-    else if (href === 'admin.html') a.className = active === 'admin' ? 'active' : '';
+    const tabs = {'index.html':'home','winners.html':'winners','orders.html':'orders','rules.html':'rules','profile.html':'profile','admin.html':'admin'};
+    a.classList.toggle('active', tabs[href] === active);
+    if (href === 'admin.html') {
+      a.classList.add('nav-admin');
+      a.hidden = !isAdmin;
+      a.style.display = isAdmin ? '' : 'none';
+    }
+
   });
 
   // 更新右侧登录态内容
