@@ -118,4 +118,6 @@ test('product import rejects disguised domains and unsafe redirects',async()=>{
  const {productUrl}=await import('../server/lib/productUrl.js');
  for(const value of ['https://evil.invalid/?doba.com/product/a/b','https://doba.com.evil.invalid/product/a/b','http://doba.com/product/a/b','https://user:password@doba.com/product/a/b','https://doba.com:444/product/a/b'])assert.throws(()=>productUrl(value));
  assert.equal(productUrl('https://www.doba.com/product/a/b').provider,'doba');
+ assert.equal(productUrl('amazon.com/eos-Cashmere/dp/B08KT2Z93D?ref=test').url,'https://amazon.com/eos-Cashmere/dp/B08KT2Z93D?ref=test');
+ assert.throws(()=>productUrl('amazon.com.evil.invalid/dp/B08KT2Z93D'));
 });

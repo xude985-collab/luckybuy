@@ -1,6 +1,9 @@
 const amazonDomains=['com','co.uk','de','fr','it','es','ca','com.au','co.jp','in','com.mx','com.br','nl','se','pl','sg','ae','sa','com.tr'];
 export function productUrl(value, expected) {
-  let url;try{url=new URL(value)}catch{throw new Error('请输入完整HTTPS商品链接')}
+  let input=String(value||'').trim();
+  // Browsers often omit the protocol when users copy a displayed address.
+  if(/^(?:www\.)?(?:amazon\.[a-z.]+|doba\.com|saleyee\.com)(?:\/|$)/i.test(input))input='https://'+input;
+  let url;try{url=new URL(input)}catch{throw new Error('请输入完整HTTPS商品链接')}
   if(url.protocol!=='https:'||url.username||url.password||(url.port&&url.port!=='443'))throw new Error('商品链接仅支持HTTPS标准地址');
   const host=url.hostname.toLowerCase().replace(/^www\./,'');
   const provider=host==='doba.com'?'doba':host==='saleyee.com'?'saleyee':amazonDomains.some(t=>host==='amazon.'+t)?'amazon':null;
