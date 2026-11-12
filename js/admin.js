@@ -114,6 +114,8 @@ function fieldsFrom(p) {
   document.getElementById('f-multiplier').value = p?.pricing?.multiplier || 1.5;
   document.getElementById('f-per-share').value = p?.price || 1;
   document.getElementById('f-free-ratio').value = p?.pricing?.freeRatio ?? '';
+  document.getElementById('free-ratio-note').textContent = '改比例自动算免费份数；改免费份数自动反算比例。0份表示不限。';
+  if (p && p.pricing?.freeRatio == null) inferFreeRatio();
   document.getElementById('price-import-note').textContent = '总份数 = 参考价 × 倍数 ÷ 每份金额，按原规则四舍五入。';
   document.getElementById('multi-result').textContent = '';
   bindMultiplierAuto();
@@ -261,6 +263,19 @@ function syncFreeQuota() {
   return count > 0;
 }
 
+function inferFreeRatio() {
+  const quota=Number(v('f-free')),total=Number(v('f-total'));
+  const input=document.getElementById('f-free-ratio'),note=document.getElementById('free-ratio-note');
+  if(v('f-free')===''){input.value='';note.textContent='请填写免费份数或比例';return;}
+  if(quota===0){input.value='';note.textContent='0份按原规则表示免费额度不限，不能反推为0%。';return;}
+  if(!Number.isInteger(quota)||quota<0||!Number.isInteger(total)||total<1||quota>total){
+    input.value='';note.textContent='请先填写有效总份数；免费份数不能超过总份数。';return;
+  }
+  const ratio=Number((quota/total*100).toFixed(6));
+  input.value=String(ratio);
+  note.textContent=`由已有份数反推：${quota} ÷ ${total} × 100% ≈ ${ratio}%。这是实际占比，不代表历史默认比例。`;
+}
+
 function bindMultiplierAuto() {
   const multEl = document.getElementById('f-multiplier');
   const perEl = document.getElementById('f-per-share');
@@ -269,10 +284,7 @@ function bindMultiplierAuto() {
   document.getElementById('base-price').oninput = applyMultiplier;
   document.getElementById('f-free-ratio').oninput = syncFreeQuota;
   document.getElementById('f-total').oninput = syncFreeQuota;
-  document.getElementById('f-free').oninput = () => {
-    document.getElementById('f-free-ratio').value = '';
-    document.getElementById('free-ratio-note').textContent = '已切换为手动免费份数；0按原规则表示不限。';
-  };
+  document.getElementById('f-free').oninput = inferFreeRatio;
   document.getElementById('f-price').oninput = () => {
     if (document.getElementById('multiplier-row').style.display === 'none') return;
     perEl.value = document.getElementById('f-price').value;

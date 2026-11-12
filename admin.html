@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>后台管理 · Lucky Buy</title>
-  <link rel="stylesheet" href="css/style.css?v=20261111full2">
+  <link rel="stylesheet" href="css/style.css?v=20261112evidence">
   <link rel="stylesheet" href="css/admin.css?v=20261112clear">
 
   <style>
@@ -79,7 +79,7 @@
             </div>
           </div>
           <div class="two-col">
-            <div><label>免费参与份数（0不限，每人限1份）</label><input id="f-free" type="number" min="0" step="1" placeholder="0" value="0"><label>免费份数占比（%，留空为手动）</label><input id="f-free-ratio" type="number" min="0.01" max="100" step="0.01" placeholder="填写原设定比例"><small id="free-ratio-note">填写比例后，按总份数四舍五入计算免费份数。</small></div>
+            <div><label>免费参与份数（0不限，每人限1份）</label><input id="f-free" type="number" min="0" step="1" placeholder="0" value="0"><label>免费份数占比（%，可由份数反推）</label><input id="f-free-ratio" type="number" min="0.000001" max="100" step="any" placeholder="填比例或先填免费份数"><small id="free-ratio-note">改比例自动算免费份数；改免费份数自动反算比例。0份按原规则表示不限。</small></div>
             <div><label>期号</label><input id="f-period" placeholder="第 001 期"></div>
           </div>
           <label>图标（emoji）</label>
@@ -182,7 +182,7 @@
     </section>
   </main>
   <script src="js/common.js?v=20261112restore"></script>
-  <script src="js/store.js?v=20261112restore"></script>
-  <script src="js/admin.js?v=20261112restore"></script>
+  <script src="js/store.js?v=20261112evidence"></script>
+  <script src="js/admin.js?v=20261112evidence"></script>
 </body>
 </html>

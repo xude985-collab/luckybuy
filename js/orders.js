@@ -1,9 +1,9 @@
 /* 我的记录：参与订单 + 幸运标记 + 填地址 */
 
 function inviteCard(u) {
-  const link = location.origin + location.pathname.replace(/orders\.html$/, 'login.html') + '?ref=' + u.inviteCode;
+  const link = new URL('/login?ref=' + encodeURIComponent(u.inviteCode), location.origin).href;
   const invites = u.invites || 0;
-  const earned = (u.grants || []).filter(g => g.type === 'inviter').reduce((s, g) => s + g.coins, 0);
+  const earned = u.inviteEarned || 0;
   return `
     <div class="invite-card">
       <div class="invite-bal">

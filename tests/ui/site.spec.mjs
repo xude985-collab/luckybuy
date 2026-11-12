@@ -108,6 +108,16 @@ test('昵称和商品名称按文本渲染，登录跳转限制在站内', async
   expect(await page.evaluate(() => safeReturnPath('detail.html?id=p_test'))).toBe('/detail.html?id=p_test');
 });
 
+test('邀请链接从简短路径指向注册页并显示真实累计奖励', async ({ page }) => {
+  await mockAPI(page);
+  await page.route('**/api/auth/me', route => route.fulfill({json:{ok:true,user:{...user,invites:3,invite_earned:15}}}));
+  await page.goto('/orders.html'); await page.evaluate(() => Store.ready);
+  await page.evaluate(() => { history.replaceState(null,'','/orders'); render(); });
+  await expect(page.locator('#inviteLink')).toHaveValue('http://127.0.0.1:43179/login?ref=ABC123');
+  await expect(page.locator('.invite-stat')).toContainText('3');
+  await expect(page.locator('.invite-stat')).toContainText('15');
+});
+
 test('订单地址提交使用商品 ID 和正确字段', async ({ page }) => {
   await mockAPI(page); await page.goto('/orders.html'); await page.evaluate(() => Store.ready);
   const dialogs = ['张三', '12345678', '测试地址'];
@@ -153,7 +163,44 @@ test('导入价格按1.5倍联动总份数与免费比例，缺价不沿用旧�
  await expect(page.locator('#base-price')).toHaveValue('');await expect(page.locator('#f-total')).toHaveValue('');
  await expect(page.locator('#price-import-note')).toContainText('未获取');
  await page.locator('#base-price').fill('200');await expect(page.locator('#f-total')).toHaveValue('300');await expect(page.locator('#f-free')).toHaveValue('30');
- await page.locator('#f-free').fill('12');await expect(page.locator('#f-free-ratio')).toHaveValue('');
+ await page.locator('#f-free').fill('12');await expect(page.locator('#f-free-ratio')).toHaveValue('4');
+});
+
+test('旧图99份中5份免费能反推比例，往返计算不改变原份数',async({page})=>{
+ await mockAPI(page);await page.goto('/admin.html');await page.evaluate(()=>Store.ready);await page.locator('[data-tab="products"]').click();
+ await page.evaluate(()=>fieldsFrom({id:'legacy',name:'旧图商品',category:'cleaning',totalShares:99,price:1,freeQuota:5}));
+ await expect(page.locator('#f-free-ratio')).toHaveValue('5.050505');await expect(page.locator('#f-free')).toHaveValue('5');
+ await page.evaluate(()=>syncFreeQuota());await expect(page.locator('#f-free')).toHaveValue('5');
+ await page.locator('#f-free-ratio').fill('5');await expect(page.locator('#f-free')).toHaveValue('5');
+ await page.locator('#f-total').fill('200');await expect(page.locator('#f-free')).toHaveValue('10');
+ await page.locator('#f-free').fill('20');await expect(page.locator('#f-free-ratio')).toHaveValue('10');
+ await page.locator('#f-free').fill('0');await expect(page.locator('#f-free-ratio')).toHaveValue('');await expect(page.locator('#free-ratio-note')).toContainText('不限');
+});
+
+test('旧截图中的手机分页、抢购动态、晒单和快捷份数入口保留',async({page})=>{
+ await mockAPI(page);await page.setViewportSize({width:390,height:900});
+ await page.route('**/api/shop/catalog?**',r=>r.fulfill({json:{ok:true,products:[product],total:16,pages:2}}));
+ await page.route('**/api/shop/recent-buys',r=>r.fulfill({json:{ok:true,buys:[{buyer_name:'旧图动态测试',product_name:product.name,shares:1,created_at:Date.now()}]}}));
+ await page.route('**/api/showcase/approved',r=>r.fulfill({json:{ok:true,showcases:[{id:'sc-proof',caption:'晒单测试文字',product_name:product.name,user_name:'测试用户',media_type:'image',media_url:'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'}]}}));
+ await page.goto('/index.html');await expect(page.locator('#pagination')).toContainText('1 / 2');await expect(page.locator('#live-feed-list')).toContainText('旧图动态测试');await expect(page.locator('#showcase')).toContainText('晒单测试文字');
+ await expect(page.locator('#grid')).toContainText('全包');await expect(page.locator('#grid')).toContainText(/5\s*份/);
+ await page.locator('#pagination button').last().click();await expect(page.locator('#pagination')).toContainText('2 / 2');
+});
+
+test('旧图滚动幸运榜在手机电脑均显示，空记录不会伪造中奖者',async({page})=>{
+ await mockAPI(page);await page.goto('/index.html');await expect(page.locator('#marquee')).toContainText('暂无可显示');
+ await page.route('**/api/shop/winners',r=>r.fulfill({json:{ok:true,winners:[{winner_name:'真实记录示例',name:'商品测试',win_number:20,price:1}]}}));
+ await page.reload();
+ for(const width of [390,1440]){await page.setViewportSize({width,height:900});await expect(page.locator('#marquee')).toBeVisible();await expect(page.locator('#marquee .track')).toContainText('真实记录示例');await expect(page.locator('#marquee')).toContainText('20');expect(await page.locator('#marquee .track').evaluate(e=>getComputedStyle(e).animationName)).not.toBe('none');}
+});
+
+test('旧截图中的幸运区、中奖号码高亮、地址入口和凭据保留',async({page})=>{
+ const proof=JSON.parse(fs.readFileSync(new URL('../fixtures/drand-quicknet-42.json',import.meta.url)));
+ const won={...product,status:'done',sold:100,draw:{round:42,win_number:1,winner_user_id:user.id,winner_name:'测试幸运儿',randomness:proof.randomness,signature:proof.signature}};
+ await mockAPI(page,{product:won});await page.route('**/api/shop/notifications',r=>r.fulfill({json:{ok:true,products:[]}}));
+ await page.goto('/winners.html');await expect(page.locator('#winners-grid')).toContainText('测试幸运儿');await expect(page.locator('#winners-grid')).toContainText('查看详情');
+ await page.goto('/detail.html?id=p_test');await expect(page.locator('.num-chip-win')).toContainText('1');await expect(page.locator('#detail')).toContainText('填写收货地址');await expect(page.locator('#detail')).toContainText('验证幸运结果');
+ await page.goto('/profile.html');await expect(page.locator('#checkin-card')).toContainText('签到');await expect(page.locator('#p-coins')).toHaveText('110');await expect(page.locator('#p-orders')).toHaveText('1');
 });
 
 test('首页分页之外的中奖商品仍弹出领奖地址窗口',async({page})=>{

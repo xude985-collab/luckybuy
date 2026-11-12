@@ -138,6 +138,7 @@ img { max-width: 100%; }
 .marquee:hover .track { animation-play-state: paused; }
 .marquee .item { font-size: 14px; color: #7a4a00; }
 .marquee .item b { color: var(--brand-dark); }
+.marquee-empty { padding: 0 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #7a4a00; }
 @keyframes scroll-left {
   from { transform: translateX(100vw); }
   to { transform: translateX(-100%); }

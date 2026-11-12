@@ -163,6 +163,8 @@ const Store = (() => {
       role: u.role,
       isAdmin: u.role === 'admin',
       inviteCode: u.invite_code,
+      invites: Number(u.invites) || 0,
+      inviteEarned: Number(u.invite_earned) || 0,
       paidCoins: Number(u.paid_balance) || 0,
       freeCoins: Number(u.free_balance) || 0,
     };
@@ -534,7 +536,7 @@ const Store = (() => {
     listProducts, getProduct, listCategories, categoryOf,
     productFreeUsed, winnersFeed, recentBuys, getConfig, myOrders,
     // 刷新
-    refreshProducts, refreshRecentBuys, refreshProduct, catalog, refreshNotifications,
+    refreshProducts, refreshRecentBuys, refreshWinners, refreshProduct, catalog, refreshNotifications,
     notificationProducts:()=>cache.notifications??cache.products,
     errors:()=>Array.from(errors.values()), request:http, paymentMethods:()=>cache.paymentMethods||{}, getRechargeHistory,refreshRecharge,
     // 购买/地址

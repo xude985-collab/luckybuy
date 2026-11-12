@@ -40,8 +40,11 @@ function timeAgo(ts) {
 function renderMarquee() {
   const el = document.getElementById('marquee');
   const feed = Store.winnersFeed();
-  if (!feed.length) { el.style.display = 'none'; return; }
   el.style.display = 'flex';
+  if (!feed.length) {
+    el.innerHTML = '<div class="label">🏆 幸运榜</div><span class="marquee-empty">暂无可显示的揭晓记录，开奖后将在这里滚动公示</span>';
+    return;
+  }
   const items = feed.concat(feed).map(w =>
     `<span class="item">🎉 <b>${escapeHtml(w.winnerName)}</b> 用 <b>$${escapeHtml(w.price)}</b> 夺得 <b>${escapeHtml(w.productName)}</b>（幸运号 ${w.winNumber}）</span>`
   ).join('');
@@ -334,7 +337,7 @@ onReady(async () => {
 // 页面恢复可见时刷新商品数据（解决从详情页返回时数据过期问题）
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) {
-    Promise.all([Store.refreshProducts(), Store.refreshRecentBuys()]).then(() => {
+    Promise.all([Store.refreshProducts(), Store.refreshRecentBuys(), Store.refreshWinners()]).then(() => {
       renderAll();
     }).catch(() => {});
   }

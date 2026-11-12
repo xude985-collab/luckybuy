@@ -37,6 +37,9 @@ test('integrated money/account/fulfillment workflows on isolated PostgreSQL',asy
   const created=await api('/admin/products',data,adminCookie);assert.equal(created.data.ok,true);
   const fetched=await api('/shop/products/'+created.data.id);assert.deepEqual(fetched.data.product.pricing,data.pricing);
   assert.equal((await api('/admin/products',{...data,id:created.data.id,pricePerShare:2,totalShares:150,freeQuota:15},adminCookie)).data.ok,true);
+  const inferred={referencePrice:null,multiplier:1.5,freeRatio:5.050505};
+  assert.equal((await api('/admin/products',{...data,id:created.data.id,totalShares:99,freeQuota:5,pricing:inferred},adminCookie)).data.ok,true);
+  assert.deepEqual((await api('/shop/products/'+created.data.id)).data.product.pricing,inferred);
   assert.equal((await api('/admin/products',{...data,freeQuota:0},adminCookie)).status,400);
   await api('/admin/products/'+created.data.id,null,adminCookie,'DELETE');
  });
@@ -130,6 +133,29 @@ test('integrated money/account/fulfillment workflows on isolated PostgreSQL',asy
   const detail=await api('/admin/free-coin-detail?account=user%40test.invalid',null,adminCookie);assert.equal(detail.data.ok,true);assert.equal(detail.data.user.id,'u_test');
   assert.equal(Number(detail.data.user.free_balance),Number(before));assert.ok(Array.isArray(detail.data.checkins));
   assert.equal((await api('/admin/free-coin-detail?userId=u_test',null,userCookie)).status,403);
+ });
+ await t.test('five free coins cover five distinct products, never twice per product; paid entries remain available',async()=>{
+  await pool.query("INSERT INTO users(id,account,account_type,name,pass_hash,role,invite_code,paid_balance,free_balance,created_at) VALUES ('u_free','free@test.invalid','email','Free test',$1,'user','FREE01',20,5,1)",[hash]);
+  const cookie=(await api('/auth/login',{account:'free@test.invalid',password:'test-admin-password'})).cookie;
+  const ids=[];
+  for(let i=0;i<5;i++){
+   const pid=(await api('/admin/products',{name:'Free rule '+i,category:'cleaning',pricePerShare:1,totalShares:20,freeQuota:5},adminCookie)).data.id;ids.push(pid);
+   const first=await api('/wallet/buy',{productId:pid,shares:1},cookie);assert.equal(first.data.usedFree,1);
+   const again=await api('/wallet/buy',{productId:pid,shares:1},cookie);assert.equal(again.data.usedFree,0);assert.equal(again.data.usedPaid,1);
+  }
+  assert.equal((await api('/wallet',null,cookie)).data.freeBalance,0);
+  const paid=await api('/wallet/buy',{productId:ids[0],shares:3,useFree:false},cookie);assert.equal(paid.data.usedPaid,3);assert.equal(paid.data.ok,true);
+ });
+ await t.test('invitation grants both sides once and reports actual invitation totals',async()=>{
+  const cfg=(await api('/shop/config')).data.config;
+  const before=(await api('/wallet',null,userCookie)).data.freeBalance;
+  await pool.query('INSERT INTO email_codes(account,code,expires_at,sent_at) VALUES ($1,$2,$3,$4)',['invite@test.invalid','123456',Date.now()+60000,Date.now()]);
+  const body={account:'invite@test.invalid',password:'test-password-123',code:'123456',invite:'TEST01'};
+  const registered=await api('/auth/register',body);assert.equal(registered.data.ok,true,JSON.stringify(registered.data));
+  assert.equal(Number(registered.data.user.free_balance),Number(cfg.grantInvitee));
+  assert.equal((await api('/wallet',null,userCookie)).data.freeBalance,Number(before)+Number(cfg.grantInviter));
+  assert.equal((await api('/auth/register',body)).data.ok,false);
+  const me=(await api('/auth/me',null,userCookie)).data.user;assert.equal(Number(me.invites),1);assert.equal(Number(me.invite_earned),Number(cfg.grantInviter));
  });
  await t.test('user notifications include own off-page wins and disappear after address submission',async()=>{
   const p=(await api('/admin/products',{name:'Notification test',category:'cleaning',pricePerShare:1,totalShares:1},adminCookie)).data.id;

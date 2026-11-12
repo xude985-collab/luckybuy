@@ -169,7 +169,10 @@ router.post('/update-name', attachUser, requireAuth, async (req, res, next) => {
 async function publicUser(id) {
   const { rows } = await pool.query(
     `SELECT id,account,account_type,name,role,invite_code,paid_balance,
-            COALESCE(free_balance,0) AS free_balance FROM users WHERE id=$1`, [id]);
+            COALESCE(free_balance,0) AS free_balance,
+            (SELECT COUNT(*) FROM users invited WHERE invited.invited_by=users.id) AS invites,
+            (SELECT COALESCE(SUM(amount),0) FROM wallet_tx WHERE user_id=users.id AND kind='grant' AND ref='邀请好友奖励' AND amount>0) AS invite_earned
+     FROM users WHERE id=$1`, [id]);
   return rows[0] || null;
 }
 
