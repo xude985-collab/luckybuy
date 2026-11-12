@@ -37,6 +37,9 @@
     .win-item .info .date { font-size:12px; color:#aaa; margin-top:2px }
     .win-item .actions { flex:none }
     .sc-form { display:flex; flex-direction:column; gap:12px; margin-top:12px }
+    .sc-form[hidden] { display:none }
+    .sc-form > *, .sc-file-area { min-width:0; max-width:100% }
+    .sc-form input[type="file"] { box-sizing:border-box; width:100% }
     .sc-form select, .sc-form input, .sc-form textarea { padding:8px 12px; border:1px solid #e0e0e0; border-radius:8px; font-size:14px }
     .sc-form input[type="file"] { padding:10px; background:#f8f9fa; cursor:pointer }
     .sc-form textarea { resize:vertical; min-height:60px }
@@ -88,8 +91,8 @@
 
     <div class="profile-card">
       <h2>提交晒单</h2>
-      <p style="font-size:13px;color:#888;margin:0 0 8px">幸运中选后收到商品，上传图片/视频，审核通过可获奖励金币</p>
-      <div class="sc-form">
+      <p id="sc-eligibility" role="status" style="font-size:13px;color:#888;margin:0 0 8px">正在查询中奖记录…</p>
+      <div class="sc-form" id="sc-form" hidden>
         <select id="sc-product"><option value="">选择幸运商品</option></select>
         <select id="sc-type">
           <option value="image">图片</option>
@@ -112,6 +115,6 @@
 
   <script src="js/common.js?v=20261112colorrestore"></script>
   <script src="js/store.js?v=20261112pricing5"></script>
-  <script src="js/profile.js?v=20261112restore"></script>
+  <script src="js/profile.js?v=20261112showcasewinner"></script>
 </body>
 </html>

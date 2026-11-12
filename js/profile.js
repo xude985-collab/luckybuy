@@ -1,5 +1,6 @@
 /* 个人中心 */
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+const showcaseWinningProducts = new Set();
 
 async function loadProfile() {
   const u = Store.currentUser();
@@ -36,7 +37,14 @@ async function loadProfile() {
   try {
     const resp = await fetch('/api/shop/my-wins', { credentials: 'same-origin' });
     const data = await resp.json();
-    const wins = data.ok ? data.wins : [];
+    if (!resp.ok || !data.ok || !Array.isArray(data.wins)) throw new Error('中奖记录加载失败');
+    const wins = data.wins;
+    showcaseWinningProducts.clear();
+    wins.forEach(w => showcaseWinningProducts.add(w.product_id));
+    document.getElementById('sc-form').hidden = !wins.length;
+    document.getElementById('sc-eligibility').textContent = wins.length
+      ? '中奖并收到商品后，上传图片/视频，审核通过可获奖励金币'
+      : '中奖并收到商品后即可晒单，再接再厉，大奖等着你！';
     document.getElementById('p-wins').textContent = wins.length;
     const el = document.getElementById('win-list');
     if (!wins.length) { el.innerHTML = '<div class="empty">暂无幸运记录</div>'; }
@@ -57,7 +65,13 @@ async function loadProfile() {
         sel.appendChild(opt);
       });
     }
-  } catch (e) { console.error(e); }
+  } catch (e) {
+    showcaseWinningProducts.clear();
+    document.getElementById('sc-form').hidden = true;
+    document.getElementById('sc-eligibility').textContent = '中奖记录加载失败，请刷新后重试。';
+    document.getElementById('win-list').textContent = '中奖记录加载失败，请刷新后重试。';
+    console.error(e);
+  }
 
   // 参与次数
   document.getElementById('p-orders').textContent = Store.myOrders().length;
@@ -95,11 +109,13 @@ async function deleteSC(id) {
 }
 
 async function submitSC() {
+  if (!showcaseWinningProducts.size) { toast('中奖并收到商品后即可晒单，再接再厉，大奖等着你！'); return; }
   const productId = document.getElementById('sc-product').value;
   const mediaType = document.getElementById('sc-type').value;
   const fileInput = document.getElementById('sc-file');
   const caption = document.getElementById('sc-caption').value.trim();
   if (!productId) { toast('请选择幸运商品'); return; }
+  if (!showcaseWinningProducts.has(productId)) { toast('只能为自己中奖的商品提交晒单'); return; }
   if (!fileInput.files.length) { toast('请选择图片或视频文件'); return; }
 
   const file = fileInput.files[0];

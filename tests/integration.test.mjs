@@ -64,7 +64,11 @@ test('integrated money/account/fulfillment workflows on isolated PostgreSQL',asy
   assert.equal(Number((await pool.query("SELECT paid_balance FROM users WHERE id='u_test'")).rows[0].paid_balance),30);
  });
  await t.test('showcase reward remains claimed after delete and resubmit',async()=>{
+  const payload={productId:product,mediaType:'image',mediaUrl:'https://example.com/photo.jpg'};
+  assert.equal((await api('/showcase/submit',payload,userCookie)).status,403);
+  assert.equal(Number((await pool.query('SELECT COUNT(*) AS n FROM showcases')).rows[0].n),0);
   await pool.query("INSERT INTO draws(product_id,round,total_shares,locked_at,drawn_at,winner_user_id) VALUES ($1,42,10,1,2,'u_test')",[product]);
+  assert.equal((await api('/showcase/submit',payload,adminCookie)).status,403);
   async function submit(){const r=await api('/showcase/submit',{productId:product,mediaType:'image',mediaUrl:'https://example.com/photo.jpg',caption:'测试晒单'},userCookie);assert.equal(r.data.ok,true,JSON.stringify(r));return r.data.id;}
   const first=await submit();assert.equal((await api('/showcase/review/'+first,{action:'approve'},adminCookie)).data.ok,true);
   const before=Number((await pool.query("SELECT free_balance FROM users WHERE id='u_test'")).rows[0].free_balance);

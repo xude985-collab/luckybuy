@@ -52,7 +52,7 @@ router.post('/submit', requireAuth, upload.single('media'), async (req, res, nex
     if(!req.file && !/^https:\/\//i.test(mediaUrl)) return res.status(400).json({ok:false,msg:'请上传文件或使用HTTPS媒体链接'});
     const { rows: wins } = await pool.query(
       `SELECT 1 FROM draws WHERE product_id=$1 AND winner_user_id=$2`, [productId, req.user.id]);
-    if (!wins.length) return res.status(403).json({ ok: false, msg: '只有幸运儿才能晒单' });
+    if (!wins.length) return res.status(403).json({ ok: false, msg: '只能为自己中奖的商品提交晒单，再接再厉，大奖等着你！' });
 
     const id = genId('sc_');
     await withTransaction(async client=>{

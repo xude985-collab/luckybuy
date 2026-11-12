@@ -22,7 +22,7 @@ async function mockAPI(page, options = {}) {
       '/shop/products': { products: [options.product || product] },
       '/shop/categories': { categories: [{ key: 'cleaning', name: '清洁家电', icon: '🧹', prefix: 'CL' }] },
       '/shop/config': { config: {} }, '/shop/winners': { winners: [] }, '/shop/recent-buys': { buys: [] },
-      '/shop/my-wins': { wins: [] }, '/showcase/approved': { showcases: [] },
+      '/shop/my-wins': { wins: options.wins || [] }, '/showcase/approved': { showcases: [] },
       '/showcase/mine': { showcases: [] }, '/showcase/pending': { showcases: [] },
       '/admin/overview': { stats: { users: 1, products: 1, orders: 1, revenue: 1 } },
       '/admin/recent-orders': { orders: [{ ...order, account: user.account, product_name: product.name }] },
@@ -361,3 +361,26 @@ test('导入价格保存前确认实际采购价和份数，取消不写入',asy
  page.once('dialog',d=>d.accept());await page.evaluate(()=>save());
  expect(saved.pricing.priceConfirmed).toBe(true);expect(saved.totalShares).toBe(1200);expect(saved.freeQuota).toBe(60);
 });
+
+for (const width of [390, 768, 1440]) {
+ test(`晒单仅向中奖者开放 ${width}px`, async ({page}) => {
+  await page.setViewportSize({width,height:900});
+  await mockAPI(page,{user:{...user,role:'user'}});
+  await page.goto('/profile.html');
+  await expect(page.locator('#sc-eligibility')).toContainText('大奖等着你');
+  await expect(page.locator('#sc-form')).toBeHidden();
+  let submissions=0;
+  await page.route('**/api/showcase/submit',async route=>{submissions++;await route.fulfill({json:{ok:true}});});
+  await page.evaluate(()=>submitSC());
+  expect(submissions).toBe(0);
+  await mockAPI(page,{wins:[{product_id:'p_test',product_name:'中奖商品',drawn_at:Date.now()}]});
+  await page.reload();
+  await expect(page.locator('#sc-form')).toBeVisible();
+  await expect(page.locator('#sc-product option')).toHaveCount(2);
+  expect(await page.locator('#sc-file').evaluate(el=>el.getBoundingClientRect().right<=innerWidth)).toBe(true);
+  await page.route('**/api/shop/my-wins',route=>route.fulfill({status:503,json:{ok:false}}));
+  await page.reload();
+  await expect(page.locator('#sc-eligibility')).toContainText('加载失败');
+  await expect(page.locator('#sc-form')).toBeHidden();
+ });
+}
