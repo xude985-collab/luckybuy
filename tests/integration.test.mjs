@@ -255,3 +255,18 @@ test('Amazon import falls back to rendered HTML when static page omits the price
  });
  const d=await fetchAmazon('https://www.amazon.com/dp/B08SY7TLT9');assert.equal(d.refPrice,399.99);assert.equal(fallback,1);
 });
+
+test('delete user hides account, revokes sessions, preserves history and cannot be re-enabled',async()=>{
+ const id='u_test',body={confirmation:'DELETE'};
+ assert.equal((await api('/admin/users/'+id+'/delete',body,userCookie)).status,403);
+ assert.equal((await api('/admin/users/'+id+'/delete',{},adminCookie)).status,400);
+ assert.equal((await api('/admin/users/u_admin/delete',body,adminCookie)).status,400);
+ const before=Number((await pool.query('SELECT count(*) AS n FROM orders WHERE user_id=$1',[id])).rows[0].n);
+ assert.equal((await api('/admin/users/'+id+'/delete',body,adminCookie)).data.ok,true);
+ assert.equal((await api('/wallet',null,userCookie)).status,401);
+ assert.equal((await api('/admin/users?q=user%40test.invalid',null,adminCookie)).data.total,0);
+ assert.equal((await api('/admin/users/'+id+'/enable',{},adminCookie)).status,404);
+ assert.equal(Number((await pool.query('SELECT count(*) AS n FROM orders WHERE user_id=$1',[id])).rows[0].n),before);
+ assert.equal((await api('/admin/users/'+id+'/delete',body,adminCookie)).data.ok,true);
+ assert.equal(Number((await pool.query("SELECT count(*) AS n FROM admin_audit WHERE action='delete-user' AND target_id=$1",[id])).rows[0].n),1);
+});

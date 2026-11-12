@@ -315,3 +315,13 @@ test('管理员点金额测试到账，可以指定别人账号',async({page})=>
  await expect(page.locator('#test-credit-result')).toHaveText('已测试到账');
  expect(body.account).toBe('friend@example.com');expect(body.amount).toBe(10);
 });
+
+test('用户管理删除普通用户且不提供删除管理员入口',async({page})=>{
+ await mockAPI(page);let removed=false;
+ await page.route('**/api/admin/users?**',r=>r.fulfill({json:{ok:true,users:removed?[user]:[user,{...user,id:'ordinary',account:'ordinary@example.com',role:'user'}],total:removed?1:2,pages:1}}));
+ await page.route('**/api/admin/users/ordinary/delete',r=>{expect(r.request().postDataJSON()).toEqual({confirmation:'DELETE'});removed=true;return r.fulfill({json:{ok:true,msg:'用户已删除，历史交易记录保留'}})});
+ await page.goto('/admin.html');await page.locator('[data-tab="users"]').click();
+ await expect(page.locator('#tab-users').getByRole('link',{name:'删除',exact:true})).toHaveCount(1);
+ page.once('dialog',d=>d.accept());await page.locator('#tab-users').getByRole('link',{name:'删除',exact:true}).click();
+ await expect(page.locator('#tab-users')).not.toContainText('ordinary@example.com');
+});

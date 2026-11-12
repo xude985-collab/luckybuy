@@ -84,7 +84,7 @@ router.post('/register', async (req, res, next) => {
 
     let invitedBy = null;
     if (invite) {
-      const { rows: inv } = await pool.query(`SELECT id FROM users WHERE invite_code=$1`, [invite]);
+      const { rows: inv } = await pool.query(`SELECT id FROM users WHERE invite_code=$1 AND deleted_at IS NULL`, [invite]);
       if (inv.length) invitedBy = inv[0].id;
     }
 

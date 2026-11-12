@@ -305,7 +305,7 @@ function renderUsers(users) {
         <a href="#" onclick="renameUser('${u.id}');return false">改名</a> ·
         <a href="#" onclick="resetPwd('${u.id}');return false">重置密码</a> ·
         <a href="#" onclick="showFreeCoinDetail('${u.id}');return false">免费金币明细</a> ·
-        <a href="#" onclick="delUser('${u.id}');return false" style="color:#c00">停用</a> · <a href="#" onclick="enableUser('${u.id}');return false">启用</a> · <a href="#" onclick="showLedger('${u.id}');return false">流水</a> · <a href="#" onclick="adjustBalance('${u.id}');return false">调整余额</a>
+        <a href="#" onclick="delUser('${u.id}');return false" style="color:#c00">停用</a> · <a href="#" onclick="enableUser('${u.id}');return false">启用</a> · <a href="#" onclick="showLedger('${u.id}');return false">流水</a> · <a href="#" onclick="adjustBalance('${u.id}');return false">调整余额</a>${u.role !== 'admin' ? ` · <a href="#" onclick="deleteUser('${u.id}');return false" style="color:#c00">删除</a>` : ''}
       </td>
     </tr>`;
   });
@@ -336,6 +336,22 @@ async function resetPwd(uid) {
   });
   const d = await r.json();
   toast(d.msg || (d.ok ? '密码已重置' : '重置失败'));
+}
+
+const deletingUsers=new Set();
+async function deleteUser(uid){
+ const u=allUsers.find(u=>u.id===uid);
+ if(!u||u.role==='admin'||deletingUsers.has(uid))return;
+ if(!confirm(`确定删除用户 ${u.account}？删除后从用户列表移除、立即退出登录且不能再启用；历史交易记录保留。`))return;
+ deletingUsers.add(uid);
+ try{
+  const r=await adminFetch('/api/admin/users/'+encodeURIComponent(uid)+'/delete',{
+   method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({confirmation:'DELETE'})
+  });
+  const d=await r.json();toast(d.msg||'删除失败');
+  if(d.ok){await loadUsers(1);loadDashboard();}
+ }catch(_){toast('连接失败，请刷新列表确认删除结果');}
+ finally{deletingUsers.delete(uid);}
 }
 
 async function delUser(uid) {

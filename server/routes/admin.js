@@ -50,7 +50,7 @@ const clampInt = (v, min, def) => Math.max(min, parseInt(v) || def);
 // 后台概览
 router.get('/overview', requireAdmin, async (req, res, next) => {
   try {
-    const users = (await pool.query(`SELECT COUNT(*) c FROM users`)).rows[0].c;
+    const users = (await pool.query(`SELECT COUNT(*) c FROM users WHERE deleted_at IS NULL`)).rows[0].c;
     const products = (await pool.query(`SELECT COUNT(*) c FROM products`)).rows[0].c;
     const orders = (await pool.query(`SELECT COUNT(*) c FROM orders`)).rows[0].c;
     const revenue = (await pool.query(`SELECT COALESCE(SUM(paid_coins),0) s FROM orders`)).rows[0].s;
@@ -334,7 +334,7 @@ router.get('/users', requireAdmin, async (req, res, next) => {
   try {
     const page=Math.max(1,parseInt(req.query.page)||1), size=30;
     const search=String(req.query.q||'').slice(0,100);
-    const filter="WHERE ($1='' OR strpos(lower(account),lower($1))>0 OR strpos(lower(name),lower($1))>0)";
+    const filter="WHERE deleted_at IS NULL AND ($1='' OR strpos(lower(account),lower($1))>0 OR strpos(lower(name),lower($1))>0)";
     const total=Number((await pool.query(`SELECT COUNT(*) AS n FROM users ${filter}`,[search])).rows[0].n);
     const {rows}=await pool.query(`SELECT id,account,name,role,paid_balance,free_balance,disabled,created_at FROM users ${filter} ORDER BY created_at DESC,id LIMIT $2 OFFSET $3`,[search,size,(page-1)*size]);
     res.json({ok:true,users:rows,total,page,pages:Math.max(1,Math.ceil(total/size))});
@@ -364,6 +364,23 @@ router.post('/users/:id/reset-pwd', requireAdmin, async (req, res, next) => {
     });
     res.json({ ok: true, msg: '密码已重置' });
   } catch (e) { next(e); }
+});
+
+// Remove the account from management while preserving historical transaction identity.
+router.post('/users/:id/delete', requireAdmin, async(req,res,next)=>{
+ try{
+  if(req.body?.confirmation!=='DELETE')throw bad('请确认删除用户');
+  await withTransaction(async c=>{
+   const u=(await c.query('SELECT id,account,name,role,deleted_at FROM users WHERE id=$1 FOR UPDATE',[req.params.id])).rows[0];
+   if(!u)throw bad('用户不存在',404);
+   if(u.id===req.user.id||u.role==='admin')throw bad('不能删除管理员账号');
+   if(u.deleted_at)return;
+   await c.query('UPDATE users SET disabled=true,deleted_at=$2 WHERE id=$1',[u.id,Date.now()]);
+   await c.query('DELETE FROM sessions WHERE user_id=$1',[u.id]);
+   await audit(c,req.user.id,'delete-user',u.id,{account:u.account,name:u.name,retainedHistory:true});
+  });
+  res.json({ok:true,msg:'用户已删除，历史交易记录保留'});
+ }catch(e){next(e)}
 });
 
 router.delete('/users/:id', requireAdmin, async (req, res, next) => {
@@ -415,7 +432,7 @@ router.post('/wins/:productId/ship', requireAdmin, async (req, res, next) => {
 
 export default router;
 
-router.post('/users/:id/enable',requireAdmin,async(req,res,next)=>{try{await withTransaction(async c=>{const r=await c.query('UPDATE users SET disabled=false WHERE id=$1 RETURNING id',[req.params.id]);if(!r.rows.length)throw bad('用户不存在',404);await audit(c,req.user.id,'enable-user',req.params.id,{})});res.json({ok:true,msg:'用户已启用'})}catch(e){next(e)}});
+router.post('/users/:id/enable',requireAdmin,async(req,res,next)=>{try{await withTransaction(async c=>{const r=await c.query('UPDATE users SET disabled=false WHERE id=$1 AND deleted_at IS NULL RETURNING id',[req.params.id]);if(!r.rows.length)throw bad('用户不存在',404);await audit(c,req.user.id,'enable-user',req.params.id,{})});res.json({ok:true,msg:'用户已启用'})}catch(e){next(e)}});
 router.get('/audit',requireAdmin,async(req,res,next)=>{try{const page=Math.max(1,parseInt(req.query.page)||1);const {rows}=await pool.query('SELECT id,actor_id,action,target_id,created_at FROM admin_audit ORDER BY created_at DESC LIMIT 50 OFFSET $1',[(page-1)*50]);res.json({ok:true,records:rows,page})}catch(e){next(e)}});
 router.get('/users/:id/ledger',requireAdmin,async(req,res,next)=>{try{const page=Math.max(1,parseInt(req.query.page)||1);const {rows}=await pool.query('SELECT * FROM wallet_tx WHERE user_id=$1 ORDER BY created_at DESC LIMIT 50 OFFSET $2',[req.params.id,(page-1)*50]);res.json({ok:true,records:rows,page})}catch(e){next(e)}});
 
