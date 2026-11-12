@@ -61,6 +61,10 @@ function fmtCountdown(drawTime) {
 }
 
 let _countdownTimer = null;
+function countdownContent(t, participated) {
+  const countdown = t ? `⏰ <span class="card-countdown-time">${t}</span> 后开奖` : '🎲 正在揭晓...';
+  return countdown + (participated ? '<div class="card-participation-note">您已参与本商品，敬请关注开奖结果</div>' : '');
+}
 function startCountdownTimer() {
   if (_countdownTimer) return;
   _countdownTimer = setInterval(() => {
@@ -68,12 +72,10 @@ function startCountdownTimer() {
     if (!blocks.length) { clearInterval(_countdownTimer); _countdownTimer = null; return; }
     blocks.forEach(el => {
       const t = fmtCountdown(Number(el.dataset.drawTime));
+      el.innerHTML = countdownContent(t, el.dataset.participated === 'true');
       if (!t) {
-        el.innerHTML = '🎲 正在揭晓...';
         el.classList.add('card-countdown-now');
         delete el.dataset.drawTime;
-      } else {
-        el.innerHTML = `⏰ <span class="card-countdown-time">${t}</span> 后开奖`;
       }
     });
   }, 1000);
@@ -91,9 +93,8 @@ function cardHtml(p) {
   let countdownBlock = '';
   if (drawing) {
     const t = p.drawTime ? fmtCountdown(p.drawTime) : null;
-    countdownBlock = t
-      ? `<div class="card-countdown" data-draw-time="${p.drawTime}">⏰ <span class="card-countdown-time">${t}</span> 后开奖</div>`
-      : '<div class="card-countdown card-countdown-now">🎲 正在揭晓...</div>';
+    const participated = !!Store.currentUser() && Store.myOrders().some(o => o.productId === p.id && o.count > 0);
+    countdownBlock = `<div class="card-countdown${t ? '' : ' card-countdown-now'}"${t ? ` data-draw-time="${p.drawTime}"` : ''} data-participated="${participated}">${countdownContent(t, participated)}</div>`;
   }
   // 封面:优先用真实商品图(gallery第一张),否则显示emoji
   const cover = (p.gallery && p.gallery.length && p.gallery[0].url)

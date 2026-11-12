@@ -451,3 +451,25 @@ test('手机首页商品失败与空列表都能结束初始占位，失败可�
  await expect(page.locator('.catalog-loading')).toHaveCount(0);
  await expect(page.locator('.left-col')).toBeVisible();
 });
+
+for (const width of [320, 768, 1440]) {
+  test(`开奖倒计时仅提醒本人参与且倒计时结束仍保留 ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await mockAPI(page, { product: { ...product, status: 'drawing', sold: 100, draw: { drawTime: Date.now() + 3500 } } });
+    await page.goto('/index.html');
+    const note = page.locator('.card-participation-note');
+    await expect(note).toHaveText('您已参与本商品，敬请关注开奖结果');
+    await expect(page.locator('.card-countdown-time')).toBeVisible();
+    await expect(page.locator('.card-countdown')).toContainText('正在揭晓', { timeout: 7000 });
+    await expect(note).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.route('**/api/wallet/orders', route => route.fulfill({ json: { ok: true, orders: [{ ...order, product_id: 'another_product' }] } }));
+    await page.reload();
+    await expect(page.locator('.card-countdown')).toBeVisible();
+    await expect(note).toHaveCount(0);
+    await page.route('**/api/auth/me', route => route.fulfill({ json: { ok: true, user: null } }));
+    await page.reload();
+    await expect(page.locator('.card-countdown')).toBeVisible();
+    await expect(note).toHaveCount(0);
+  });
+}

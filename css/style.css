@@ -1028,6 +1028,10 @@ td .sku { color: var(--brand-dark); background: #fff3e0; padding: 2px 8px; borde
   font-size: 36px; font-weight: 900; font-family: Consolas, "Courier New", monospace;
   letter-spacing: 3px; display: block; margin: 6px 0;
 }
+.card-participation-note {
+  margin-top: 12px; max-width: 100%; font-size: 13px;
+  font-weight: 500; line-height: 1.6; white-space: normal;
+}
 .card-countdown-now {
   background: linear-gradient(135deg, #e3f2fd, #bbdefb);
   color: #1565c0; animation: pulse-draw 1.5s infinite;
