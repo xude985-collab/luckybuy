@@ -62,24 +62,24 @@
             商品编号：<b id="sku-value" style="color:var(--brand)"></b>（系统生成，不可修改）
           </div>
           <div class="two-col">
-            <div><label>每份金额（$ 美元）</label><input id="f-price" type="number" min="1" step="1" placeholder="1"></div>
-            <div><label>总份数</label><input id="f-total" type="number" min="1" step="1" placeholder="999"></div>
+            <div><label>每份金额（$ 美元）</label><input id="f-price" readonly type="number" min="1" step="1" placeholder="1"></div>
+            <div><label>总份数</label><input id="f-total" readonly type="number" min="1" step="1" placeholder="999"></div>
           </div>
           <div id="multiplier-row" style="margin:8px 0;padding:10px;background:#fff7f2;border-radius:8px;font-size:13px">
             <label>商品参考价（美元，可手动补填）<input id="base-price" type="number" min="0.01" step="0.01" placeholder="例如 200" inputmode="decimal"></label>
             <div id="price-import-note" role="status"></div>
             <div style="margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <label style="margin:0">倍数</label>
-              <input id="f-multiplier" type="number" min="0.1" max="10" step="0.1" value="1.5" style="width:70px;padding:4px 6px;border:1px solid #ddd;border-radius:4px">
+              <input id="f-multiplier" readonly type="number" min="0.1" max="10" step="0.1" value="1.5" style="width:70px;padding:4px 6px;border:1px solid #ddd;border-radius:4px">
               <label style="margin:0">÷ 每份</label>
-              <input id="f-per-share" type="number" min="1" step="1" value="1" style="width:70px;padding:4px 6px;border:1px solid #ddd;border-radius:4px">
+              <input id="f-per-share" readonly type="number" min="1" step="1" value="1" style="width:70px;padding:4px 6px;border:1px solid #ddd;border-radius:4px">
               <label style="margin:0">美元</label>
               <button type="button" class="btn sm ghost" onclick="applyMultiplier()">计算</button>
               <span id="multi-result" style="color:var(--brand);font-weight:600"></span>
             </div>
           </div>
           <div class="two-col">
-            <div><label>免费参与份数（0不限，每人限1份）</label><input id="f-free" type="number" min="0" step="1" placeholder="0" value="0"><label>免费份数占比（%，可由份数反推）</label><input id="f-free-ratio" type="number" min="0.000001" max="100" step="any" placeholder="填比例或先填免费份数"><small id="free-ratio-note">改比例自动算免费份数；改免费份数自动反算比例。0份按原规则表示不限。</small></div>
+            <div><label>免费金币名额（总份数的5%，每人限1个）</label><input id="f-free" readonly type="number" min="0" step="1" placeholder="0" value="0"><label>免费份数占比（固定5%）</label><input id="f-free-ratio" readonly type="number" min="0.000001" max="100" step="any" placeholder="填比例或先填免费份数"><small id="free-ratio-note">总份数×5%四舍五入，0表示无免费名额。</small></div>
             <div><label>期号</label><input id="f-period" placeholder="第 001 期"></div>
           </div>
           <label>图标（emoji）</label>
@@ -182,7 +182,7 @@
     </section>
   </main>
   <script src="js/common.js?v=20261112restore"></script>
-  <script src="js/store.js?v=20261112evidence"></script>
-  <script src="js/admin.js?v=20261112quota"></script>
+  <script src="js/store.js?v=20261112pricing5"></script>
+  <script src="js/admin.js?v=20261112pricing5"></script>
 </body>
 </html>

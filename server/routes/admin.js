@@ -117,18 +117,13 @@ router.post('/products', requireAdmin, async (req, res, next) => {
     const b = req.body || {};
     if (!b.name || !b.category) return res.status(400).json({ ok: false, msg: '缺少名称或类别' });
 
-    const pricePerShare = integer(b.pricePerShare,'单价',1,1000000);
-    const totalShares = integer(b.totalShares,'总份数',1,1000000);
-    const freeQuota = integer(b.freeQuota??0,'免费份数',0,totalShares);
-    let pricing;
-    if (b.pricing != null) {
-      const {referencePrice, multiplier, freeRatio} = b.pricing;
-      if (referencePrice != null && (!Number.isFinite(referencePrice) || referencePrice <= 0 || referencePrice > 1000000)) throw bad('参考价无效');
-      if (!Number.isFinite(multiplier) || multiplier <= 0 || multiplier > 10) throw bad('倍数须大于0且不超过10');
-      if (freeRatio != null && (!Number.isFinite(freeRatio) || freeRatio <= 0 || freeRatio > 100)) throw bad('免费比例须大于0且不超过100');
-      if (freeRatio != null && (freeQuota < 1 || freeQuota !== Math.round(totalShares * freeRatio / 100))) throw bad('免费份数与比例不一致');
-      pricing = JSON.stringify({referencePrice:referencePrice??null,multiplier,freeRatio:freeRatio??null});
-    }
+    const referencePrice = b.pricing?.referencePrice;
+    if (b.sourceUrl && !(Number.isFinite(referencePrice) && referencePrice > 0)) throw bad('未读取到商品美元价格，请补填参考价后再保存，不能按1份上架');
+    if(referencePrice != null && (!Number.isFinite(referencePrice)||referencePrice<=0||referencePrice>666666))throw bad('参考价无效');
+    const pricePerShare = 1;
+    const totalShares = referencePrice != null ? Math.max(1, Math.round(referencePrice * 1.5)) : integer(b.totalShares,'总份数',1,1000000);
+    const freeQuota = Math.round(totalShares * 0.05);
+    const pricing = JSON.stringify({referencePrice:referencePrice??null,multiplier:1.5,freeRatio:5});
     const gallery = JSON.stringify(Array.isArray(b.gallery) ? b.gallery : []);
     const specs = JSON.stringify(Array.isArray(b.specs) ? b.specs : []);
 

@@ -32,20 +32,33 @@ function decodeEntities(s = '') {
 
 function pick(re, html) { const m = html.match(re); return m ? decodeEntities(m[1]) : ''; }
 
+function elementMarkup(html, start) {
+  const tag=html.slice(start).match(/^<(div|span)\b/i)?.[1];
+  if(!tag)return '';
+  const re=new RegExp('<\\/?'+tag+'\\b[^>]*>','gi');re.lastIndex=start;
+  let depth=0,m;
+  while((m=re.exec(html))){depth+=m[0][1]==='/'?-1:1;if(depth===0)return html.slice(start,re.lastIndex);}
+  return '';
+}
+
 export function extractUsdPrice(html, url) {
   const usSite = /^(www\.)?amazon\.com$/.test(new URL(url).hostname);
   // Restrict HTML prices to the main offer, not recommendations, list prices or installments.
   if (usSite) {
+    // Amazon's current main-offer markup. Never confuse per-unit labels with the product price.
+    const main = pick(/<span[^>]*class=["'][^"']*\bapex-pricetopay-accessibility-label\b[^"']*["'][^>]*>\s*\$\s*([\d,]+(?:\.\d{1,2})?)/i, html);
+    if (main && Number(main.replace(/,/g,''))>0) return Number(main.replace(/,/g,''));
     const blocks = [...html.matchAll(/<(?:div|span)[^>]*id=["'](?:corePriceDisplay_desktop_feature_div|corePrice_feature_div|apex_desktop|corePrice_mobile_feature_div)["'][^>]*>/gi)];
     for (const block of blocks) {
-      const section = html.slice(block.index, block.index + 14000);
-      const offer = section.match(/<span[^>]*class=["'][^"']*\ba-price\b[^"']*["'][^>]*>[\s\S]{0,1800}/gi) || [];
-      for (const item of offer) {
-        if (/a-text-price/.test(item.slice(0,item.indexOf('>')))) continue;
+      const section = elementMarkup(html, block.index);
+      const offer = [...section.matchAll(/<span[^>]*class=["']([^"']*)["'][^>]*>/gi)]
+        .filter(m=>m[1].split(/\s+/).includes('a-price')&&!/a-text-price|priceperunit/i.test(m[1]));
+      for (const match of offer) {
+        const item=elementMarkup(section,match.index);
         const text = pick(/class=["'][^"']*a-offscreen[^"']*["'][^>]*>\s*\$\s*([\d,]+(?:\.\d{1,2})?)/i,item);
         const whole = pick(/class=["'][^"']*a-price-whole[^"']*["'][^>]*>\s*([\d,]+)/i,item);
         const fraction = pick(/class=["'][^"']*a-price-fraction[^"']*["'][^>]*>\s*(\d{2})/i,item);
-        const price = Number((text || (whole && fraction ? whole+'.'+fraction : '')).replace(/,/g,''));
+        const price = Number(((whole && fraction ? whole+'.'+fraction : '') || text).replace(/,/g,''));
         if (price > 0) return price;
       }
     }
@@ -128,6 +141,7 @@ export async function fetchAmazon(rawUrl) {
 
   const UAs = [UA_CHROME, UA_BOT];
   let lastErr;
+  let unpricedDraft;
   for (const ua of UAs) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 12000);
@@ -151,11 +165,26 @@ export async function fetchAmazon(rawUrl) {
       if (!draft.name || draft.gallery.length === 0) {
         lastErr = new Error('页面结构未识别'); continue;
       }
-      return draft;
+      if(draft.refPrice>0)return draft;
+      unpricedDraft=draft;
     } catch (e) {
       clearTimeout(timer);
       lastErr = e;
     }
   }
+  // A rendered public page supplies prices omitted from bot/static responses.
+  try {
+    const source=new URL(url);source.pathname='/dp/'+asin;source.search='';
+    const response=await fetch('https://r.jina.ai/'+source.href,{
+      headers:{'X-Return-Format':'html'},signal:AbortSignal.timeout(25000)
+    });
+    if(response.ok){
+      const html=await response.text();
+      const draft=parseHtml(html,url,asin);
+      if(draft.refPrice>0 && draft.gallery.length && html.includes(asin))return draft;
+      if(!unpricedDraft && draft.gallery.length)unpricedDraft=draft;
+    }
+  } catch(e){lastErr=e;}
+  if(unpricedDraft)return unpricedDraft;
   throw lastErr || new Error('抓取失败');
 }

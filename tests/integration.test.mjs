@@ -32,15 +32,14 @@ test('integrated money/account/fulfillment workflows on isolated PostgreSQL',asy
  await pool.query("INSERT INTO users(id,account,account_type,name,pass_hash,role,invite_code,paid_balance,free_balance,created_at) VALUES ('u_test','user@test.invalid','email','测试用户',$1,'user','TEST01',20,10,1)",[hash]);
  userCookie=(await api('/auth/login',{account:'user@test.invalid',password:'test-admin-password'})).cookie;
  let product;
- await t.test('pricing rules survive save and edit; invalid free ratio cannot become unlimited',async()=>{
-  const data={name:'价格联动测试',category:'cleaning',pricePerShare:1,totalShares:300,freeQuota:30,pricing:{referencePrice:200,multiplier:1.5,freeRatio:10}};
+ await t.test('reference price controls shares and five percent quota; missing import price is rejected',async()=>{
+  const data={name:'价格联动测试',category:'cleaning',sourceUrl:'https://www.amazon.com/dp/B08KT2Z93D',pricePerShare:1,totalShares:1,freeQuota:0,pricing:{referencePrice:100,multiplier:1,freeRatio:100}};
   const created=await api('/admin/products',data,adminCookie);assert.equal(created.data.ok,true);
-  const fetched=await api('/shop/products/'+created.data.id);assert.deepEqual(fetched.data.product.pricing,data.pricing);
-  assert.equal((await api('/admin/products',{...data,id:created.data.id,pricePerShare:2,totalShares:150,freeQuota:15},adminCookie)).data.ok,true);
-  const inferred={referencePrice:null,multiplier:1.5,freeRatio:5.050505};
-  assert.equal((await api('/admin/products',{...data,id:created.data.id,totalShares:99,freeQuota:5,pricing:inferred},adminCookie)).data.ok,true);
-  assert.deepEqual((await api('/shop/products/'+created.data.id)).data.product.pricing,inferred);
-  assert.equal((await api('/admin/products',{...data,freeQuota:0},adminCookie)).status,400);
+  let p=(await api('/shop/products/'+created.data.id)).data.product;
+  assert.equal(p.totalShares,150);assert.equal(p.freeQuota,8);assert.deepEqual(p.pricing,{referencePrice:100,multiplier:1.5,freeRatio:5});
+  assert.equal((await api('/admin/products',{...data,id:created.data.id,pricing:{referencePrice:66}},adminCookie)).data.ok,true);
+  p=(await api('/shop/products/'+created.data.id)).data.product;assert.equal(p.totalShares,99);assert.equal(p.freeQuota,5);
+  assert.equal((await api('/admin/products',{...data,pricing:{referencePrice:null}},adminCookie)).status,400);
   await api('/admin/products/'+created.data.id,null,adminCookie,'DELETE');
  });
  await t.test('create product and replay purchase exactly once',async()=>{
@@ -219,4 +218,40 @@ test('admin test credits self and others once, rejects ordinary users and invali
  assert.equal((await api('/admin/test-recharge',{...body,amount:101},adminCookie)).status,409);
  assert.equal((await api('/admin/test-recharge',{amount:10,requestKey:'22222222-2222-4222-8222-222222222222'},adminCookie)).data.ok,true);
  assert.equal((await pool.query("SELECT count(*)::int AS n FROM admin_audit WHERE action='test-recharge'")).rows[0].n,2);
+});
+
+
+test('150 shares permit only eight free coins total and one per person, then sell out and draw',async()=>{
+ const created=await api('/admin/products',{name:'150份额度测试',category:'cleaning',pricing:{referencePrice:100}},adminCookie);
+ assert.equal(created.data.ok,true);const id=created.data.id;
+ const {createSession}=await import('../server/lib/helpers.js');const cookies=[];
+ for(let i=0;i<9;i++){
+  await pool.query("INSERT INTO users(id,account,account_type,name,pass_hash,role,invite_code,paid_balance,free_balance,created_at) VALUES($1,$2,'email','quota','unused','user',$3,500,10,1)",['quota'+i,'quota'+i+'@test.invalid','QUOTA'+i]);
+  cookies.push('lb_token='+await createSession('quota'+i));
+ }
+ const results=await Promise.all(cookies.map(cookie=>api('/wallet/buy',{productId:id,shares:1},cookie)));
+ assert.equal(results.filter(r=>r.data.usedFree===1).length,8);assert.equal(results.filter(r=>r.data.usedPaid===1).length,1);
+ const repeat=await api('/wallet/buy',{productId:id,shares:1},cookies[0]);assert.equal(repeat.data.usedFree,0);assert.equal(repeat.data.usedPaid,1);
+ const finish=await api('/wallet/buy',{productId:id,shares:140,useFree:false},cookies[0]);assert.equal(finish.data.ok,true);
+ const p=(await api('/shop/products/'+id)).data.product;assert.equal(p.status,'drawing');assert.equal(p.sold,150);assert.equal(p.freeUsed,8);
+ assert.equal((await api('/wallet/buy',{productId:id,shares:1},cookies[1])).status,400);
+});
+
+
+test('Amazon current main offer excludes per-ounce and per-piece unit prices',async()=>{
+ const {extractUsdPrice}=await import('../server/lib/amazon.js');const url='https://www.amazon.com/dp/B08KT2Z93D';
+ const html='<span class="aok-offscreen apex-pricetopay-accessibility-label">$8.47 with 23 percent savings</span><span class="apex-priceperunit-accessibility-label">$0.53 per fluid ounce</span>';
+ assert.equal(extractUsdPrice(html,url),8.47);
+ assert.equal(extractUsdPrice('<div id="corePrice_feature_div"><span class="a-price"><span class="a-offscreen"></span><span class="a-price-whole">8<span>.</span></span><span class="a-price-fraction">47</span></span><span class="a-price a-text-price"><span class="a-offscreen">$0.53</span></span></div>',url),8.47);
+});
+
+test('Amazon import falls back to rendered HTML when static page omits the price',async t=>{
+ const {fetchAmazon}=await import('../server/lib/amazon.js');
+ const basic='<span id="productTitle">Test B08SY7TLT9</span><meta property="og:image" content="https://example.com/product.jpg">'+' '.repeat(6000);
+ let fallback=0;
+ t.mock.method(globalThis,'fetch',async url=>{
+  if(String(url).startsWith('https://r.jina.ai/')){fallback++;return new Response(basic+'<span class="apex-pricetopay-accessibility-label">$399.99</span>');}
+  return new Response(basic);
+ });
+ const d=await fetchAmazon('https://www.amazon.com/dp/B08SY7TLT9');assert.equal(d.refPrice,399.99);assert.equal(fallback,1);
 });

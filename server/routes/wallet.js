@@ -76,6 +76,7 @@ router.post('/buy', requireAuth, async (req, res, next) => {
       if(!Number.isSafeInteger(Number(p.price_per_share))||Number(p.price_per_share)<1)throw bad('商品价格无效，请联系管理员');
       if(p.status!=='active')throw bad('该商品已停止参与');
 
+      if(p.source_url && Number(p.total_shares)===1 && !Number(p.pricing?.referencePrice))throw bad('商品价格待核实，暂不能参与');
       const pricePerShare = Number(p.price_per_share);
       const cost = shares * pricePerShare;
       if (!Number.isSafeInteger(cost) || cost > 2147483647)
@@ -93,18 +94,12 @@ router.post('/buy', requireAuth, async (req, res, next) => {
           [uid, productId]);
         const alreadyUsedFree = Number(used[0].f) > 0;
         if (!alreadyUsedFree) {
-          // 如果商品设了 free_quota，检查总额度是否用完
-          let quotaOk = true;
-          if (p.free_quota > 0) {
-            const { rows: pf } = await client.query(`SELECT free_used FROM products WHERE id=$1`, [productId]);
-            const productFreeLeft = Number(p.free_quota) - Number(pf[0]?.free_used || 0);
-            if (productFreeLeft < 1) quotaOk = false;
-          }
+          const quotaOk = Number(p.free_used || 0) < Math.round(Number(p.total_shares) * 0.05);
           if (quotaOk) {
             const { rows: ub } = await client.query(`SELECT free_balance FROM users WHERE id=$1`, [uid]);
             const userFreeBal = Number(ub[0]?.free_balance || 0);
-            if (userFreeBal >= pricePerShare) {
-              freeUse = pricePerShare;
+            if (userFreeBal >= 1) {
+              freeUse = 1;
             }
           }
         }

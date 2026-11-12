@@ -151,40 +151,33 @@ test('后台规则保存失败显示实际错误而不是成功', async ({ page 
   await expect(page.locator('#toast')).toHaveText('测试保存失败');
 });
 
-test('首页详情显示总份数和免费额度，包括原规则0表示不限',async({page})=>{
+test('首页详情显示总份数和免费额度，0表示没有免费名额',async({page})=>{
  await mockAPI(page,{product:{...product,freeQuota:0}});
  await page.goto('/index.html');await expect(page.locator('.progress-meta').first()).toContainText('总 100 份');
- await expect(page.locator('.card-free-quota').first()).toContainText('免费额度不限');
- await page.goto('/detail.html?id=p_test');await expect(page.locator('.free-quota-tip')).toContainText('免费总额度 不限');
+ await expect(page.locator('.card-free-quota').first()).toContainText('免费共 0 份');
+ await page.goto('/detail.html?id=p_test');await expect(page.locator('.free-quota-tip')).toContainText('免费总额度 0');
  await mockAPI(page,{product:{...product,freeQuota:5,freeUsed:2}});
  await page.goto('/index.html');await expect(page.locator('.card-free-quota').first()).toContainText('免费共 5 份 · 剩 3 份');
  await page.goto('/detail.html?id=p_test');await expect(page.locator('.free-quota-tip')).toContainText('免费剩余 3 份');
 });
 
-test('导入价格按1.5倍联动总份数与免费比例，缺价不沿用旧份数',async({page})=>{
- await mockAPI(page);await page.goto('/admin.html');await page.evaluate(()=>Store.ready);
- await page.locator('[data-tab="products"]').click();
- await page.evaluate(()=>applyDraft({name:'价格测试',refPrice:200},'https://www.amazon.com/dp/B08KT2Z93D'));
- await expect(page.locator('#f-total')).toHaveValue('300');
- await page.locator('#f-free-ratio').fill('10');await expect(page.locator('#f-free')).toHaveValue('30');
- await page.locator('#f-price').fill('2');await expect(page.locator('#f-total')).toHaveValue('150');await expect(page.locator('#f-free')).toHaveValue('15');
- await page.locator('#f-multiplier').fill('1');await expect(page.locator('#f-total')).toHaveValue('100');await expect(page.locator('#f-free')).toHaveValue('10');
+test('导入价格固定1.5倍与5%免费名额，缺价禁止保存',async({page})=>{
+ await mockAPI(page);await page.goto('/admin.html');await page.evaluate(()=>Store.ready);await page.locator('[data-tab="products"]').click();
+ await page.evaluate(()=>applyDraft({name:'测试商品',refPrice:100},'https://www.amazon.com/dp/B08KT2Z93D'));
+ await expect(page.locator('#f-total')).toHaveValue('150');await expect(page.locator('#f-free')).toHaveValue('8');await expect(page.locator('#f-free-ratio')).toHaveValue('5');
+ await page.locator('#base-price').fill('66');await expect(page.locator('#f-total')).toHaveValue('99');await expect(page.locator('#f-free')).toHaveValue('5');
+ await page.locator('#base-price').fill('200');await expect(page.locator('#f-total')).toHaveValue('300');await expect(page.locator('#f-free')).toHaveValue('15');
+ await expect(page.locator('#f-free-ratio')).not.toBeEditable();
  await page.evaluate(()=>applyDraft({name:'缺价商品',refPrice:0},'https://www.amazon.com/dp/B08KT2Z93D'));
  await expect(page.locator('#base-price')).toHaveValue('');await expect(page.locator('#f-total')).toHaveValue('');
- await expect(page.locator('#price-import-note')).toContainText('未获取');
- await page.locator('#base-price').fill('200');await expect(page.locator('#f-total')).toHaveValue('300');await expect(page.locator('#f-free')).toHaveValue('30');
- await page.locator('#f-free').fill('12');await expect(page.locator('#f-free-ratio')).toHaveValue('4');
+ let writes=0;await page.route('**/api/admin/products',r=>{writes++;return r.fulfill({json:{ok:true}})});
+ await page.evaluate(()=>save());expect(writes).toBe(0);
 });
 
-test('旧图99份中5份免费能反推比例，往返计算不改变原份数',async({page})=>{
- await mockAPI(page);await page.goto('/admin.html');await page.evaluate(()=>Store.ready);await page.locator('[data-tab="products"]').click();
- await page.evaluate(()=>fieldsFrom({id:'legacy',name:'旧图商品',category:'cleaning',totalShares:99,price:1,freeQuota:5}));
- await expect(page.locator('#f-free-ratio')).toHaveValue('5.050505');await expect(page.locator('#f-free')).toHaveValue('5');
- await page.evaluate(()=>syncFreeQuota());await expect(page.locator('#f-free')).toHaveValue('5');
- await page.locator('#f-free-ratio').fill('5');await expect(page.locator('#f-free')).toHaveValue('5');
- await page.locator('#f-total').fill('200');await expect(page.locator('#f-free')).toHaveValue('10');
- await page.locator('#f-free').fill('20');await expect(page.locator('#f-free-ratio')).toHaveValue('10');
- await page.locator('#f-free').fill('0');await expect(page.locator('#f-free-ratio')).toHaveValue('');await expect(page.locator('#free-ratio-note')).toContainText('不限');
+test('未核实价格的商品不再显示一份或开放参与',async({page})=>{
+ await mockAPI(page,{product:{...product,totalShares:1,pricingPending:true,freeQuota:0}});
+ await page.goto('/index.html');await expect(page.locator('.card')).toContainText('价格待核实');await expect(page.locator('.card-buy-btn')).toHaveCount(0);
+ await page.goto('/detail.html?id=p_test');await expect(page.locator('#detail')).toContainText('价格待核实');await expect(page.locator('#qty')).toHaveCount(0);
 });
 
 test('旧截图中的手机分页、抢购动态、晒单和快捷份数入口保留',async({page})=>{

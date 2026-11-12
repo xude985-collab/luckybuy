@@ -100,7 +100,7 @@ function cardHtml(p) {
     ? `<img src="${escapeHtml(p.gallery[0].url)}" alt="${escapeHtml(p.name)}" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:contain;background:#fff">`
     : escapeHtml(p.img || '🎁');
   let buySection = '';
-  if (!done && !drawing) {
+  if (!done && !drawing && !p.pricingPending) {
     buySection = `
       <div class="card-buy-section" onclick="event.stopPropagation()">
         <div class="card-qty">
@@ -117,6 +117,7 @@ function cardHtml(p) {
         <button class="card-buy-btn" id="cbtn-${p.id}" onclick="cardBuy('${p.id}')">立即夺宝 ($${p.price}/份)</button>
       </div>`;
   }
+  if(p.pricingPending)buySection='<div class="card-buy-section">商品价格待核实，暂未开放参与</div>';
   return `
     <div class="card" onclick="location.href='detail.html?id=${p.id}'">
       <div class="thumb">${cover}</div>
@@ -127,11 +128,11 @@ function cardHtml(p) {
           ${badge}</div>
         <div class="progress"><i style="width:${percent}%"></i></div>
         <div class="progress-meta">
-          <span>总 ${p.totalShares} 份 · 已售 ${p.soldShares} 份</span>
+          <span>总 ${p.pricingPending?'待定':p.totalShares} 份 · 已售 ${p.soldShares} 份</span>
           ${done ? `<span class="remain">幸运号 <b>${p.winNumber}</b></span>`
-                 : `<span class="remain">剩 <b>${remain}</b> 份</span>`}
+                 : `<span class="remain">剩 <b>${p.pricingPending?'待定':remain}</b> 份</span>`}
         </div>
-        <div class="card-free-quota"><div>完成度 <b>${percent}%</b> · 满额后倒计时开奖</div><div>${p.freeQuota > 0 ? `免费共 <b>${p.freeQuota}</b> 份 · 剩 <b>${Math.max(0,p.freeQuota-(p.freeUsed||0))}</b> 份` : '免费额度不限'} · 每人每商品限 1 份</div></div>
+        <div class="card-free-quota"><div>完成度 <b>${percent}%</b> · 满额后倒计时开奖</div><div>${p.freeQuota > 0 ? `免费共 <b>${p.freeQuota}</b> 份 · 剩 <b>${Math.max(0,p.freeQuota-(p.freeUsed||0))}</b> 份` : '免费共 0 份 · 剩 0 份'} · 每人每商品限 1 份</div></div>
         ${countdownBlock}
         ${buySection}
       </div>
@@ -276,8 +277,8 @@ async function cardBuy(pid) {
   const u = Store.currentUser();
   const myUsedFree = Store.myOrders().filter(o => o.productId === pid).reduce((s, o) => s + (o.freeUsed || 0), 0) > 0;
   const quota = p.freeQuota || 0;
-  const poolLeft = quota > 0 ? Math.max(0, quota - (p.freeUsed || 0)) : Infinity;
-  const canUseFree = u.freeCoins >= p.price && poolLeft > 0 && !myUsedFree;
+  const poolLeft = Math.max(0, quota - (p.freeUsed || 0));
+  const canUseFree = u.freeCoins >= 1 && poolLeft > 0 && !myUsedFree;
 
   let useFree = false;
   if (canUseFree) {

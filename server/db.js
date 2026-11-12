@@ -204,6 +204,7 @@ export async function initDB({seed=true} = {}) {
       `ALTER TABLE orders ADD COLUMN IF NOT EXISTS request_key TEXT`,
       `ALTER TABLE orders ADD COLUMN IF NOT EXISTS use_free BOOLEAN`,
       `ALTER TABLE products ADD COLUMN IF NOT EXISTS pricing JSONB NOT NULL DEFAULT '{}'::jsonb`,
+      `UPDATE products SET free_quota=ROUND(total_shares*0.05)::int WHERE free_quota IS DISTINCT FROM ROUND(total_shares*0.05)::int`,
       `CREATE TABLE IF NOT EXISTS purchase_receipts (user_id TEXT NOT NULL, request_key TEXT NOT NULL, product_id TEXT NOT NULL, shares INTEGER NOT NULL, use_free BOOLEAN NOT NULL, response JSONB NOT NULL, created_at BIGINT NOT NULL, PRIMARY KEY(user_id,request_key))`,
       `ALTER TABLE showcases ADD COLUMN IF NOT EXISTS deleted_at BIGINT`,
       `CREATE TABLE IF NOT EXISTS showcase_rewards (user_id TEXT NOT NULL, product_id TEXT NOT NULL, created_at BIGINT NOT NULL, PRIMARY KEY(user_id,product_id))`,

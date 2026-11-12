@@ -103,22 +103,22 @@ function render() {
     const quota = p.freeQuota || 0;
     {
       const poolUsed = Store.productFreeUsed(id);
-      const poolLeft = quota > 0 ? Math.max(0, quota - poolUsed) : remain;
+      const poolLeft = Math.max(0, quota - poolUsed);
       const u = Store.currentUser();
       let mine = 0;
       if (u) {
         const myUsed = Store.myOrders()
           .filter(o => String(o.productId) === String(id))
           .reduce((s, o) => s + (o.freeUsed || 0), 0);
-        mine = Math.min(poolLeft, Math.floor((u.freeCoins || 0)/p.price), myUsed>0?0:1);
+        mine = Math.min(poolLeft, Math.floor(u.freeCoins || 0), myUsed>0?0:1);
       }
       const alreadyUsed = u && Store.myOrders().some(
         o => String(o.productId) === String(id) && (o.freeUsed || 0) > 0
       );
       quotaTip = `<div class="free-quota-tip">
-        <div>🪙 ${quota > 0 ? `免费总额度 <b>${quota}</b> 份 · 免费剩余 <b>${poolLeft}</b> 份` : '免费总额度 <b>不限</b> · 免费剩余 <b>不限</b>（以商品剩余份数为限）'}</div>
+        <div>🪙 ${quota > 0 ? `免费总额度 <b>${quota}</b> 份 · 免费剩余 <b>${poolLeft}</b> 份` : '免费总额度 <b>0</b> · 免费剩余 <b>0</b>'}</div>
         <div>全场共享，先到先得；每人每商品仅限免费 <b>1</b> 份。</div>
-        <div>${u ? `本次可免费参与 <b>${mine}</b> 份${alreadyUsed ? '（你已使用过本商品的免费资格）' : ''}；每份消耗 <b>${p.price}</b> 枚免费金币，其余用充值金币。` : '登录后显示本次可用免费份数。'}</div>
+        <div>${u ? `本次可免费参与 <b>${mine}</b> 份${alreadyUsed ? '（你已使用过本商品的免费资格）' : ''}；每人消耗 <b>1</b> 枚免费金币，其余用充值金币。` : '登录后显示本次可用免费份数。'}</div>
       </div>`;
     }
     action = quotaTip + `
@@ -151,13 +151,13 @@ function render() {
                : '<span class="badge">进行中</span>'}
         · 单价 <b>$${p.price}</b> / 份</div>
       <div class="stat-row">
-        <div class="stat"><b>${p.totalShares}</b><span>总需份数</span></div>
+        <div class="stat"><b>${p.pricingPending?'待定':p.totalShares}</b><span>总需份数</span></div>
         <div class="stat"><b>${p.soldShares}</b><span>已参与</span></div>
-        <div class="stat"><b>${remain}</b><span>剩余</span></div>
+        <div class="stat"><b>${p.pricingPending?'待定':remain}</b><span>剩余</span></div>
       </div>
       <div class="progress"><i style="width:${percent}%"></i></div>
       <div class="progress-meta"><span>完成度 ${percent}%（满额后倒计时开奖）</span></div>
-      ${action}
+      ${p.pricingPending ? '<div class="free-quota-tip">商品价格待核实，暂未开放参与</div>' : action}
       <p class="desc">${escapeHtml(p.desc || '')}</p>
       ${specsHtml(p)}
     </div>
@@ -272,8 +272,8 @@ async function buy() {
   const u = Store.currentUser();
   const myUsedFree = Store.myOrders().filter(o => o.productId === id).reduce((s, o) => s + (o.freeUsed || 0), 0) > 0;
   const quota = p.freeQuota || 0;
-  const poolLeft = quota > 0 ? Math.max(0, quota - (p.freeUsed || 0)) : Infinity;
-  const canUseFree = u.freeCoins >= p.price && poolLeft > 0 && !myUsedFree;
+  const poolLeft = Math.max(0, quota - (p.freeUsed || 0));
+  const canUseFree = u.freeCoins >= 1 && poolLeft > 0 && !myUsedFree;
 
   let useFree = false;
   if (canUseFree) {

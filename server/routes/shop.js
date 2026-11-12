@@ -13,7 +13,8 @@ function formatProduct(p) {
   const out = {
     id: p.id, sku: p.sku, name: p.name, category: p.category, emoji: p.emoji,
     pricePerShare: p.price_per_share, totalShares: p.total_shares,
-    freeQuota: p.free_quota, freeUsed: Number(p.free_used || 0),
+    freeQuota: Math.round(Number(p.total_shares)*0.05),
+    pricingPending: !!p.source_url && Number(p.total_shares)===1 && !Number(p.pricing?.referencePrice), freeUsed: Number(p.free_used || 0),
     desc: p.desc || '',
     gallery: safeJSON(p.gallery, []),
     specs: safeJSON(p.specs, []),

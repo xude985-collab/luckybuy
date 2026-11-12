@@ -96,6 +96,7 @@ const Store = (() => {
       totalShares: p.totalShares,
       soldShares: p.sold || 0,
       freeQuota: p.freeQuota || 0,
+      pricingPending: !!p.pricingPending,
       freeUsed: p.freeUsed || 0,
       desc: p.desc || '',
       gallery: p.gallery || [],

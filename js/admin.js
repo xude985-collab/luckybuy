@@ -70,7 +70,7 @@ function renderProductList(list) {
     html += `<tr>
       <td>${esc(p.sku||'—')}</td>
       <td>${escapeHtml(p.img||'')} ${esc(p.name)}</td>
-      <td>$${p.price}/份<br>总 ${p.totalShares} 份<br>${p.freeQuota > 0 ? `免费 ${p.freeQuota} 份` : '免费额度不限'}${!p.pricing?.referencePrice ? '<br><small>参考价未保存，请核对份数</small>' : ''}</td>
+      <td>$${p.price}/份<br>总 ${p.totalShares} 份<br>${p.freeQuota > 0 ? `免费 ${p.freeQuota} 份` : '免费 0 份'}${!p.pricing?.referencePrice ? '<br><small>参考价未保存，请核对份数</small>' : ''}</td>
       <td>${sold}/${p.totalShares} (${pct}%)</td>
       <td>${state}</td>
       <td><a href="#" onclick="editProd('${p.id}');return false">编辑</a> · <a href="#" onclick="delProd('${p.id}');return false" style="color:#c00">删除</a></td>
@@ -111,12 +111,12 @@ function fieldsFrom(p) {
   document.getElementById('form-title').textContent = p ? '编辑商品' : '上架新商品';
   document.getElementById('multiplier-row').style.display = 'block';
   document.getElementById('base-price').value = p?.pricing?.referencePrice || '';
-  document.getElementById('f-multiplier').value = p?.pricing?.multiplier || 1.5;
+  document.getElementById('f-multiplier').value = 1.5;
   document.getElementById('f-per-share').value = p?.price || 1;
-  document.getElementById('f-free-ratio').value = p?.pricing?.freeRatio ?? '';
-  document.getElementById('free-ratio-note').textContent = '改比例自动算免费份数；改免费份数自动反算比例。0份表示不限。';
-  if (p && p.pricing?.freeRatio == null) inferFreeRatio();
-  document.getElementById('price-import-note').textContent = '总份数 = 参考价 × 倍数 ÷ 每份金额，按原规则四舍五入。';
+  document.getElementById('f-free-ratio').value = 5;
+  document.getElementById('free-ratio-note').textContent = '免费总额度固定为总份数的5%，四舍五入；每人每商品最多1个免费金币。';
+  syncFreeQuota();
+  document.getElementById('price-import-note').textContent = '总份数 = 商品美元参考价 × 1.5，四舍五入；每份1美元。';
   document.getElementById('multi-result').textContent = '';
   bindMultiplierAuto();
   document.getElementById('cancel-edit').style.display = p ? 'inline-block' : 'none';
@@ -163,10 +163,12 @@ async function save() {
     }).filter(Boolean),
   };
   if (!input.name) { toast('请填写商品名称'); return; }
-  if (input.pricing.freeRatio != null && (!syncFreeQuota() || Number(v('f-free')) < 1)) {
-    toast('免费比例计算结果须至少1份；0在原规则中表示不限，不能作为0%保存'); return;
-  }
-  input.freeQuota = v('f-free');
+  if(!(input.pricing.referencePrice>0)){toast('请先填写商品美元参考价，不能按1份上架');return;}
+  applyMultiplier();
+  input.price=1;
+  input.totalShares=Number(v('f-total'));
+  input.freeQuota=Number(v('f-free'));
+  input.pricing={referencePrice:input.pricing.referencePrice,multiplier:1.5,freeRatio:5};
   const r = await Store.upsertProduct(input);
   toast(r.msg);
   if (r.ok) { cancelEdit(); loadProducts(); loadDashboard(); }
@@ -221,8 +223,8 @@ function applyDraft(d, url) {
   document.getElementById('f-multiplier').value = '1.5';
   document.getElementById('f-per-share').value = '1';
   document.getElementById('price-import-note').textContent = hasPrice
-    ? '已获取参考价，请核对商品售价。按原规则：参考价 × 1.5 ÷ 每份金额，四舍五入。'
-    : (d.priceNote || '未获取到商品价格，请补填美元参考价以自动计算，或手动填写总份数。');
+    ? '已获取整件商品参考价：总份数按价格×1.5四舍五入，免费名额按总份数×5%四舍五入。'
+    : (d.priceNote || '未获取到商品价格，请补填美元参考价以自动计算，补填后才能上架。');
   bindMultiplierAuto();
   applyMultiplier();
   const urls = Array.isArray(d.gallery) ? d.gallery.map(g => g.url).filter(Boolean) : [];
@@ -234,15 +236,15 @@ function applyDraft(d, url) {
 
 function applyMultiplier() {
   const price = Number(document.getElementById('base-price').value);
-  const mult = Number(document.getElementById('f-multiplier').value);
-  const perShare = Number(document.getElementById('f-per-share').value);
+  const mult = 1.5;
+  const perShare = 1;
   if (!(price > 0 && mult > 0 && Number.isInteger(perShare) && perShare >= 1)) {
     document.getElementById('f-total').value = '';
     document.getElementById('multi-result').textContent = '待填写有效参考价及每份金额';
     syncFreeQuota();
     return;
   }
-  const result = Math.max(1, Math.round(Math.round(price * mult * 100) / (perShare * 100)));
+  const result = Math.max(1, Math.round(price * mult / perShare));
   document.getElementById('f-total').value = result;
   document.getElementById('f-price').value = perShare;
   document.getElementById('multi-result').textContent = `= ${result} 份`;
@@ -250,31 +252,14 @@ function applyMultiplier() {
 }
 
 function syncFreeQuota() {
-  const raw = v('f-free-ratio');
-  if (raw === '') return true;
-  const ratio = Number(raw), total = Number(v('f-total'));
-  if (!(ratio > 0 && ratio <= 100 && Number.isInteger(total) && total > 0)) {
-    document.getElementById('f-free').value = '';
-    document.getElementById('free-ratio-note').textContent = '请填写有效总份数及大于0、不超过100的比例'; return false;
-  }
-  const count = Math.round(total * ratio / 100);
-  document.getElementById('f-free').value = count || '';
-  document.getElementById('free-ratio-note').textContent = count ? `${total}份 × ${ratio}% = ${count}免费份` : '计算不足1份，请调整比例；0表示不限，不能混用。';
-  return count > 0;
+  const total=Number(v('f-total'));
+  document.getElementById('f-free-ratio').value=5;
+  const count=Number.isInteger(total)&&total>0?Math.round(total*0.05):0;
+  document.getElementById('f-free').value=count;
+  document.getElementById('free-ratio-note').textContent=`总份数 × 5%，四舍五入 = ${count} 个免费金币名额；每人每商品限1个。`;
+  return total>0;
 }
-
-function inferFreeRatio() {
-  const quota=Number(v('f-free')),total=Number(v('f-total'));
-  const input=document.getElementById('f-free-ratio'),note=document.getElementById('free-ratio-note');
-  if(v('f-free')===''){input.value='';note.textContent='请填写免费份数或比例';return;}
-  if(quota===0){input.value='';note.textContent='0份按原规则表示免费额度不限，不能反推为0%。';return;}
-  if(!Number.isInteger(quota)||quota<0||!Number.isInteger(total)||total<1||quota>total){
-    input.value='';note.textContent='请先填写有效总份数；免费份数不能超过总份数。';return;
-  }
-  const ratio=Number((quota/total*100).toFixed(6));
-  input.value=String(ratio);
-  note.textContent=`由已有份数反推：${quota} ÷ ${total} × 100% ≈ ${ratio}%。这是实际占比，不代表历史默认比例。`;
-}
+function inferFreeRatio(){syncFreeQuota();}
 
 function bindMultiplierAuto() {
   const multEl = document.getElementById('f-multiplier');
