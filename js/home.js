@@ -131,7 +131,7 @@ function cardHtml(p) {
           ${done ? `<span class="remain">幸运号 <b>${p.winNumber}</b></span>`
                  : `<span class="remain">剩 <b>${remain}</b> 份</span>`}
         </div>
-        <div class="card-free-quota"><div>完成度 <b>${percent}%</b></div><div>${p.freeQuota > 0 ? `免费共 <b>${p.freeQuota}</b> 份 · 剩 <b>${Math.max(0,p.freeQuota-(p.freeUsed||0))}</b> 份` : '免费额度不限'} · 每人每商品限 1 份</div></div>
+        <div class="card-free-quota"><div>完成度 <b>${percent}%</b> · 满额后倒计时开奖</div><div>${p.freeQuota > 0 ? `免费共 <b>${p.freeQuota}</b> 份 · 剩 <b>${Math.max(0,p.freeQuota-(p.freeUsed||0))}</b> 份` : '免费额度不限'} · 每人每商品限 1 份</div></div>
         ${countdownBlock}
         ${buySection}
       </div>

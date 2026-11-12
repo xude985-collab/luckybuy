@@ -156,7 +156,7 @@ function render() {
         <div class="stat"><b>${remain}</b><span>剩余</span></div>
       </div>
       <div class="progress"><i style="width:${percent}%"></i></div>
-      <div class="progress-meta"><span>完成度 ${percent}%（满额即揭晓）</span></div>
+      <div class="progress-meta"><span>完成度 ${percent}%（满额后倒计时开奖）</span></div>
       ${action}
       <p class="desc">${escapeHtml(p.desc || '')}</p>
       ${specsHtml(p)}
