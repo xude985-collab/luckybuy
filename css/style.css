@@ -1100,7 +1100,7 @@ html:not(.user-is-admin) .topbar .nav-admin { display: none; }
  .home-layout { display:grid; grid-template-columns:240px minmax(0,1fr); max-width:1800px; padding:20px 24px; gap:20px 24px; align-items:start; }
  .home-layout .container { max-width:none; margin:0; padding:0; }
  .home-layout .left-col { width:240px; margin:0; top:84px; }
- .home-layout > .cat-tabs { grid-column:1 / -1; margin:0; padding:0 0 16px; border-bottom:1px solid #e6e6e6; }
+ .home-layout > .cat-tabs { grid-column:2; margin:0; padding:0 0 16px; border-bottom:1px solid #e6e6e6; }
  .home-layout .grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
  .home-layout .card { display:flex; flex-direction:column; }
  .home-layout .card .body { flex:1; padding:16px; }
