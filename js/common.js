@@ -112,6 +112,15 @@ function toast(msg) {
 function pct(prod) { return Math.min(100, Math.round(prod.soldShares / prod.totalShares * 100)); }
 function param(name) { return new URLSearchParams(location.search).get(name); }
 
+function cachedProductImage(url) {
+  try {
+    const image = new URL(url);
+    if (image.protocol === 'https:' && image.hostname === 'm.media-amazon.com' && image.pathname.startsWith('/images/I/'))
+      return '/media/amazon?url=' + encodeURIComponent(image.href);
+  } catch (_) {}
+  return url;
+}
+
 function renderMobNav(active, u) {
   let nav = document.getElementById('mob-nav');
   if (!nav) {
@@ -244,6 +253,6 @@ function renderServiceNotice(){
  if(!messages.length){notice?.remove();return;}
  if(!notice){notice=document.createElement('div');notice.id='service-notice';notice.setAttribute('role','status');notice.style.cssText='padding:12px 16px;background:#fff3cd;color:#663c00;position:relative;z-index:20;text-align:center';document.getElementById('topbar')?.after(notice);}
  const isLogin=/\/login(?:\.html)?$/.test(location.pathname);
- notice.replaceChildren(document.createTextNode(isLogin ? '登录相关数据加载失败：' + [...new Set(messages)].join('；') + '。 ' : '部分内容加载失败，当前显示可能不完整。 '));const retry=document.createElement('button');retry.textContent='重新加载';retry.className='btn ghost';retry.onclick=()=>location.reload();notice.append(retry);
+ notice.replaceChildren(document.createTextNode(isLogin ? '登录相关数据加载失败：' + [...new Set(messages)].join('；') + '。 ' : '部分内容暂时连接失败，可重试恢复。 '));const retry=document.createElement('button');retry.textContent='重新加载';retry.className='btn ghost';retry.onclick=()=>document.body.classList.contains('home-page')?window.dispatchEvent(new Event('home-retry')):location.reload();notice.append(retry);
 }
 window.addEventListener('store-status',renderServiceNotice);

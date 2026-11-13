@@ -216,7 +216,7 @@ function galleryHtml(p) {
   const main = g[0];
   const mainHtml = main.type === 'video'
     ? `<video id="gmain" src="${escapeHtml(main.url)}" controls playsinline></video>`
-    : `<img id="gmain" src="${escapeHtml(main.url)}" alt="${escapeHtml(p.name)}">`;
+    : `<img id="gmain" src="${escapeHtml(cachedProductImage(main.url))}" data-original-src="${escapeHtml(main.url)}" onerror="this.onerror=null;this.src=this.dataset.originalSrc" alt="${escapeHtml(p.name)}">`;
   const thumbs = g.map((m, i) => `
     <div class="g-thumb ${i === 0 ? 'active' : ''}" onclick="pickMedia(${i})">
       ${m.type === 'video' ? '<span class="g-play">▶</span>' : `<img src="${escapeHtml(m.url)}" alt="">`}
@@ -254,7 +254,7 @@ function pickMedia(i) {
   const wrap = document.querySelector('.g-main');
   wrap.innerHTML = m.type === 'video'
     ? `<video id="gmain" src="${escapeHtml(m.url)}" controls autoplay playsinline></video>`
-    : `<img id="gmain" src="${escapeHtml(m.url)}" alt="">`;
+    : `<img id="gmain" src="${escapeHtml(cachedProductImage(m.url))}" data-original-src="${escapeHtml(m.url)}" onerror="this.onerror=null;this.src=this.dataset.originalSrc" alt="">`;
   document.querySelectorAll('.g-thumb').forEach((el, idx) =>
     el.classList.toggle('active', idx === i));
 }

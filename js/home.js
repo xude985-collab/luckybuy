@@ -94,7 +94,7 @@ function cardHtml(p, index = 0) {
   if (drawing) {
     const t = p.drawTime ? fmtCountdown(p.drawTime) : null;
     const participated = !!Store.currentUser() && Store.myOrders().some(o => o.productId === p.id && o.count > 0);
-    countdownBlock = `<div class="card-countdown${t ? '' : ' card-countdown-now'}"${t ? ` data-draw-time="${p.drawTime}"` : ''} data-participated="${participated}">${countdownContent(t, participated)}</div>`;
+    countdownBlock = `<div class="card-countdown${t ? '' : ' card-countdown-now'}"${t ? ` data-draw-time="${p.drawTime}"` : ''} data-product-id="${escapeHtml(p.id)}" data-participated="${participated}">${countdownContent(t, participated)}</div>`;
   }
   // 封面:优先用真实商品图(gallery第一张),否则显示emoji
   const cover = (p.gallery && p.gallery.length && p.gallery[0].url)
@@ -144,10 +144,10 @@ function cardImageUrl(url) {
     const image = new URL(url);
     if (image.hostname === 'm.media-amazon.com' && /^\/images\/I\/[^/]+\._(?:AC_)?SL\d+_\.jpg$/.test(image.pathname)) {
       image.pathname = image.pathname.replace(/\._(?:AC_)?SL\d+_\.jpg$/, '._AC_SL600_.jpg');
-      return image.href;
+      return cachedProductImage(image.href);
     }
   } catch (_) {}
-  return url;
+  return cachedProductImage(url);
 }
 let activeCat = 'all';
 let currentPage = 1;
@@ -168,6 +168,9 @@ function selectCat(key) {
 }
 
 let gridRequest=0;
+let catalogRetryTimer = null;
+let catalogFailures = 0;
+let displayedCatalogKey = '';
 let homeDrawingIds = [];
 let homeDrawPollTimer = null;
 let homeDrawPolling = false;
@@ -196,6 +199,7 @@ async function pollHomeDraws() {
   }
 }
 async function renderGrid() {
+  clearTimeout(catalogRetryTimer);
   const seq=++gridRequest;
   const grid=document.getElementById('grid');
   if(!grid.children.length)grid.textContent='商品加载中…';
@@ -203,7 +207,23 @@ async function renderGrid() {
   if(seq!==gridRequest)return;
   document.body.classList.remove('home-catalog-loading');
   grid.setAttribute('aria-busy', 'false');
-  if(!r.ok){grid.innerHTML='<div class="empty">商品加载失败。<button class="btn ghost" onclick="renderGrid()">重试</button></div>';return;}
+  if(!r.ok){
+    const key = `${activeCat}:${currentPage}`;
+    const existing = displayedCatalogKey === key && grid.querySelector('.card');
+    if (!existing) grid.innerHTML = '';
+    grid.querySelector('.catalog-error')?.remove();
+    const notice = document.createElement('div');
+    notice.className = 'empty catalog-error';
+    notice.style.gridColumn = '1 / -1';
+    notice.innerHTML = `${existing ? '连接暂时中断，以下为上次加载内容，暂不可购买。' : '商品加载失败，正在等待恢复。'}<button class="btn ghost" onclick="renderGrid()">重试</button>`;
+    grid.prepend(notice);
+    grid.querySelectorAll('.card-buy-btn').forEach(button => { button.disabled = true; });
+    const delay = Math.min(60000, 15000 * 2 ** Math.min(catalogFailures++, 2));
+    if (!document.hidden) catalogRetryTimer = setTimeout(renderGrid, delay);
+    return;
+  }
+  catalogFailures = 0;
+  displayedCatalogKey = `${activeCat}:${currentPage}`;
   const pageItems=r.products,total=r.total??pageItems.length,totalPages=r.pages||Math.ceil(total/PAGE_SIZE)||1;
   homeDrawingIds = pageItems.filter(p => p.status === 'drawing').map(p => p.id);
   scheduleHomeDrawPoll();
@@ -309,6 +329,8 @@ let cardBuying=false;
 async function cardBuy(pid) {
   if(cardBuying)return;cardBuying=true;
   try {
+  await Store.homeLoads.session;
+  if (Store.hasError('/auth/me')) { toast('登录状态暂未确认，请稍后重试'); return; }
   if (!requireLogin()) return;
   const el = document.getElementById('cqty-' + pid);
   const count = parseInt(el?.value) || 1;
@@ -370,8 +392,16 @@ function showCardCoinChoice(u, p) {
   });
 }
 
-onReady(async () => {
+function syncHomeIdentity() {
   renderTopbar('home');
+  document.querySelectorAll('.card-countdown').forEach(el => {
+    const participated = !!Store.currentUser() && Store.myOrders().some(o => o.productId === el.dataset.productId && o.count > 0);
+    el.dataset.participated = String(participated);
+    el.innerHTML = countdownContent(el.dataset.drawTime ? fmtCountdown(Number(el.dataset.drawTime)) : null, participated);
+  });
+}
+function bootHome() {
+  renderMobNav('home', null);
   const grid = document.getElementById('grid');
   const sidebar = document.querySelector('.left-col');
   const syncSidebarHeight = () => {
@@ -384,16 +414,51 @@ onReady(async () => {
   };
   new ResizeObserver(syncSidebarHeight).observe(grid);
   window.addEventListener('resize', syncSidebarHeight);
-  await Store.ready;
-  renderAll();
+  renderCatTabs();
+  renderGrid();
   renderShowcase();
+  const loads = Store.homeLoads;
+  loads.categories.then(renderCatTabs);
+  loads.winners.then(renderMarquee);
+  loads.recent.then(renderLiveFeed);
+  loads.session.then(async () => {
+    syncHomeIdentity();
+    await Store.refreshNotifications();
+    renderDrawNotification();
+    checkUnclaimedWins();
+  });
+}
+bootHome();
+
+let homeRecoveryTimer = null;
+let homeRecoveryDelay = 15000;
+async function recoverHomeSections() {
+  clearTimeout(homeRecoveryTimer);
+  if (document.hidden) return;
+  await Store.retryHomeData();
+  syncHomeIdentity();
+  if (Store.hasError('/showcase/approved')) await renderShowcase();
+  await Store.refreshNotifications();
+  renderDrawNotification(); checkUnclaimedWins();
+  renderCatTabs(); renderMarquee(); renderLiveFeed();
+  if (Store.errors().length) {
+    homeRecoveryTimer = setTimeout(recoverHomeSections, homeRecoveryDelay);
+    homeRecoveryDelay = Math.min(60000, homeRecoveryDelay * 2);
+  } else homeRecoveryDelay = 15000;
+}
+Store.ready.then(() => {
+  if (Store.errors().length) homeRecoveryTimer = setTimeout(recoverHomeSections, 15000);
 });
+window.addEventListener('home-retry', () => { renderGrid(); recoverHomeSections(); renderShowcase(); });
 
 // 页面恢复可见时刷新商品数据（解决从详情页返回时数据过期问题）
 document.addEventListener('visibilitychange', () => {
+  if (document.hidden) clearTimeout(catalogRetryTimer);
+  if (document.hidden) clearTimeout(homeRecoveryTimer);
   scheduleHomeDrawPoll();
   if (!document.hidden) {
-    Promise.all([Store.refreshProducts(), Store.refreshRecentBuys(), Store.refreshWinners()]).then(() => {
+    recoverHomeSections();
+    Promise.all([Store.refreshRecentBuys(), Store.refreshWinners()]).then(() => {
       renderAll();
     }).catch(() => {});
   }

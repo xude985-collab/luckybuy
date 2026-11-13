@@ -21,6 +21,6 @@ for (const file of files) {
   await copyFile(path.join(root, file), path.join(out, file));
 }
 await copyFile(path.join(root, 'deploy/pages-worker.mjs'), path.join(out, '_worker.js'));
-await writeFile(path.join(out, '_routes.json'), JSON.stringify({ version: 1, include: ['/api', '/api/*', '/uploads/*'], exclude: [] }));
+await writeFile(path.join(out, '_routes.json'), JSON.stringify({ version: 1, include: ['/api', '/api/*', '/uploads/*', '/media/*'], exclude: [] }));
 await writeFile(path.join(out, '_headers'), '/*\n  X-Content-Type-Options: nosniff\n  Cache-Control: no-cache\n');
 console.log(`Built ${files.length} public files in ${out}; no backend, credentials or database files included.`);

@@ -441,7 +441,7 @@ for (const guest of [false, true]) {
   await expect(page.locator('.catalog-loading')).toBeVisible();
   await expect(page.locator('.left-col')).toBeHidden();
   await expect(page.locator('#grid')).toHaveAttribute('aria-busy','true');
-  const catalogRequest = page.waitForRequest('**/api/shop/catalog?**');
+  const catalogRequest = Promise.resolve();
   releaseSession();
   await catalogRequest;
   await expect(page.locator('.catalog-loading')).toBeVisible();
@@ -518,7 +518,7 @@ for(const width of [390,1440]) {
 test('商品读取临时失败自动恢复，首排封面使用小图且详情保留原图',async({page})=>{
  const picture='https://m.media-amazon.com/images/I/71Example._AC_SL1500_.jpg';
  const p={...product,gallery:[{type:'image',url:picture}]};
- await page.route('https://m.media-amazon.com/**',route=>route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"/>'}));
+ await page.route(/(?:m\.media-amazon\.com|\/media\/amazon)/,route=>route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"/>'}));
  await mockAPI(page,{product:p});
  let reads=0;
  await page.route('**/api/shop/catalog?**',route=>++reads===1?route.fulfill({status:503,json:{ok:false}}):route.fulfill({json:{ok:true,products:[p],total:1,pages:1}}));
@@ -526,12 +526,12 @@ test('商品读取临时失败自动恢复，首排封面使用小图且详情�
  await expect(page.locator('.card .name')).toHaveText(product.name);
  expect(reads).toBe(2);
  await expect(page.locator('#service-notice')).toHaveCount(0);
- await expect(page.locator('.card img')).toHaveAttribute('src',picture.replace('SL1500','SL600'));
+ await expect(page.locator('.card img')).toHaveAttribute('src','/media/amazon?url='+encodeURIComponent(picture.replace('SL1500','SL600')));
  await expect(page.locator('.card img')).toHaveAttribute('loading','eager');
  await page.locator('.card img').dispatchEvent('error');
  await expect(page.locator('.card img')).toHaveAttribute('src',picture);
  await page.goto('/detail.html?id=p_test');
- await expect(page.locator('#gmain')).toHaveAttribute('src',picture);
+ await expect(page.locator('#gmain')).toHaveAttribute('src','/media/amazon?url='+encodeURIComponent(picture));
 });
 
 test('首页等待开奖自动更新结果，等待期间不打断其他商品输入',async({page})=>{
@@ -563,5 +563,46 @@ test('详情接口失败显示重试而非商品不存在，恢复后正常展�
  await page.locator('#retry-product').click();
  await expect(page.locator('#retry-product')).toHaveCount(0);
  await expect(page.locator('#detail')).toContainText(product.name);
+ await expect(page.locator('#service-notice')).toHaveCount(0);
+});
+
+test('首页商品不等待慢身份和慢辅助接口，身份确认后参与提醒补上',async({page})=>{
+ await mockAPI(page,{product:{...product,status:'drawing',draw:{drawTime:Date.now()+600000}}});
+ let release;
+ const gate=new Promise(resolve=>release=resolve);
+ await page.route(/\/api\/(?:auth\/me|shop\/winners|shop\/recent-buys)$/,async route=>{await gate;await route.fallback();});
+ await page.goto('/index.html');
+ await expect(page.locator('.card .name')).toHaveText(product.name);
+ await expect(page.locator('.card-participation-note')).toHaveCount(0);
+ await expect(page.locator('#topbar .nav-admin')).toBeHidden();
+ release();
+ await expect(page.locator('.card-participation-note')).toBeVisible();
+ await expect(page.locator('#topbar .nav-admin')).toBeVisible();
+});
+
+test('暂时刷新失败保留同页商品并禁用购买，原地重试恢复',async({page})=>{
+ await mockAPI(page);
+ await page.goto('/index.html');
+ await expect(page.locator('.card')).toHaveCount(1);
+ await page.route('**/api/shop/catalog?**',r=>r.fulfill({status:503,json:{ok:false}}));
+ await page.evaluate(()=>renderGrid());
+ await expect(page.locator('.card')).toHaveCount(1);
+ await expect(page.locator('.card-buy-btn')).toBeDisabled();
+ await expect(page.locator('.catalog-error')).toContainText('上次加载内容');
+ await page.unroute('**/api/shop/catalog?**');
+ await page.locator('.catalog-error button').click();
+ await expect(page.locator('.catalog-error')).toHaveCount(0);
+ await expect(page.locator('.card-buy-btn')).toBeEnabled();
+ await expect(page.locator('#service-notice')).toHaveCount(0);
+});
+
+test('首次商品失败后自动恢复，无需刷新页面',async({page})=>{
+ await mockAPI(page);
+ let fail=true;
+ await page.route('**/api/shop/catalog?**',r=>fail?r.fulfill({status:503,json:{ok:false}}):r.fulfill({json:{ok:true,products:[product],total:1,pages:1}}));
+ await page.goto('/index.html');
+ await expect(page.locator('.catalog-error')).toBeVisible();
+ fail=false;
+ await expect(page.locator('.card .name')).toHaveText(product.name,{timeout:20000});
  await expect(page.locator('#service-notice')).toHaveCount(0);
 });

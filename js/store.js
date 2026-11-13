@@ -22,9 +22,11 @@ const Store = (() => {
   // ---- HTTP ----
   const pendingGets = new Map();
   const errors = new Map();
+  const diagnostics = [];
   function recordError(path,msg){if(msg)errors.set(path,msg);else errors.delete(path);window.dispatchEvent(new Event('store-status'));}
 
   async function http(method, path, body, attempt = 0) {
+    const started = Date.now();
     const retryRead = method === 'GET' && attempt < (path === '/auth/me' ? 2 : 1);
     const retry = async () => {
       clearTimeout(timer);
@@ -61,12 +63,16 @@ const Store = (() => {
     } catch (e) {
       if (retryRead) return retry();
       if(method==='GET')recordError(path,'连接暂时失败，请稍后重试');
+      diagnostics.push({path:path.split('?')[0],method,status:0,duration:Date.now()-started,time:Date.now()});
+      if(diagnostics.length>50)diagnostics.shift();
       return { ok: false, uncertain:true, msg: controller.signal.aborted
         ? '请求超时，请刷新确认操作结果' : '网络异常，请稍后重试' };
     } finally {
       clearTimeout(timer);
     }
     if (!resp.ok) data.ok = false;
+    diagnostics.push({path:path.split('?')[0],method,status:resp.status,duration:Date.now()-started,requestId:resp.headers.get('X-Request-ID'),time:Date.now()});
+    if(diagnostics.length>50)diagnostics.shift();
     data.status=resp.status;data.uncertain=resp.status>=500||resp.status===429;
     if(method==='GET')recordError(path,data.ok?null:(data.msg||'加载失败'));
     if(resp.status===401){cache.user=null;}
@@ -522,9 +528,25 @@ const Store = (() => {
 
   // ---- 初始化：拉取首屏所需的全部数据 ----
   let _ready = null;
+  let homeLoads = null;
+  async function retryHomeData() {
+    const tasks = [];
+    for (const [path, refresh] of [['/shop/categories',refreshCategories],['/shop/winners',refreshWinners],['/shop/recent-buys',refreshRecentBuys],['/shop/config',refreshConfig]])
+      if (errors.has(path)) tasks.push(refresh());
+    if (['/auth/me','/wallet','/wallet/orders'].some(path=>errors.has(path))) tasks.push(refreshMe().then(refreshOrders));
+    return Promise.all(tasks);
+  }
   function init() {
     if (_ready) return _ready;
     _ready = (async () => {
+      if (/^\/(?:index(?:\.html)?)?$/.test(location.pathname)) {
+        homeLoads = {
+          categories: refreshCategories(), winners: refreshWinners(), recent: refreshRecentBuys(),
+          config: refreshConfig(), session: refreshMe().then(refreshOrders),
+        };
+        await Promise.all(Object.values(homeLoads));
+        return;
+      }
       if(/\/login(?:\.html)?$/.test(location.pathname)){await refreshMe();return;}
       if(/\/detail(?:\.html)?$/.test(location.pathname)){await Promise.all([refreshCategories(),refreshProduct(new URLSearchParams(location.search).get('id')),refreshMe().then(refreshOrders)]);return;}
       await Promise.all([
@@ -542,6 +564,9 @@ const Store = (() => {
   return {
     init,
     get ready() { return _ready || init(); },
+    get homeLoads() { init(); return homeLoads || {session: _ready}; },
+    retryHomeData, diagnostics:()=>diagnostics.slice(),
+    hasError:path=>errors.has(path),
     // 会话/用户
     currentUser, isLoggedIn, totalCoins, canCheckin, refreshMe,
     sendCode, register, login, logout, updateName, recharge, checkin, getPackages, getRechargeStatus,
