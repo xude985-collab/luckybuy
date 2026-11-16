@@ -10,7 +10,10 @@ async function check(url, timeout) {
     const challenge = response.headers.get('cf-mitigated') === 'challenge';
     let data;
     if (response.headers.get('content-type')?.includes('application/json')) {
-      data = await response.json();
+      try { data = await response.json(); }
+      catch (error) { return { url, ok: false, status: response.status, challenge,
+        ms: Date.now() - started, error: error.name === 'TimeoutError' ? 'timeout' : 'invalid_json',
+        requestId: response.headers.get('x-request-id'), ray: response.headers.get('cf-ray') }; }
     } else {
       await response.body?.cancel();
     }
@@ -33,10 +36,12 @@ export async function runHealthCheck() {
     results.push(result);
     if (result.ok) break;
   }
-  // Verify the actual customer-facing proxy and database-backed catalog as well.
+  // Verify the actual customer-facing proxy and both homepage data endpoints.
   const catalog = await check('https://luckybuy.vip/api/shop/catalog?page=1&limit=1', 60000);
   results.push(catalog);
-  const ok = results.some(r => r.url.endsWith('/api/health') && r.ok) && catalog.ok;
+  const categories = await check('https://luckybuy.vip/api/shop/categories', 30000);
+  results.push(categories);
+  const ok = results.some(r => r.url.endsWith('/api/health') && r.ok) && catalog.ok && categories.ok;
   const report = { event: 'luckybuy_health_check', time: new Date().toISOString(), ok, results };
   (ok ? console.log : console.error)(JSON.stringify(report));
   return report;
